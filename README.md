@@ -104,7 +104,7 @@ Full documentation for operational_sep_quantities.py:
             Then please define your energy bins in the subroutine
             define_energy_bins() under "if experiment == "user":""
     
-#    calculate_event_info(energy_thresholds, flux_thresholds, integral_fluxes, detect_prev_event)
+###    calculate_event_info(energy_thresholds, flux_thresholds, integral_fluxes, detect_prev_event)
         Uses the integral fluxes (either input or estimated from differential
         channels) and all the energy and flux thresholds set in the main program
         to calculate SEP event quantities.
@@ -121,7 +121,7 @@ Full documentation for operational_sep_quantities.py:
         during the specified time period. If this flag is not set, then the code
         simply take the first threshold crossing as the start of the SEP event.
     
-#    calculate_fluence(dates, flux)
+###    calculate_fluence(dates, flux)
         This subroutine sums up all of the flux in the 1D array "flux". The
         "dates" and "flux" arrays input here should reflect only the intensities
         between the SEP start and stop times, determined by the subroutine
@@ -143,7 +143,7 @@ Full documentation for operational_sep_quantities.py:
         the >100 MeV fluxes, as they are most pertinent to astronaut health
         inside of the space station.
     
-#    check_data(startdate, enddate, experiment, flux_type)
+###    check_data(startdate, enddate, experiment, flux_type)
         Check that the files containing the data are in the data directory. If
         the files for the requested dates aren't present, they will be
         downloaded from the NOAA website. For SEPEM (RSDv2) data, if missing,
@@ -154,18 +154,18 @@ Full documentation for operational_sep_quantities.py:
         single file. This program will generate files containing fluxes for
         each year for faster reading.
     
-#    check_for_bad_data(dates, fluxes, energy_bins)
+###   check_for_bad_data(dates, fluxes, energy_bins)
         Search the data for bad values (flux < 0) and fill the missing data with
         an estimate flux found by performing a linear interpolation with time,
         using the good flux values immediately surrounding the data gap.
     
-#    check_paths()
+###    check_paths()
         Check that the paths that hold the data and output exist. If not, create.
     
-#    define_energy_bins(experiment, flux_type)
+###    define_energy_bins(experiment, flux_type)
         Define the energy bins for the selected spacecraft or data set
     
-#    do_interpolation(i, dates, flux)
+###    do_interpolation(i, dates, flux)
         If bad fluxes (flux < 0) are found in the data, find the first prior
         data point and the first following data point that have good flux values.
         Perform linear interpolation in time:
@@ -173,10 +173,10 @@ Full documentation for operational_sep_quantities.py:
         This subroutine does the calculation for a single instance of bad data
         that corresponds to array index i.
     
-#    extract_date_range(startdate, enddate, all_dates, all_fluxes)
+###    extract_date_range(startdate, enddate, all_dates, all_fluxes)
         Extract fluxes only for the dates in the range specified by the user.
     
-#    extract_integral_fluxes(fluxes, flux_thresholds, energy_thresholds, energy_bins)
+###    extract_integral_fluxes(fluxes, flux_thresholds, energy_thresholds, energy_bins)
         Select or create the integral fluxes that correspond to the desired
         energy thresholds.
         
@@ -187,12 +187,12 @@ Full documentation for operational_sep_quantities.py:
         If the user selected integral fluxes, then the channels corresponding to
         the desired energy thresholds will be identified.
     
-#    find_goes_data_dimensions(filename)
+###    find_goes_data_dimensions(filename)
         Input open csv file of GOES data. Identifies the start of the data by
         searching for the string 'data:', then returns the number of header
         rows and data rows present in the file.
     
-#    from_differential_to_integral_flux(min_energy, energy_bins, fluxes)
+###    from_differential_to_integral_flux(min_energy, energy_bins, fluxes)
         If user selected differential fluxes, convert to integral fluxes to
         caluculate operational threshold crossings (>10 MeV protons exceed 10
         pfu, >100 MeV protons exceed 1 pfu).
@@ -206,7 +206,7 @@ Full documentation for operational_sep_quantities.py:
         
         An integral flux will be provided for each timestamp (e.g. every 5 mins).
     
-#    get_fluence_spectrum(flux_type, energy_threshold, flux_threshold, sep_dates, sep_fluxes, energy_bins, save_file)
+###    get_fluence_spectrum(flux_type, energy_threshold, flux_threshold, sep_dates, sep_fluxes, energy_bins, save_file)
         Calculate the fluence spectrum for each of the energy channels in the
         user selected data set. If the user selected differential fluxes, then
         the fluence values correspond to each energy bin. If the user selected
@@ -214,13 +214,13 @@ Full documentation for operational_sep_quantities.py:
         
         Writes fluence values to file according to boolean save_file.
     
-#    get_west_detector(filename, dates)
+###    get_west_detector(filename, dates)
         For GOES-13+, identify which detector is facing west from the
         orientation flag files. Get an orientation for each data point.
         EPEAD orientation flag. 0: A/W faces East and B/E faces West.
         1: A/W faces West and B/E faces East. 2: yaw-flip in progress.
     
-#    integral_threshold_crossing(energy_threshold, flux_threshold, dates, fluxes)
+###    integral_threshold_crossing(energy_threshold, flux_threshold, dates, fluxes)
         Calculate the time that a threshold is crossed.
         Operational thresholds used by the NASA JSC Space Radiation Analysis
         Group to determine actions that should be taken during an SEP event are:
@@ -257,16 +257,16 @@ Full documentation for operational_sep_quantities.py:
         that the user may want to extend the requested time frame in order to
         better-capture the end of the event.
     
-#    make_yearly_files(filename)
+###    make_yearly_files(filename)
         Convert a large data set into yearly files.
     
-#    print_values_to_file(flux_type, energy_thresholds, flux_thresholds, crossing_time, peak_flux, peak_time, rise_time, event_end_time, duration, integral_fluences)
+###    print_values_to_file(flux_type, energy_thresholds, flux_thresholds, crossing_time, peak_flux, peak_time, rise_time, event_end_time, duration, integral_fluences)
         Write all calculated values to file for all thresholds. Event-integrated
         fluences for >10, >100 MeV (and user-defined threshold) will also be
         included. Writes out file with name e.g.
         output/sep_values_experiment_fluxtype_YYYY_M_D.csv
     
-#    read_in_files(experiment, filenames1, filenames2, filenames_orien)
+###    read_in_files(experiment, filenames1, filenames2, filenames_orien)
         Read in the appropriate data files with the correct format. Return an
         array with dates and fluxes. Bad flux values (any negative flux) are set
         to -1. Format is defined to work with the files downloaded directly from
@@ -280,7 +280,7 @@ Full documentation for operational_sep_quantities.py:
         Note that the EPS detectors on GOES-08 and -12 face westward. The
         EPS detector on GOES-10 faces eastward. GOES-11 is a spinning satellite.
     
-#    read_in_user_files(filenames1)
+###    read_in_user_files(filenames1)
         Read in file containing flux time profile information that was
         specified by the user.
         
@@ -298,7 +298,7 @@ Full documentation for operational_sep_quantities.py:
         Be sure to add the energy bins associated with your flux columns in the
         subroutine define_energy_bins under the "user" is statement.
     
-#    report_threshold_fluences(flux_type, energy_thresholds, energy_bins, sep_dates, sep_fluxes)
+###    report_threshold_fluences(flux_type, energy_thresholds, energy_bins, sep_dates, sep_fluxes)
         Report fluences for specified thresholds, typically >10, >100 MeV.
         These values are interesting to use for comparison with literature and
         for quantifying event severity.
@@ -307,7 +307,7 @@ Full documentation for operational_sep_quantities.py:
         been saved in the output fluence file. If the user selected differential
         channels, then these values come from the estimated integral fluxes.
 
-# DATA
+### DATA
     __email__ = 'kathryn.whitman@nasa.gov'
     __maintainer__ = 'Katie Whitman'
     badval = -1
@@ -318,12 +318,12 @@ Full documentation for operational_sep_quantities.py:
     user_delim = ','
     user_fname = ['EPREM/samplefile_new.csv']
 
-# VERSION
+### VERSION
     0.2
 
-# AUTHOR
+### AUTHOR
     Katie Whitman
 
-# FILE
+### FILE
     /Users/kwhitman/Documents/Programs/SEP/ISEP/operational_sep_quantities.py
 
