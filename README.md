@@ -3,15 +3,15 @@ Calculate solar energetic particle (SEP) proton flux quantities relevant to spac
 
 This code was developed in support of the SHINE 2019 SEP modeling challenge session to assist SEP modelers to calculate and report the quantities calculated in this code.
 
-# Run code as, e.g.:
+## Run code as, e.g.:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --DetectPreviousEvent
 
 Full documentation for operational_sep_quantities.py:
-# NAME
+## NAME
     operational_sep_quantities
 
-# FUNCTIONS
-#    all_program_info()
+## FUNCTIONS
+###    all_program_info()
         This program will calculate various useful pieces of operational
         information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
         data and the SEPEM (RSDv2) dataset.
