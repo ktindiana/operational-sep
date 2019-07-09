@@ -7,13 +7,13 @@ This code was developed in support of the SHINE 2019 SEP modeling challenge sess
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --DetectPreviousEvent
 
 ## Import code and run as, e.g.:
-import operational_sep_quantities as sep
-start_date = '2012-05-17'
-end_date = '2012-05-19 12:00:00'
-showplot = True
-detect_prev_event = True
-threshold = '100,1' #default; modify to add your own thresholds
-sep.run_all(start_date, end_date, 'GOES-13', 'integral', showplot, detect_prev_event, threshold)
+    import operational_sep_quantities as sep
+    start_date = '2012-05-17'
+    end_date = '2012-05-19 12:00:00'
+    showplot = True
+    detect_prev_event = True
+    threshold = '100,1' #default; modify to add your own thresholds
+    sep.run_all(start_date, end_date, 'GOES-13', 'integral', showplot, detect_prev_event, threshold)
 
 Full documentation for operational_sep_quantities.py:
 ## NAME
