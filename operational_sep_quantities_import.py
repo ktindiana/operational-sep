@@ -18,7 +18,7 @@ import scipy.integrate
 from numpy import exp
 import array as arr
 
-__version__ = "0.2a"  #restructured so that may be imported
+__version__ = "0.2b"  #restructured so that may be imported
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -449,7 +449,8 @@ def get_west_detector(filename, dates):
     return west_detector
 
 
-def read_in_files(experiment, filenames1, filenames2, filenames_orien):
+def read_in_files(experiment, flux_type, filenames1, filenames2,
+                filenames_orien):
     """Read in the appropriate data files with the correct format. Return an
        array with dates and fluxes. Bad flux values (any negative flux) are set
        to -1. Format is defined to work with the files downloaded directly from
@@ -834,7 +835,8 @@ def check_for_bad_data(dates,fluxes,energy_bins):
     return fluxes
 
 
-def from_differential_to_integral_flux(min_energy, energy_bins, fluxes):
+def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
+                fluxes):
     """If user selected differential fluxes, convert to integral fluxes to
        caluculate operational threshold crossings (>10 MeV protons exceed 10
        pfu, >100 MeV protons exceed 1 pfu).
@@ -944,8 +946,8 @@ def from_differential_to_integral_flux(min_energy, energy_bins, fluxes):
 
 
 
-def extract_integral_fluxes(fluxes, flux_thresholds, energy_thresholds,
-                energy_bins):
+def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
+            energy_thresholds, energy_bins):
     """Select or create the integral fluxes that correspond to the desired
        energy thresholds.
        If the user selected differential fluxes, then the
@@ -961,7 +963,7 @@ def extract_integral_fluxes(fluxes, flux_thresholds, energy_thresholds,
     integral_fluxes = []
     if flux_type == "differential":
         for i in range(nthresh):
-            integral_flux = from_differential_to_integral_flux(\
+            integral_flux = from_differential_to_integral_flux(experiment, \
                             energy_thresholds[i], energy_bins, fluxes)
             if i == 0:
                 integral_fluxes = [np.array(integral_flux)]
@@ -1106,8 +1108,8 @@ def calculate_fluence(dates, flux):
     return sum_flux
 
 
-def get_fluence_spectrum(flux_type, energy_threshold, flux_threshold, sep_dates,
-                sep_fluxes, energy_bins, save_file):
+def get_fluence_spectrum(experiment, flux_type, energy_threshold,
+                flux_threshold, sep_dates, sep_fluxes, energy_bins, save_file):
     """Calculate the fluence spectrum for each of the energy channels in the
        user selected data set. If the user selected differential fluxes, then
        the fluence values correspond to each energy bin. If the user selected
@@ -1213,8 +1215,8 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
 
 
-def report_threshold_fluences(flux_type, energy_thresholds, energy_bins,
-                sep_dates, sep_fluxes):
+def report_threshold_fluences(experiment, flux_type, energy_thresholds,
+                energy_bins, sep_dates, sep_fluxes):
     """Report fluences for specified thresholds, typically >10, >100 MeV.
        These values are interesting to use for comparison with literature and
        for quantifying event severity.
@@ -1237,8 +1239,9 @@ def report_threshold_fluences(flux_type, energy_thresholds, energy_bins,
                 if energy_bins[j][0] == energy_thresholds[i]:
                     sep_integral_fluxes[i,:] = sep_fluxes[j,:]
 
-    integral_fluence, integral_energies = get_fluence_spectrum("integral",0,
-                    0,sep_dates, sep_integral_fluxes, tmp_energy_bins, False)
+    integral_fluence, integral_energies = get_fluence_spectrum(experiment,
+                    "integral",0, 0,sep_dates, sep_integral_fluxes,
+                    tmp_energy_bins, False)
 
     for i in range(nthresh):
         integral_fluence[i] = integral_fluence[i]*4.*math.pi
@@ -1248,9 +1251,9 @@ def report_threshold_fluences(flux_type, energy_thresholds, energy_bins,
     return integral_fluence
 
 
-def print_values_to_file(flux_type, energy_thresholds, flux_thresholds,
-                crossing_time, peak_flux, peak_time, rise_time, event_end_time,
-                duration, integral_fluences):
+def print_values_to_file(experiment, flux_type, energy_thresholds,
+                flux_thresholds, crossing_time, peak_flux, peak_time, rise_time,
+                event_end_time, duration, integral_fluences):
     """Write all calculated values to file for all thresholds. Event-integrated
        fluences for >10, >100 MeV (and user-defined threshold) will also be
        included. Writes out file with name e.g.
@@ -1305,6 +1308,10 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
     """"Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
+        str_startdate, str_enddate, experiment, flux_type are strings.
+        showplot and detect_prev_event are booleans.
+        Set str_thresh to be '100,1' for default value or modify to add your own
+        threshold.
     """
 
     str_thresh = str_thresh.strip().split(",")
@@ -1334,7 +1341,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
                                                 experiment,flux_type)
     #read in flux files
     if experiment != "user":
-        all_dates, all_fluxes = read_in_files(experiment, filenames1,
+        all_dates, all_fluxes = read_in_files(experiment, flux_type, filenames1,
                                 filenames2, filenames_orien)
     if experiment == "user":
         all_dates, all_fluxes = read_in_user_files(filenames1)
@@ -1353,8 +1360,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
         flux_thresholds.append(input_threshold[1])
 
     #Estimate or select integral fluxes corresponding the energy_thresholds
-    integral_fluxes = extract_integral_fluxes(fluxes, flux_thresholds,
-                                     energy_thresholds, energy_bins)
+    integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
+                    flux_thresholds, energy_thresholds, energy_bins)
 
     #Calculate SEP event quantities for energy and flux threshold combinations
     #integral fluxes are used to define event start and stop
@@ -1386,7 +1393,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
         print('=====Calculating event fluence for event defined by >'
                 + str(energy_thresholds[i]) + ' MeV, for '
                 + str(crossing_time[i]) + ' to ' + str(event_end_time[i]))
-        fluence, energies = get_fluence_spectrum(flux_type,
+        fluence, energies = get_fluence_spectrum(experiment, flux_type,
                              energy_thresholds[i], flux_thresholds[i],
                              sep_dates, sep_fluxes, energy_bins, True)
 
@@ -1397,7 +1404,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
         #any user input threshold fluences
         integral_fluence = []
         if flux_type == "integral":
-            integral_fluence = report_threshold_fluences(flux_type,
+            integral_fluence = report_threshold_fluences(experiment, flux_type,
                             energy_thresholds, energy_bins, sep_dates,
                             sep_fluxes)
         if flux_type == "differential":
@@ -1405,7 +1412,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
             sep_integral_dates, sep_integral_fluxes = extract_date_range(\
                              crossing_time[i],event_end_time[i],
                              dates, integral_fluxes)
-            integral_fluence = report_threshold_fluences(flux_type,
+            integral_fluence = report_threshold_fluences(experiment, flux_type,
                              energy_thresholds, energy_bins,
                              sep_integral_dates, sep_integral_fluxes)
 
@@ -1413,9 +1420,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
 
 
     #Save all calculated values for all threshold definitions to file
-    print_values_to_file(flux_type, energy_thresholds, flux_thresholds,
-                    crossing_time, peak_flux, peak_time, rise_time,
-                    event_end_time, duration, all_integral_fluences)
+    print_values_to_file(experiment, flux_type, energy_thresholds,
+                    flux_thresholds, crossing_time, peak_flux, peak_time,
+                    rise_time, event_end_time, duration, all_integral_fluences)
 
 
     #===============PLOTS==================
