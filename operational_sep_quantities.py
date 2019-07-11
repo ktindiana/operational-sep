@@ -781,12 +781,11 @@ def extract_date_range(startdate,enddate,all_dates,all_fluxes):
     nst = 0
     nend = 0
     for i in range(ndates):
-        if all_dates[i] < startdate:
+        if all_dates[i] <= startdate:
             nst = i
         if all_dates[i] <= enddate:
             nend = i
-    nst = nst + 1  #ensure data point is at or after starttime
-    #print('Starting index ' + str(nst) + ' and ending index ' + str(nend))
+    nend = min(nend+1, ndates)  #adjust to include nend in date range
     dates = all_dates[nst:nend]
     fluxes = all_fluxes[:,nst:nend]
 
