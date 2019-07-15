@@ -18,7 +18,7 @@ import scipy.integrate
 from numpy import exp
 import array as arr
 
-__version__ = "0.3"  #restructured so that may be imported
+__version__ = "0.3"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -31,21 +31,21 @@ badval = -1 #bad data points will be set to this value; must be negative
 ######FOR USER DATA SETS######
 #(expect the first column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
-user_col = arr.array('i',[1,2,3,4,5])
+user_col = arr.array('i',[1,2,3,4,5,6])
 
 #DELIMETER between columns; for whitespace separating columns, use " " or ""
-user_delim = ","
+user_delim = " "
 
 #FILENAME(s) containing user input fluxes
 #Can be list of files that are continuous in time
  #      e.g. user_fname = ["file1.txt","file2.txt"]
-user_fname = ["EPREM/samplefile_new.csv"]
+user_fname = ["SEPMOD/flux_out_may2012.txt"]
 
-#DEFINE ENERGY BINS associated with user file and columns above as:
+#DEFINE ENERGY BINS associated with user file and columns specified above as:
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
-user_energy_bins = [[10,-1],[30,-1],[40,1],[50,-1],[100,-1]]
+user_energy_bins = [[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
 ############################
 
 
@@ -1279,22 +1279,27 @@ def report_threshold_fluences(experiment, flux_type, energy_thresholds,
 
 
 def save_integral_fluxes_to_file(experiment, flux_type, energy_thresholds,
-        dates, integral_fluxes):
+        crossing_time, dates, integral_fluxes):
     """
     """
     nthresh = len(energy_thresholds)
     ndates = len(dates)
-    styear = dates[0].year
-    stmonth = dates[0].month
-    stday = dates[0].day
-    endyear = dates[ndates-1].year
-    endmonth = dates[ndates-1].month
-    endday = dates[ndates-1].day
-    #e.g. integral_fluxes_GOES-13_differential_2012_3_7_to_2012_3_11.csv
+    year = 0
+    month = 0
+    day = 0
+    for i in range(nthresh):
+        if crossing_time[i] != 0 and year == 0:
+            year = crossing_time[i].year
+            month = crossing_time[i].month
+            day = crossing_time[i].day
+    if year == 0:
+        sys.exit("No thresholds were crossed during this time period. "
+                "Integral flux time profiles not written to file. Exiting.")
+
+    #e.g. integral_fluxes_GOES-13_differential_2012_3_7.csv
     foutname = outpath + '/integral_fluxes_' + str(experiment) + '_' \
-                 + str(flux_type) + '_' + str(styear) + '_' + str(stmonth) \
-                 + '_' + str(stday) + '_to_' + str(endyear) + '_' \
-                 + str(endmonth) + '_' + str(endday) + '.csv'
+                 + str(flux_type) + '_' + str(year) + '_' + str(month) \
+                 + '_' + str(day) + '.csv'
     print('Writing integral flux time series to file: ' + foutname)
     fout = open(foutname,"w+")
     fout.write('#Integral fluxes in units of 1/[cm^2 s sr] \r\n')
@@ -1323,9 +1328,18 @@ def print_values_to_file(experiment, flux_type, energy_thresholds,
        output/sep_values_experiment_fluxtype_YYYY_M_D.csv
     """
     nthresh = len(energy_thresholds)
-    year = crossing_time[0].year
-    month = crossing_time[0].month
-    day = crossing_time[0].day
+    year = 0
+    month = 0
+    day = 0
+    for i in range(nthresh):
+        if crossing_time[i] != 0 and year == 0:
+            year = crossing_time[i].year
+            month = crossing_time[i].month
+            day = crossing_time[i].day
+    if year == 0:
+        sys.exit("No thresholds were crossed during this time period. "
+                "Sep values not written to file. Exiting.")
+
     foutname = outpath + '/sep_values_' + str(experiment) + '_' \
                 + str(flux_type) + '_' + str(year) + '_' + str(month) + '_' \
                 + str(day) +'.csv'
@@ -1431,9 +1445,6 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
     integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
                     flux_thresholds, energy_thresholds, energy_bins)
 
-    #Write >10, >100 and user input threshold integral fluxes to file
-    save_integral_fluxes_to_file(experiment, flux_type, energy_thresholds,
-            dates, integral_fluxes)
     #Calculate SEP event quantities for energy and flux threshold combinations
     #integral fluxes are used to define event start and stop
     #Calculate SEP values for all thresholds, however:
@@ -1494,7 +1505,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
     print_values_to_file(experiment, flux_type, energy_thresholds,
                     flux_thresholds, crossing_time, peak_flux, peak_time,
                     rise_time, event_end_time, duration, all_integral_fluences)
-
+    #Write >10, >100 and user input threshold integral fluxes to file
+    save_integral_fluxes_to_file(experiment, flux_type, energy_thresholds,
+            crossing_time, dates, integral_fluxes)
 
     #===============PLOTS==================
     #Plot selected results
