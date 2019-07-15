@@ -18,7 +18,7 @@ import scipy.integrate
 from numpy import exp
 import array as arr
 
-__version__ = "0.2b"  #restructured so that may be imported
+__version__ = "0.2b"  #restructured so that importable
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -1260,9 +1260,18 @@ def print_values_to_file(experiment, flux_type, energy_thresholds,
        output/sep_values_experiment_fluxtype_YYYY_M_D.csv
     """
     nthresh = len(energy_thresholds)
-    year = crossing_time[0].year
-    month = crossing_time[0].month
-    day = crossing_time[0].day
+    year = 0
+    month = 0
+    day = 0
+    for i in range(nthresh):
+        if crossing_time[i] != 0 and year == 0:
+            year = crossing_time[i].year
+            month = crossing_time[i].month
+            day = crossing_time[i].day
+    if year == 0:
+        sys.exit("No thresholds were crossed during this time period. "
+                "Integral flux time profiles not written to file. Exiting.")
+
     foutname = outpath + '/sep_values_' + str(experiment) + '_' \
                 + str(flux_type) + '_' + str(year) + '_' + str(month) + '_' \
                 + str(day) +'.csv'
