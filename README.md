@@ -3,17 +3,24 @@ Calculate solar energetic particle (SEP) proton flux quantities relevant to spac
 
 This code was developed in support of the SHINE 2019 SEP modeling challenge session to assist SEP modelers to calculate and report the quantities calculated in this code.
 
-## Run code as, e.g.:
+## Run code from command line as, e.g.:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --DetectPreviousEvent
+
+## Run code from command line for user-input file as, e.g.:
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel --UserFile MyFluxes.txt --FluxType integral --showplot
 
 ## Import code and run as, e.g.:
     import operational_sep_quantities as sep
     start_date = '2012-05-17'
     end_date = '2012-05-19 12:00:00'
+    experiment = 'GOES-13'
+    flux_type = 'integral'
+    model_name = '' #if experiment is user, set model_name to describe data set
+    user_file = ''
     showplot = True
     detect_prev_event = True
-    threshold = '100,1' #default; modify to add your own thresholds
-    sep.run_all(start_date, end_date, 'GOES-13', 'integral', showplot, detect_prev_event, threshold)
+    threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
+    sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file, showplot, detect_prev_event, threshold)
 
 Full documentation for operational_sep_quantities.py:
 ## NAME
@@ -22,116 +29,128 @@ Full documentation for operational_sep_quantities.py:
 ## FUNCTIONS
 ###    all_program_info()
         This program will calculate various useful pieces of operational
-        information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
-        data and the SEPEM (RSDv2) dataset.
-        
-        SEP event values are always calculated for threshold definitions:
-            >10 MeV exceeds 10 pfu
-            >100 MeV exceed 1 pfu
-        
-        The user may add an additional threshold through the command line.
-        This program will check if data is already present in a 'data' directory. If
-        not, GOES data will be automatically downloaded from NOAA ftp site. SEPEM
-        (RSDv2) data must be downloaded by the user and unzipped inside the 'data'
-        directory. Because the SEPEM data set is so large (every 5 minutes from 1974
-        to 2015), the program will break up the data into yearly files for faster
-        reading.
-        
-        The values calculated here are important for space radiation operations:
-           Onset time, i.e. time to cross thresholds
-           Peak intensity
-           Time of peak intensity
-           Rise time (onset to peak)
-           End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
-           Duration
-           Event-integrated fluences
-        
-        User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1) or
-        integral fluxes (e.g. [s sr cm^2]^-1). The program has no internal checks or
-        requirements on units - EXCEPT FOR THE THRESHOLD DEFINITIONS OF >10, 10
-        and >100, 1. If you change those thresholds in the main program accordingly,
-        you should be able to use other units. Also, all of the plots and messages
-        refer to MeV, pfu, and cm.
-        
-        If a previous event is ongoing and the specified time period starts with a
-        threshold already crossed, you may try to set the --DetectPreviousEvent
-        flag. If the flux drops below threshold before the next event starts, the
-        program will identify the second event. This will only work if the
-        threshold is already crossed for the very first time in your specified
-        time period, and if the flux drops below threshold before the next event
-        starts.
-        
-        RUN CODE FROM COMMAND LINE (put on one line), e.g.:
-        python3 operational_sep_quantities_import.py --StartDate 2012-05-17
-            --EndDate '2012-05-19 12:00:00' --Experiment GOES-13 --FluxType integral --showplot
-        
-        RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
-        import operational_sep_quantities as sep
-        start_date = '2012-05-17'
-        end_date = '2012-05-19 12:00:00'
-        showplot = True
-        detect_prev_event = True
-        threshold = '100,1' #default; modify to add your own thresholds
-        sep.run_all(start_date, end_date, 'GOES-13', 'integral', showplot,
-                detect_prev_event, threshold)
-        
-        Set the desired directory locations for the data and output at the beginning
-        of the program in datapath and outpath. Defaults are 'data' and 'output'.
-        
-        In order to calculate the fluence, the program determines time_resolution
-        (seconds) from two (fairly random) data points at the start of the SEP
-        event. GOES and SEPEM data sets have a time resolution of 5 minutes. If the
-        user wishes to use a data set with measurements at irregular times, then the
-        subroutine calculate_fluence should be modified.
-        
-        OUTPUT: This program outputs 3 to 4 files, 1 per defined threshold plus
-        a summary file containing all of the values calculated for each threshold.
-        A file named as e.g. fluence_GOES-13_differential_gt10_2012_3_7.csv contains
-        the event-integrated fluence for each energy channel using the specified
-        threshold (gt10) to determine start and stop times.
-        A file named as e.g. sep_values_GOES-13_differential_2012_3_7.csv contains
-        start time, peak flux, etc, for each of the defined thresholds.
-        
-        Added functionality to ouput the >10 MeV and >100 MeV time series for the
-        date range input by the user. If the original data were integral fluxes,
-        then the output files simply contain the >10 and >100 MeV time series from
-        the input files. If the original data were differential fluxes, then the
-        estimated >10 and >100 MeV fluxes are output as time series.
-        
-        USER INPUT DATA SETS: Users may input their own data set. For example, if an
-        SEP modeler would like to feed their own intensity time series into this
-        code and calculate all values in exactly the same way they were calculated
-        for data, it is possible to do that. Fluxes should be in units of
-        1/[MeV cm^2 s sr] or 1/[cm^2 s sr] and energy channels in MeV for the plot
-        labels to be correct. You can use any units, as long as you are consistent
-        with energy units in energy channel/bin definition and in fluxes and you
-        MODIFY THE THRESHOLD VALUES TO REFLECT YOUR UNITS. You may then want to
-        modify plot labels accordingly if not using MeV and cm.
-        NOTE: The first column in your flux file is assumed to be time in format
-        YYYY-MM-DD HH:MM:SS.
-        NOTE: The flux file may contain header lines that start with a hash #,
-        including blank lines.
-        NOTE: Any bad or missing fluxes must be indicated by a negative value.
-        NOTE: Put your flux file into the "datapath" directory.
-        NOTE: Please use only differential or integral channels. Please do not mix
-        them. You may have one integral channel in the last bin, as this is the way
-        HEPAD works and the code has been written to include that HEPAD >700 MeV
-        bin along with lower differential channels.
-        
-        USER VARIABLES: The user must modify the following variables at the very
-        top of the code (around line 30):
-            user_col - identify columns in your file containing fluxes to analyze;
-                     even if your delimeter is white space, consider the date-time
-                     column as one single column.
-            user_delim - delimeter between columns, e.g. " " or ","   Use " " for
-                      any amount of whitespace.
-            user_fname - specify the name(s) of the file(s) containing the fluxes
-            time_resolution - will be calculated using two time points in your file;
-                    if you have irregular time measurements, calculate_fluence()
-                    must be modified/rewritten
-            Then please define your energy bins at the top of the code in the
-            variable user_energy_bins. Follow the format in the subroutine
-            define_energy_bins.
+    information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
+    data and the SEPEM (RSDv2) dataset.
+
+    SEP event values are always calculated for threshold definitions:
+        >10 MeV exceeds 10 pfu
+        >100 MeV exceed 1 pfu
+
+    The user may add an additional threshold through the command line.
+    This program will check if data is already present in a 'data' directory. If
+    not, GOES data will be automatically downloaded from NOAA ftp site. SEPEM
+    (RSDv2) data must be downloaded by the user and unzipped inside the 'data'
+    directory. Because the SEPEM data set is so large (every 5 minutes from 1974
+    to 2015), the program will break up the data into yearly files for faster
+    reading.
+
+    The values calculated here are important for space radiation operations:
+       Onset time, i.e. time to cross thresholds
+       Peak intensity
+       Time of peak intensity
+       Rise time (onset to peak)
+       End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
+       Duration
+       Event-integrated fluences
+
+    User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1) or
+    integral fluxes (e.g. [s sr cm^2]^-1). The program has no internal checks or
+    requirements on units - EXCEPT FOR THE THRESHOLD DEFINITIONS OF >10, 10
+    and >100, 1. If you change those thresholds in the main program accordingly,
+    you should be able to use other units. Also, all of the plots and messages
+    refer to MeV, pfu, and cm.
+
+    If a previous event is ongoing and the specified time period starts with a
+    threshold already crossed, you may try to set the --DetectPreviousEvent
+    flag. If the flux drops below threshold before the next event starts, the
+    program will identify the second event. This will only work if the
+    threshold is already crossed for the very first time in your specified
+    time period, and if the flux drops below threshold before the next event
+    starts.
+
+    RUN CODE FROM COMMAND LINE (put on one line), e.g.:
+    python3 operational_sep_quantities.py --StartDate 2012-05-17
+        --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
+        --FluxType integral --showplot
+
+    RUN CODE FROM COMMAND FOR USER DATA SET:
+    python3 operational_sep_quantities.py --StartDate 2012-05-17
+        --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel
+        --UserFile MyFluxes.txt --FluxType integral --showplot
+
+    RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
+    import operational_sep_quantities as sep
+    start_date = '2012-05-17'
+    end_date = '2012-05-19 12:00:00'
+    experiment = 'GOES-13'
+    flux_type = 'integral'
+    model_name = '' #if experiment is user, set model_name to describe data set
+    user_file = ''
+    showplot = True
+    detect_prev_event = True
+    threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
+    sep.run_all(start_date, end_date, experiment, flux_type, model_name,
+        user_file, showplot, detect_prev_event, threshold)
+
+    Set the desired directory locations for the data and output at the beginning
+    of the program in datapath and outpath. Defaults are 'data' and 'output'.
+
+    In order to calculate the fluence, the program determines time_resolution
+    (seconds) from two (fairly random) data points at the start of the SEP
+    event. GOES and SEPEM data sets have a time resolution of 5 minutes. If the
+    user wishes to use a data set with measurements at irregular times, then the
+    subroutine calculate_fluence should be modified.
+
+    OUTPUT: This program outputs 3 to 4 files, 1 per defined threshold plus
+    a summary file containing all of the values calculated for each threshold.
+    A file named as e.g. fluence_GOES-13_differential_gt10_2012_3_7.csv contains
+    the event-integrated fluence for each energy channel using the specified
+    threshold (gt10) to determine start and stop times.
+    A file named as e.g. sep_values_GOES-13_differential_2012_3_7.csv contains
+    start time, peak flux, etc, for each of the defined thresholds.
+
+    Added functionality to ouput the >10 MeV and >100 MeV time series for the
+    date range input by the user. If the original data were integral fluxes,
+    then the output files simply contain the >10 and >100 MeV time series from
+    the input files. If the original data were differential fluxes, then the
+    estimated >10 and >100 MeV fluxes are output as time series.
+
+    USER INPUT DATA SETS: Users may input their own data set. For example, if an
+    SEP modeler would like to feed their own intensity time series into this
+    code and calculate all values in exactly the same way they were calculated
+    for data, it is possible to do that. Fluxes should be in units of
+    1/[MeV cm^2 s sr] or 1/[cm^2 s sr] and energy channels in MeV for the plot
+    labels to be correct. You can use any units, as long as you are consistent
+    with energy units in energy channel/bin definition and in fluxes and you
+    MODIFY THE THRESHOLD VALUES TO REFLECT YOUR UNITS. You may then want to
+    modify plot labels accordingly if not using MeV and cm.
+    NOTE: The first column in your flux file is assumed to be time in format
+    YYYY-MM-DD HH:MM:SS. IMPORTANT FORMATTING!!
+    NOTE: The flux file may contain header lines that start with a hash #,
+    including blank lines.
+    NOTE: Any bad or missing fluxes must be indicated by a negative value.
+    NOTE: Put your flux file into the "datapath" directory.
+    NOTE: Please use only differential or integral channels. Please do not mix
+    them. You may have one integral channel in the last bin, as this is the way
+    HEPAD works and the code has been written to include that HEPAD >700 MeV
+    bin along with lower differential channels.
+
+    USER VARIABLES: The user must modify the following variables at the very
+    top of the code (around line 30):
+        user_col - identify columns in your file containing fluxes to analyze;
+                even if your delimeter is white space, consider the date-time
+                column as one single column. SET AT TOP OF CODE.
+        user_delim - delimeter between columns, e.g. " " or ","   Use " " for
+                any amount of whitespace. SET AT TOP OF CODE.
+        user_energy_bins - define your energy bins at the top of the code in the
+                variable user_energy_bins. Follow the format in the subroutine
+                define_energy_bins. SET AT TOP OF CODE.
+        user_fname - specify the name of the file containing the fluxes
+                through an argument in the command line. --UserFile  The
+                user_fname variable will be updated with that filename. ARGUMENT
+        time_resolution - will be calculated using two time points in your file;
+                if you have irregular time measurements, calculate_fluence()
+                must be modified/rewritten. AUTOMATICALLY DETERMINED.
 
     
 ### calculate_event_info(energy_thresholds, flux_thresholds, dates, integral_fluxes, detect_prev_event)
@@ -317,10 +336,14 @@ Full documentation for operational_sep_quantities.py:
         channels, then these values come from the estimated integral fluxes.
     
 ###    run_all(str_startdate, str_enddate, experiment, flux_type, showplot, detect_prev_event, str_thresh)
-        "Runs all subroutines and gets all needed values. Takes the command line
+        Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
         str_startdate, str_enddate, experiment, flux_type are strings.
+        model_name is a string. If model is "user", set model_name to describe
+        your model (e.g. MyModel), otherwise set to ''.
+        user_file is a string. Defaul is ''. If user is selected for experiment,
+        then name of flux file is specified in user_file.
         showplot and detect_prev_event are booleans.
         Set str_thresh to be '100,1' for default value or modify to add your own
         threshold.
@@ -337,10 +360,10 @@ Full documentation for operational_sep_quantities.py:
     user_col = array('i', [1, 2, 3, 4, 5])
     user_delim = ','
     user_energy_bins = [[10, -1], [30, -1], [40, 1], [50, -1], [100, -1]]
-    user_fname = ['EPREM/samplefile_new.csv']
+    user_fname = []
 
 ### VERSION
-    0.3
+    0.4
 
 ### AUTHOR
     Katie Whitman
