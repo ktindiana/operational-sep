@@ -18,11 +18,15 @@ import scipy.integrate
 from numpy import exp
 import array as arr
 
-__version__ = "0.3"
+__version__ = "0.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
+#CHANGES in 0.4: allows users to specify user model or experiment name for
+#output files
+#CHANGES in 0.4: user passes filename through an argument if selects "user" for
+#experiment rather than setting filename at the top of the code
 #See full program description in all_program_info() below
 datapath = 'data'
 outpath = 'output'
@@ -34,18 +38,18 @@ badval = -1 #bad data points will be set to this value; must be negative
 user_col = arr.array('i',[1,2,3,4,5,6])
 
 #DELIMETER between columns; for whitespace separating columns, use " " or ""
-user_delim = " "
-
-#FILENAME(s) containing user input fluxes
-#Can be list of files that are continuous in time
- #      e.g. user_fname = ["file1.txt","file2.txt"]
-user_fname = ["SEPMOD/flux_out_may2012.txt"]
+user_delim = ","
 
 #DEFINE ENERGY BINS associated with user file and columns specified above as:
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
 user_energy_bins = [[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
+
+#FILENAME(s) containing user input fluxes - WILL BE SET THROUGH ARGUMENT
+#Can be list of files that are continuous in time
+ #      e.g. user_fname = ["file1.txt","file2.txt"]
+user_fname = []
 ############################
 
 
@@ -91,18 +95,28 @@ def all_program_info(): #only for documentation purposes
     starts.
 
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
-    python3 operational_sep_quantities_import.py --StartDate 2012-05-17
-        --EndDate '2012-05-19 12:00:00' --Experiment GOES-13 --FluxType integral --showplot
+    python3 operational_sep_quantities.py --StartDate 2012-05-17
+        --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
+        --FluxType integral --showplot
+
+    RUN CODE FROM COMMAND FOR USER DATA SET:
+    python3 operational_sep_quantities.py --StartDate 2012-05-17
+        --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel
+        --UserFile MyFluxes.txt --FluxType integral --showplot
 
     RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
     import operational_sep_quantities as sep
     start_date = '2012-05-17'
     end_date = '2012-05-19 12:00:00'
+    experiment = 'GOES-13'
+    flux_type = 'integral'
+    model_name = '' #if experiment is user, set model_name to describe data set
+    user_file = ''
     showplot = True
     detect_prev_event = True
-    threshold = '100,1' #default; modify to add your own thresholds
-    sep.run_all(start_date, end_date, 'GOES-13', 'integral', showplot,
-            detect_prev_event, threshold)
+    threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
+    sep.run_all(start_date, end_date, experiment, flux_type, model_name,
+        user_file, showplot, detect_prev_event, threshold)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -137,7 +151,7 @@ def all_program_info(): #only for documentation purposes
     MODIFY THE THRESHOLD VALUES TO REFLECT YOUR UNITS. You may then want to
     modify plot labels accordingly if not using MeV and cm.
     NOTE: The first column in your flux file is assumed to be time in format
-    YYYY-MM-DD HH:MM:SS.
+    YYYY-MM-DD HH:MM:SS. IMPORTANT FORMATTING!!
     NOTE: The flux file may contain header lines that start with a hash #,
     including blank lines.
     NOTE: Any bad or missing fluxes must be indicated by a negative value.
@@ -150,17 +164,19 @@ def all_program_info(): #only for documentation purposes
     USER VARIABLES: The user must modify the following variables at the very
     top of the code (around line 30):
         user_col - identify columns in your file containing fluxes to analyze;
-                 even if your delimeter is white space, consider the date-time
-                 column as one single column.
+                even if your delimeter is white space, consider the date-time
+                column as one single column. SET AT TOP OF CODE.
         user_delim - delimeter between columns, e.g. " " or ","   Use " " for
-                  any amount of whitespace.
-        user_fname - specify the name(s) of the file(s) containing the fluxes
+                any amount of whitespace. SET AT TOP OF CODE.
+        user_energy_bins - define your energy bins at the top of the code in the
+                variable user_energy_bins. Follow the format in the subroutine
+                define_energy_bins. SET AT TOP OF CODE.
+        user_fname - specify the name of the file containing the fluxes
+                through an argument in the command line. --UserFile  The
+                user_fname variable will be updated with that filename. ARGUMENT
         time_resolution - will be calculated using two time points in your file;
                 if you have irregular time measurements, calculate_fluence()
-                must be modified/rewritten
-        Then please define your energy bins at the top of the code in the
-        variable user_energy_bins. Follow the format in the subroutine
-        define_energy_bins.
+                must be modified/rewritten. AUTOMATICALLY DETERMINED.
     """
 
 
@@ -1278,8 +1294,8 @@ def report_threshold_fluences(experiment, flux_type, energy_thresholds,
     return integral_fluence
 
 
-def save_integral_fluxes_to_file(experiment, flux_type, energy_thresholds,
-        crossing_time, dates, integral_fluxes):
+def save_integral_fluxes_to_file(experiment, flux_type, model_name,
+        energy_thresholds, crossing_time, dates, integral_fluxes):
     """
     """
     nthresh = len(energy_thresholds)
@@ -1297,10 +1313,14 @@ def save_integral_fluxes_to_file(experiment, flux_type, energy_thresholds,
                 "Integral flux time profiles not written to file. Exiting.")
 
     #e.g. integral_fluxes_GOES-13_differential_2012_3_7.csv
-    foutname = outpath + '/integral_fluxes_' + str(experiment) + '_' \
-                 + str(flux_type) + '_' + str(year) + '_' + str(month) \
+    foutname = outpath + '/integral_fluxes_' + experiment + '_' \
+                 + flux_type + '_' + str(year) + '_' + str(month) \
                  + '_' + str(day) + '.csv'
-    print('Writing integral flux time series to file: ' + foutname)
+    if experiment == 'user' and model_name != '':
+        foutname = outpath + '/integral_fluxes_' + model_name + '_' \
+                     + flux_type + '_' + str(year) + '_' + str(month) \
+                     + '_' + str(day) + '.csv'
+    print('Writing integral flux time series to file --> ' + foutname)
     fout = open(foutname,"w+")
     fout.write('#Integral fluxes in units of 1/[cm^2 s sr] \r\n')
     fout.write('#Columns headers indicate low end of integral channels in MeV;'
@@ -1319,7 +1339,7 @@ def save_integral_fluxes_to_file(experiment, flux_type, energy_thresholds,
 
 
 
-def print_values_to_file(experiment, flux_type, energy_thresholds,
+def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
                 flux_thresholds, crossing_time, peak_flux, peak_time, rise_time,
                 event_end_time, duration, integral_fluences):
     """Write all calculated values to file for all thresholds. Event-integrated
@@ -1340,9 +1360,14 @@ def print_values_to_file(experiment, flux_type, energy_thresholds,
         sys.exit("No thresholds were crossed during this time period. "
                 "Sep values not written to file. Exiting.")
 
-    foutname = outpath + '/sep_values_' + str(experiment) + '_' \
-                + str(flux_type) + '_' + str(year) + '_' + str(month) + '_' \
+    foutname = outpath + '/sep_values_' + experiment + '_' \
+                + flux_type + '_' + str(year) + '_' + str(month) + '_' \
                 + str(day) +'.csv'
+    if experiment == 'user' and model_name != '':
+        foutname = outpath + '/sep_values_' + model_name + '_' \
+                    + flux_type + '_' + str(year) + '_' + str(month) + '_' \
+                    + str(day) +'.csv'
+    print('Writing SEP values to file --> ' + foutname)
     fout = open(foutname,"w+")
     #Write header
     if flux_type == "integral":
@@ -1381,12 +1406,14 @@ def print_values_to_file(experiment, flux_type, energy_thresholds,
 
 
 ######## MAIN PROGRAM #########
-def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
-        detect_prev_event, str_thresh):
+def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
+        user_file, showplot, detect_prev_event, str_thresh):
     """"Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
         str_startdate, str_enddate, experiment, flux_type are strings.
+        model_name is a string. If model is "user", set model_name to describe
+        your model (e.g. MyModel), otherwise set to ''.
         showplot and detect_prev_event are booleans.
         Set str_thresh to be '100,1' for default value or modify to add your own
         threshold.
@@ -1414,6 +1441,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
         sys.exit('The SEPEM (RSDv2) data set only extends to '
                   + str(sepem_end_date) +
             '. Please change your requested dates. Exiting.')
+
+    user_fname.append(user_file) #input as argument, default is ''
 
     #create data and output paths if don't exist
     check_paths()
@@ -1502,12 +1531,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
 
 
     #Save all calculated values for all threshold definitions to file
-    print_values_to_file(experiment, flux_type, energy_thresholds,
+    print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
                     flux_thresholds, crossing_time, peak_flux, peak_time,
                     rise_time, event_end_time, duration, all_integral_fluences)
     #Write >10, >100 and user input threshold integral fluxes to file
-    save_integral_fluxes_to_file(experiment, flux_type, energy_thresholds,
-            crossing_time, dates, integral_fluxes)
+    save_integral_fluxes_to_file(experiment, flux_type, model_name,
+            energy_thresholds, crossing_time, dates, integral_fluxes)
 
     #===============PLOTS==================
     #Plot selected results
@@ -1532,9 +1561,17 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
             if flux_type == "integral":
                 plt.title(experiment + ' Flux for >'+str(energy_thresholds[i])
                            + ' MeV', x=0.75, y=0.8)
+                if experiment == 'user' and model_name != '':
+                    plt.title(model_name + ' Flux for >'
+                        + str(energy_thresholds[i]) + ' MeV', x=0.75, y=0.8)
+
             if flux_type == "differential":
                 plt.title(experiment + ' Estimated Flux for >'
                            + str(energy_thresholds[i]) + ' MeV', x=0.7, y=0.8)
+                if experiment == 'user' and model_name != '':
+                    plt.title(model_name + ' Estimated Flux for >'
+                               + str(energy_thresholds[i]) + ' MeV',
+                               x=0.7, y=0.8)
             plt.xlabel('Date')
             plt.ylabel('Integral Flux 1/[cm^2 s sr]')
             plt.yscale("log")
@@ -1572,10 +1609,16 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
             plt.ylabel('Integral Flux 1/[cm^2 s sr]')
             plt.title(experiment + " Integral Energy Bins with Threshold "
                             "Crossings")
+            if experiment == 'user' and model_name != '':
+                plt.title(model_name + " Integral Energy Bins with Threshold "
+                                "Crossings")
         if flux_type == "differential":
             plt.ylabel('Flux 1/[MeV cm^2 s sr]')
             plt.title(experiment + " Differential Energy Bins with Threshold "
                             "Crossings")
+            if experiment == 'user' and model_name != '':
+                plt.title(model_name + " Differential Energy Bins with Threshold "
+                                "Crossings")
         plt.xlabel('Date')
         plt.yscale("log")
         chartBox = ax.get_position()
@@ -1600,6 +1643,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
         plt.grid(which="both", axis="both")
         plt.title(experiment + ' Event-Integrated Fluences for All Event '
                     'Definitions')
+        if experiment == 'user' and model_name != '':
+            plt.title(model_name + ' Event-Integrated Fluences for All Event '
+                        'Definitions')
         plt.xlabel('Energy [MeV]')
         if flux_type == "integral":
             plt.ylabel('Integral Fluxes 1/[cm^2 sr]')
@@ -1639,6 +1685,12 @@ if __name__ == "__main__":
             'differential'], default='differential',
             help=("Do you want to use integral or differential fluxes?"
                  " (Default is differential)"))
+    parser.add_argument("--ModelName", type=str, default='', help=("If you "
+            "chose user for experiment, specify the name of the model or "
+            "experiment that you are analyzing (no spaces)."))
+    parser.add_argument("--UserFile", type=str, default='', help=("If you "
+            "chose user for experiment, specify the filename containing the "
+            "fluxes. Specify energy bins and delimeter in code at top."))
     parser.add_argument("--Threshold", type=str, default="100,1",
             help=("The energy and flux thresholds (written as 100,1 with no "
                     "spaces) which will be used to define the event. "
@@ -1657,9 +1709,11 @@ if __name__ == "__main__":
     str_enddate = args.EndDate
     experiment = args.Experiment
     flux_type = args.FluxType
+    model_name = args.ModelName
+    user_file = args.UserFile
     str_thresh = args.Threshold
     showplot = args.showplot
     detect_prev_event = args.DetectPreviousEvent
 
-    run_all(str_startdate, str_enddate, experiment, flux_type, showplot,
-            detect_prev_event, str_thresh)
+    run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
+        user_file, showplot, detect_prev_event, str_thresh)
