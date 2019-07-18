@@ -45,12 +45,12 @@ user_delim = ","
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
 user_energy_bins = [[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
+############################
 
 #FILENAME(s) containing user input fluxes - WILL BE SET THROUGH ARGUMENT
 #Can be list of files that are continuous in time
  #      e.g. user_fname = ["file1.txt","file2.txt"]
-user_fname = []
-############################
+user_fname = ['tmp.txt']
 
 
 def all_program_info(): #only for documentation purposes
@@ -99,7 +99,7 @@ def all_program_info(): #only for documentation purposes
         --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
         --FluxType integral --showplot
 
-    RUN CODE FROM COMMAND FOR USER DATA SET:
+    RUN CODE FROM COMMAND FOR USER DATA SET (put on one line), e.g.:
     python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel
         --UserFile MyFluxes.txt --FluxType integral --showplot
@@ -111,9 +111,9 @@ def all_program_info(): #only for documentation purposes
     experiment = 'GOES-13'
     flux_type = 'integral'
     model_name = '' #if experiment is user, set model_name to describe data set
-    user_file = ''
-    showplot = True
-    detect_prev_event = True
+    user_file = '' #if experiment is user, specify filename containing fluxes
+    showplot = True  #Turn to False if don't want to see plots
+    detect_prev_event = True  #Helps if previous event causes high intensities
     threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
     sep.run_all(start_date, end_date, experiment, flux_type, model_name,
         user_file, showplot, detect_prev_event, threshold)
@@ -519,6 +519,7 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
 
     if experiment == "SEPEM":
         for i in range(NFILES):
+            print('Reading in file ' + datapath + '/' + filenames1[i])
             with open(datapath + '/' + filenames1[i]) as csvfile:
                 readCSV = csv.reader(csvfile, delimiter=',')
                 has_header = csv.Sniffer().has_header(csvfile.readline())
@@ -598,7 +599,7 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
             nhead, nrow = find_goes_data_dimensions(filenames1[i])
             dates = []
             fluxes = np.zeros(shape=(totcol,nrow))
-
+            print('Reading in file ' + datapath + '/' + filenames1[i])
             with open(datapath + '/' + filenames1[i]) as csvfile:
                 #GOES data has very large headers; figure out where the data
                 #starts inside the file and skip the required number of lines
@@ -1151,7 +1152,7 @@ def calculate_fluence(dates, flux):
     return sum_flux
 
 
-def get_fluence_spectrum(experiment, flux_type, energy_threshold,
+def get_fluence_spectrum(experiment, flux_type, model_name, energy_threshold,
                 flux_threshold, sep_dates, sep_fluxes, energy_bins, save_file):
     """Calculate the fluence spectrum for each of the energy channels in the
        user selected data set. If the user selected differential fluxes, then
@@ -1177,22 +1178,27 @@ def get_fluence_spectrum(experiment, flux_type, energy_threshold,
         foutname = outpath + '/fluence_' + str(experiment) + '_' \
                     + str(flux_type) + '_' + 'gt' + str(energy_threshold) \
                     + '_' +str(year) + '_' + str(month) + '_' + str(day) +'.csv'
+        if experiment == 'user' and model_name != '':
+            foutname = outpath + '/fluence_' + model_name + '_' \
+                        + str(flux_type) + '_' + 'gt' + str(energy_threshold) \
+                        + '_' +str(year) + '_' + str(month) + '_' + str(day) \
+                        +'.csv'
         fout = open(foutname,"w+")
         fout.write('#Event defined by >' + str(energy_threshold) + ', '
                     + str(flux_threshold) + ' pfu; start time '
                     + str(sep_dates[0]) + ', end time '
-                    + str(sep_dates[len(sep_dates)-1]) + '\r\n')
+                    + str(sep_dates[len(sep_dates)-1]) + '\n')
         if flux_type == "differential":
-            fout.write("#Elow,Emid,Ehigh,Fluence 1/[MeV cm^2 sr]\r\n")
+            fout.write("#Elow,Emid,Ehigh,Fluence 1/[MeV cm^2 sr]\n")
         if flux_type == "integral":
-            fout.write("#>Elow,Fluence 1/[cm^2 sr]\r\n")
+            fout.write("#>Elow,Fluence 1/[cm^2 sr]\n")
 
         for i in range(nenergy):
             if flux_type == "differential":
-                fout.write("{0},{1},{2},{3}\r\n".format(energy_bins[i][0],
+                fout.write("{0},{1},{2},{3}\n".format(energy_bins[i][0],
                         energies[i], energy_bins[i][1], fluence[i]))
             if flux_type == "integral":
-                fout.write("{0},{1}\r\n".format(energy_bins[i][0], fluence[i]))
+                fout.write("{0},{1}\n".format(energy_bins[i][0], fluence[i]))
         fout.close()
 
     return fluence, energies
@@ -1258,8 +1264,8 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
 
 
-def report_threshold_fluences(experiment, flux_type, energy_thresholds,
-                energy_bins, sep_dates, sep_fluxes):
+def report_threshold_fluences(experiment, flux_type, model_name,
+                energy_thresholds, energy_bins, sep_dates, sep_fluxes):
     """Report fluences for specified thresholds, typically >10, >100 MeV.
        These values are interesting to use for comparison with literature and
        for quantifying event severity.
@@ -1283,7 +1289,7 @@ def report_threshold_fluences(experiment, flux_type, energy_thresholds,
                     sep_integral_fluxes[i,:] = sep_fluxes[j,:]
 
     integral_fluence, integral_energies = get_fluence_spectrum(experiment,
-                    "integral",0, 0,sep_dates, sep_integral_fluxes,
+                    "integral",model_name, 0, 0,sep_dates, sep_integral_fluxes,
                     tmp_energy_bins, False)
 
     for i in range(nthresh):
@@ -1322,18 +1328,18 @@ def save_integral_fluxes_to_file(experiment, flux_type, model_name,
                      + '_' + str(day) + '.csv'
     print('Writing integral flux time series to file --> ' + foutname)
     fout = open(foutname,"w+")
-    fout.write('#Integral fluxes in units of 1/[cm^2 s sr] \r\n')
+    fout.write('#Integral fluxes in units of 1/[cm^2 s sr] \n')
     fout.write('#Columns headers indicate low end of integral channels in MeV;'
-                    ' e.g. >10 MeV \r\n')
+                    ' e.g. >10 MeV \n')
     fout.write('#Date')
     for thresh in energy_thresholds: #build header
         fout.write(',' + str(thresh))
-    fout.write('\r\n')
+    fout.write('\n')
     for i in range(ndates):
         fout.write(str(dates[i]))
         for j in range(nthresh):
             fout.write(',' + str(integral_fluxes[j][i]))
-        fout.write('\r\n')
+        fout.write('\n')
 
     fout.close()
 
@@ -1379,7 +1385,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
             'End Time,Duration')
     for i in range(nthresh):
         fout.write(',Fluence >' + str(energy_thresholds[i]) + ' MeV [cm^-2]')
-    fout.write('\r\n')
+    fout.write('\n')
     nthresh = len(energy_thresholds)
 
     for i in range(nthresh):
@@ -1400,7 +1406,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
             fout.write(str_duration[k] + ' ')
         for j in range(nthresh):
             fout.write(',' + str(integral_fluences[i,j]))
-        fout.write('\r\n')
+        fout.write('\n')
 
     fout.close()
 
@@ -1414,6 +1420,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         str_startdate, str_enddate, experiment, flux_type are strings.
         model_name is a string. If model is "user", set model_name to describe
         your model (e.g. MyModel), otherwise set to ''.
+        user_file is a string. Defaul is ''. If user is selected for experiment,
+        then name of flux file is specified in user_file.
         showplot and detect_prev_event are booleans.
         Set str_thresh to be '100,1' for default value or modify to add your own
         threshold.
@@ -1442,7 +1450,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                   + str(sepem_end_date) +
             '. Please change your requested dates. Exiting.')
 
-    user_fname.append(user_file) #input as argument, default is ''
+    user_fname[0] = user_file #input as argument, default is 'tmp.txt'
 
     #create data and output paths if don't exist
     check_paths()
@@ -1505,8 +1513,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 + str(energy_thresholds[i]) + ' MeV, for '
                 + str(crossing_time[i]) + ' to ' + str(event_end_time[i]))
         fluence, energies = get_fluence_spectrum(experiment, flux_type,
-                             energy_thresholds[i], flux_thresholds[i],
-                             sep_dates, sep_fluxes, energy_bins, True)
+                         model_name, energy_thresholds[i], flux_thresholds[i],
+                         sep_dates, sep_fluxes, energy_bins, True)
 
         all_fluence[i] = fluence
         all_energies[i] = energies
@@ -1516,16 +1524,16 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         integral_fluence = []
         if flux_type == "integral":
             integral_fluence = report_threshold_fluences(experiment, flux_type,
-                            energy_thresholds, energy_bins, sep_dates,
-                            sep_fluxes)
+                        model_name, energy_thresholds, energy_bins, sep_dates,
+                        sep_fluxes)
         if flux_type == "differential":
             #Extract the estimated integral fluxes in the SEP event date range
             sep_integral_dates, sep_integral_fluxes = extract_date_range(\
                              crossing_time[i],event_end_time[i],
                              dates, integral_fluxes)
             integral_fluence = report_threshold_fluences(experiment, flux_type,
-                             energy_thresholds, energy_bins,
-                             sep_integral_dates, sep_integral_fluxes)
+                         model_name, energy_thresholds, energy_bins,
+                         sep_integral_dates, sep_integral_fluxes)
 
         all_integral_fluences[i] = integral_fluence
 
@@ -1688,9 +1696,10 @@ if __name__ == "__main__":
     parser.add_argument("--ModelName", type=str, default='', help=("If you "
             "chose user for experiment, specify the name of the model or "
             "experiment that you are analyzing (no spaces)."))
-    parser.add_argument("--UserFile", type=str, default='', help=("If you "
+    parser.add_argument("--UserFile", type=str, default='tmp.txt', help=("If you "
             "chose user for experiment, specify the filename containing the "
-            "fluxes. Specify energy bins and delimeter in code at top."))
+            "fluxes. Specify energy bins and delimeter in code at top. "
+            "Default is tmp.txt."))
     parser.add_argument("--Threshold", type=str, default="100,1",
             help=("The energy and flux thresholds (written as 100,1 with no "
                     "spaces) which will be used to define the event. "

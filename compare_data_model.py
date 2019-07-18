@@ -15,13 +15,26 @@ import matplotlib.cm as cm
 import matplotlib.dates as mdates
 import seaborn as sns
 
-__version__ = "0.1"
+__version__ = "0.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
 #Compare results output by operational_sep_quantities.py
 #for the SHINE challenge SEP events.
+badval = -1
+outpath = "output"
+plotpath = "plots"
+
+def check_path():
+    """Check that the paths that hold the data and output exist. If not, create.
+    """
+    print('Checking that path exists: ' + plotpath)
+    if not os.path.isdir(plotpath):
+        print('check_path: Directory for plots, ' + plotpath +
+        ', does not exist. Creating.')
+        os.mkdir(plotpath);
+
 
 
 def check_files(filename):
@@ -32,6 +45,7 @@ def check_files(filename):
         return False
 
     return True
+
 
 
 def calculate_time_difference(key1, dict1, key2, dict2):
@@ -57,6 +71,7 @@ def calculate_time_difference(key1, dict1, key2, dict2):
     return time_difference
 
 
+
 def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
     """Read in the proton-related information for all SEP events. Use the
        sep_keys (i.e. dates) to read in the SEP files which were output from
@@ -78,7 +93,7 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
         year = sep_date.year
         month = sep_date.month
         day = sep_date.day
-        fname = 'shine/sep_values_' + experiments[j] + '_' + flux_types[j] \
+        fname = outpath + '/sep_values_' + experiments[j] + '_' + flux_types[j]\
                 + '_'  + str(year) + '_' + str(month) + '_' + str(day) + '.csv'
         success = check_files(fname)
         #If experiment file doesn't exist
@@ -151,9 +166,9 @@ def read_fluence_info(threshold, sep_date, expmt_keys, experiments, flux_types):
         year = sep_date.year
         month = sep_date.month
         day = sep_date.day
-        fname = 'shine/fluence_' + experiments[j] + '_' + flux_types[j] + '_' \
-                + thresh_label + '_'  + str(year) + '_' + str(month) + '_' \
-                + str(day) + '.csv'
+        fname = outpath + '/fluence_' + experiments[j] + '_' + flux_types[j] \
+                + '_' + thresh_label + '_'  + str(year) + '_' + str(month) \
+                + '_' + str(day) + '.csv'
         success = check_files(fname)
         #If experiment file doesn't exist
         if not success:
@@ -186,6 +201,76 @@ def read_fluence_info(threshold, sep_date, expmt_keys, experiments, flux_types):
 
 
 
+def read_time_profile(threshold, sep_date, experiment, flux_type):
+    """Read in integral flux time profiles output by operational_sep_quantities.
+       These will either be 1) exact integral fluxes measured by GOES or
+       produced by models, or 2) they will be integral fluxes estimated from
+       differential GOES or SEPEM channels, or from models that provide
+       differential fluxes.
+       The files are named as integral_fluxes_GOES-13_startdate_to_enddate.csv.
+       The columns are datetime, >10 fluxes, >100 fluxes, any additional
+       channel in threshold specified by the user.
+    """
+    year = sep_date.year
+    month = sep_date.month
+    day = sep_date.day
+    check_thresh = float(threshold[1:]) #exclude > at front
+
+    filename = outpath + "/integral_fluxes_" + experiment + "_" + flux_type \
+        + "_" + str(year) + "_" + str(month) + "_" + str(day) + ".csv"
+    if not check_files(filename):
+        return [], []
+
+    with open(filename) as csvfile:
+        #Count header lines indicated by hash #
+        nhead = 0
+        for line in csvfile:
+            line = line.lstrip()
+            if line[0] == "#":
+                nhead = nhead + 1
+            else:
+                break
+        #number of lines containing data
+        nrow = len(csvfile.readlines())+1
+
+        #Define arrays that hold dates and fluxes
+        dates = []
+        fluxes = []
+
+        csvfile.seek(0) #back to beginning of file
+        for k in range(nhead-1):
+            csvfile.readline()  # Skip header rows.
+        #look at last line in header to get thresholds included in file
+        #select integral fluxes for desired threshold
+        header_line = csvfile.readline().split(",")
+        index = -1
+        for k in range(1,len(header_line)):
+            val = float(header_line[k])
+            if val == check_thresh:
+                index = k
+        if index == -1:
+            print("No integral flux time series were found for threshold, "
+                ">" + str(check_thresh) + " MeV for " + experiment + " " +
+                flux_type + ". Continuing.")
+            return [], []
+
+        count = 0
+        for line in csvfile:
+            row = line.split(",")
+            str_date = row[0][0:18]
+
+            date = datetime.datetime.strptime(str_date,"%Y-%m-%d %H:%M:%S")
+            dates.append(date)
+
+            flux = float(row[index])
+            if flux < 0:
+                flux = badval
+            fluxes.append(flux)
+
+    return dates, fluxes
+
+
+
 def reference_time_difference(keys,ref_key,select_key,dict):
     """Since we are dealing with 2D dictionaries, keys refers to the top
        level set of keys. e.g. list of experiments and flux_types
@@ -210,6 +295,7 @@ def reference_time_difference(keys,ref_key,select_key,dict):
     return time_difference
 
 
+
 def reference_ratio(keys,ref_key,select_key,dict):
     """Since we are dealing with 2D dictionaries, keys refers to the top
        level set of keys. e.g. list of experiments and flux_types
@@ -232,6 +318,7 @@ def reference_ratio(keys,ref_key,select_key,dict):
     return ratios
 
 
+
 def make_array_from_dict(keys, select_key, dict):
     """Loop through higher level keys, e.g. experiments or sep events.
        Pull out the selected info, designated in select_key.
@@ -250,6 +337,520 @@ def make_array_from_dict(keys, select_key, dict):
     return list
 
 
+
+def setup(all_sep_dates, model_name, model_flux_type, str_threshold):
+    """This is the place to specify which experiments you want to compare. The
+       current data sets are associated with operational use. If a data set
+       is missing, the code will just skip it. You could add more data sources
+       if you ran them in the operational_sep_quantities.py code.
+
+       This subroutine also reads in the proton information for each SEP event
+       and each experiment into a dictionary.
+    """
+    check_path()
+
+    sep_dates = all_sep_dates.strip().split(",")
+    threshold = str_threshold.strip().split(",")
+    threshold[0] = '>'+threshold[0]
+
+    sep_keys = []
+    for i in range(len(sep_dates)):
+        date = datetime.datetime.strptime(sep_dates[i], "%Y-%m-%d")
+        sep_keys.append(date)
+    Nsep = len(sep_keys)
+    experiments = ['GOES-13','GOES-13','GOES-15','GOES-15','SEPEM', model_name]
+    flux_types = ['integral','differential','integral','differential',
+            'differential', model_flux_type]
+    Nexp = len(experiments) #number of comparisons for plots
+    expmt_keys = [] #keys defining the experiment + flux type combos
+    for i in range(Nexp):
+        expmt_keys.append(experiments[i] + ' ' + flux_types[i])
+
+    #READ IN SEP PROTON FLUX FOR SPECIFIED SEP EVENTS AND ALL EXPERIMENT
+    #AND MODEL COMBINATIONS
+    proton_dict = {}
+    for i in range(Nsep):
+        proton_keys, proton_one = read_proton_info(threshold,\
+                sep_keys[i], expmt_keys, experiments, flux_types)
+        proton_dict.update({sep_keys[i]:proton_one})
+
+    return experiments, flux_types, threshold, sep_keys, expmt_keys, \
+            proton_keys, proton_dict
+
+
+
+def reference_comparison(experiments, flux_types, model_name, model_flux_type,
+        threshold, sep_keys, expmt_keys, proton_dict):
+    """Compares event peak times and start times w.r.t. the GOES-13 integral
+       channel. There is also a plot that shows peak time wrt to GOES-13
+       integral channel on x-axis and peak flux wrt GOES-13 integral channel on
+       the y-axis. Decided not to use these plots and this subroutine is not
+       called in run_all().
+    """
+    Nsep = len(sep_keys)
+    Nexp = len(experiments)
+    ref_key = 'GOES-13 integral'  #choose reference data set
+    #RATIO of peak flux and time difference w.r.t. GOES-13
+    ref_time_diff_all = []
+    ref_peak_ratio_all = []
+    for i in range(Nsep):
+        ref_time_diff = reference_time_difference(expmt_keys,ref_key,
+                    'proton_peak_time',proton_dict[sep_keys[i]])
+        ref_peak_ratio = reference_ratio(expmt_keys,ref_key,'proton_peak_flux',
+                    proton_dict[sep_keys[i]])
+        ref_time_diff_all.append(ref_time_diff)
+        ref_peak_ratio_all.append(ref_peak_ratio)
+
+    thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
+    colors = cm.rainbow(np.linspace(0, 1, Nexp))
+    #PLOT OF PROTON PEAK TIME DIFFERENCE VS PROTON PEAK FLUX RATIO
+    for i in range(Nsep):
+        plt.figure(figsize=(8,5))
+        ax = plt.subplot(111)
+        #plt.grid(which="both", axis="both")
+        plt.title(str(sep_keys[i])[0:10] + ' SEP Peak \n('+thresh_label+ ')')
+        plt.xlabel('Hours from GOES-13 Integral Start Time')
+        plt.ylabel('Ratio: Proton ' + threshold[0] + ' MeV\n Peak '
+                    'Flux/GOES-13 Integral')
+        for j in range(Nexp):
+            if not ref_peak_ratio_all[i][j]:
+                continue #skip experiment combo if doesn't exist
+            ax.plot(ref_time_diff_all[i][j], ref_peak_ratio_all[i][j],
+                    'bo', color=colors[j],
+                    label=(experiments[j] + ", " + flux_types[j]))
+        chartBox = ax.get_position()
+        ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.75,
+                         chartBox.height])
+        ax.legend(loc='upper center', bbox_to_anchor=(1.25, 0.95))
+
+    #BAR CHART OF START TIMES WITH RESPECT TO GOES-13 INTEGRAL
+    for i in range(Nsep):
+        ref_time_diff = reference_time_difference(expmt_keys,ref_key,
+                    'proton_start_time',proton_dict[sep_keys[i]])
+        plt.figure(figsize=(6,5))
+        colors = []
+        labels = []
+        for j in range(Nexp):
+            labels.append(experiments[j] + '\n' + flux_types[j])
+            #set colors for bars
+            if experiments[j] == model_name:
+                colors.append('red')
+            else:
+                colors.append('blue')
+        for j in range(len(ref_time_diff)-1,-1,-1):
+            if ref_time_diff[j] == []:
+                del ref_time_diff[j]
+                del labels[j]
+                del colors[j]
+
+        y_pos = np.arange(len(labels))
+        plt.bar(y_pos, ref_time_diff, align='center', color=colors,alpha=0.5)
+        plt.xticks(y_pos, labels)
+        plt.ylabel('Time from GOES-13 Integral Start Time [Hours]')
+        plt.title(str(sep_keys[i])[0:10] +' Event Start Times' +
+                    ' \n(' + thresh_label + ')')
+
+    #BAR CHART OF PEAK TIMES WITH RESPECT TO GOES-13 INTEGRAL
+    for i in range(Nsep):
+        ref_time_diff = reference_time_difference(expmt_keys,ref_key,
+                    'proton_peak_time',proton_dict[sep_keys[i]])
+        plt.figure(figsize=(6,5))
+        colors = []
+        labels = []
+        for j in range(Nexp):
+            labels.append(experiments[j] + '\n' + flux_types[j])
+            #set colors for bars
+            if experiments[j] == model_name:
+                colors.append('red')
+            else:
+                colors.append('blue')
+        for j in range(len(ref_time_diff)-1,-1,-1):
+            if ref_time_diff[j] == []:
+                del ref_time_diff[j]
+                del labels[j]
+                del colors[j]
+
+        y_pos = np.arange(len(labels))
+        plt.bar(y_pos, ref_time_diff, align='center', color=colors,alpha=0.5)
+        plt.xticks(y_pos, labels)
+        plt.ylabel('Time from GOES-13 Integral Peak Time [Hours]')
+        plt.title(str(sep_keys[i])[0:10] +' Event Peak Times' +
+                    ' \n(' + thresh_label + ')')
+
+
+
+def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
+            threshold, sep_keys, expmt_keys, proton_dict):
+    """Makes plot of fluence spectrum. Makes bar charts of >10 MeV fluence and
+       >100 MeV fluence. All fluences are associated with the time period
+       defined by the threshold indicated by the user. So if threshold was
+       input into this code as 100,1 then these fluence values are
+       defined by the start and stop times associated with the 100 MeV, 1 pfu
+       threshold crossings.
+    """
+    Nsep = len(sep_keys)
+    Nexp = len(experiments)
+    thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
+    #FLUENCE COMPARISON
+    fluence_dict = {}
+    for i in range(Nsep):
+        fluence_keys, fluence_one = read_fluence_info(threshold, sep_keys[i],
+                        expmt_keys, experiments, flux_types)
+        fluence_dict.update({sep_keys[i]:fluence_one})
+
+    colors = cm.rainbow(np.linspace(0, 1, Nexp))
+    #PLOT OF EVENT-INTEGRATED FLUENCE SPECTRA
+    for i in range(Nsep):
+        fig = plt.figure(figsize=(8,5))
+        ax = plt.subplot(111)
+        #plt.grid(which="both", axis="both")
+        plt.title(str(sep_keys[i])[0:10] + ' Event-Integrated Fluence '
+                    'Spectrum \n('+thresh_label+ ')')
+        plt.xlabel('Energy [MeV]')
+        if model_flux_type == "integral":
+            plt.ylabel('Integral Fluence 1/[cm^2 sr]')
+        if model_flux_type == "differential":
+            plt.ylabel('Differential Fluence 1/[MeV cm^2 sr]')
+        for j in range(Nexp):
+            if flux_types[j] != model_flux_type:
+                continue  #only plot same type of flux
+            if not fluence_dict[sep_keys[i]][expmt_keys[j]]:
+                continue #no values for experiment
+            energy_bins = fluence_dict[sep_keys[i]][expmt_keys[j]]['Emid']
+            spectrum = fluence_dict[sep_keys[i]][expmt_keys[j]]['fluence']
+           # if experiments[j] == model_name:
+           #     colors = 'red'
+           # else:
+            #    colors = 'blue'
+
+            ax.plot(energy_bins, spectrum,'bo', color = colors[j],
+                    label=(experiments[j] + ", " + flux_types[j]))
+        chartBox = ax.get_position()
+        ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.75,
+                         chartBox.height])
+        ax.legend(loc='upper center', bbox_to_anchor=(1.25, 0.95))
+        plt.xscale("log")
+        plt.yscale("log")
+        figname = plotpath+'/fluence_spectrum_'+str(sep_keys[i].year)+'_'\
+            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+        fig.savefig(figname)
+        print('Wrote to file: ' + figname)
+
+    #BAR CHART OF SEP FLUENCE for >10 MeV
+    for i in range(Nsep):
+        fluence = make_array_from_dict(expmt_keys,
+                'fluence_gt10',proton_dict[sep_keys[i]])
+        fig = plt.figure(figsize=(6,5))
+        colors = []
+        labels = []
+        for j in range(Nexp):
+            labels.append(experiments[j] + '\n' + flux_types[j])
+            #set colors for bars
+            if experiments[j] == model_name:
+                colors.append('red')
+            else:
+                colors.append('blue')
+        for j in range(len(fluence)-1,-1,-1):
+            if fluence[j] == []:
+                del fluence[j]
+                del labels[j]
+                del colors[j]
+
+        y_pos = np.arange(len(labels))
+        plt.bar(y_pos, fluence, align='center', color=colors,alpha=0.5)
+        plt.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
+        plt.xticks(y_pos, labels)
+        plt.ylabel('>10 MeV Fluence [cm^-2]')
+        plt.title(str(sep_keys[i])[0:10] +' Event-Integrated >10 MeV '
+                    'Fluence \n('+ thresh_label + ')')
+        figname = plotpath+'/fluence_gt10_bar_'+str(sep_keys[i].year)+'_'\
+            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+        fig.savefig(figname)
+        print('Wrote to file: ' + figname)
+
+    #BAR CHART OF SEP FLUENCE for >100 MeV
+    for i in range(Nsep):
+        fluence = make_array_from_dict(expmt_keys,
+                'fluence_gt100',proton_dict[sep_keys[i]])
+        fig = plt.figure(figsize=(6,5))
+        colors = []
+        labels = []
+        for j in range(Nexp):
+            labels.append(experiments[j] + '\n' + flux_types[j])
+            #set colors for bars
+            if experiments[j] == model_name:
+                colors.append('red')
+            else:
+                colors.append('blue')
+        for j in range(len(fluence)-1,-1,-1):
+            if fluence[j] == []:
+                del fluence[j]
+                del labels[j]
+                del colors[j]
+
+        y_pos = np.arange(len(labels))
+        plt.bar(y_pos, fluence, align='center', color=colors,alpha=0.5)
+        plt.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
+        plt.xticks(y_pos, labels)
+        plt.ylabel('>100 MeV Fluence [cm^-2]')
+        plt.title(str(sep_keys[i])[0:10] +' Event-Integrated >100 MeV '
+                    'Fluence \n(' + thresh_label + ')')
+        figname = plotpath+'/fluence_gt100_bar_'+str(sep_keys[i].year)+'_'\
+            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+        fig.savefig(figname)
+        print('Wrote to file: ' + figname)
+
+
+
+def peak_flux_comparison(experiments, flux_types, model_name, model_flux_type,
+            threshold, sep_keys, expmt_keys, proton_dict):
+   """Makes bar charts of event peak flux. A second version of the bar chart
+      is commented out below. It showed the data and model comparison in a
+      different style.
+   """
+   Nsep = len(sep_keys)
+   Nexp = len(experiments)
+   thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
+
+   #BAR CHART OF SEP EVENT PEAK FLUXES - ALL EXPERIMENTS
+   for i in range(Nsep):
+       peak_fluxes = make_array_from_dict(expmt_keys, 'proton_peak_flux',
+           proton_dict[sep_keys[i]])
+       fig = plt.figure(figsize=(6,5))
+       colors = []
+       labels = []
+       for j in range(Nexp):
+           labels.append(experiments[j] + '\n' + flux_types[j])
+           #set colors for bars
+           if experiments[j] == model_name:
+               colors.append('red')
+           else:
+               colors.append('blue')
+       for j in range(Nexp-1,-1,-1):
+           if peak_fluxes[j] == []:
+               del peak_fluxes[j]
+               del labels[j]
+               del colors[j]
+           #else:
+           #    #Convert to percent
+            #   ref_peak_ratio_all[i][j] = ref_peak_ratio_all[i][j]*100.
+
+       y_pos = np.arange(len(labels))
+       plt.bar(y_pos, peak_fluxes, color=colors, align='center', alpha=0.5)
+       plt.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
+       plt.xticks(y_pos, labels)
+       plt.ylabel(threshold[0] + ' MeV Peak Flux 1/[cm^2 s sr]')
+       plt.title(str(sep_keys[i])[0:10] +' Event ' + threshold[0]
+               +' MeV Peak Flux \n(' + thresh_label + ')')
+       figname = plotpath+'/peak_flux_bar_'+str(sep_keys[i].year)+'_'\
+           +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+           +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+       fig.savefig(figname)
+       print('Wrote to file: ' + figname)
+
+   # #BAR CHART OF SEP EVENT PEAK FLUXES - ERROR BAR PLOT W/GOES-13 REFERENCE
+   # for i in range(Nsep):
+   #     peak_fluxes = make_array_from_dict(expmt_keys, 'proton_peak_flux',
+   #         proton_dict[sep_keys[i]])
+   #     plt.figure(figsize=(8,5))
+   #     colors = []
+   #     labels = []
+   #     yerrl = 1e9
+   #     yerrh = -1e9
+   #     selected_peak_flux = []
+   #     for j in range(Nexp):
+   #         #Pull out only the reference value
+   #         if expmt_keys[j] == ref_key:
+   #             ref_peak_flux = peak_fluxes[j]
+   #             labels.append(experiments[j] + ' ' + flux_types[j] +
+   #                     '\n with data range')
+   #             colors.append('blue')
+   #         #set colors for bars
+   #         if experiments[j] == model_name:
+   #             model_peak_flux = peak_fluxes[j]
+   #             labels.append(experiments[j] + '\n' + flux_types[j])
+   #             colors.append('red')
+   #         #Get the range of data values
+   #         if peak_fluxes[j] != [] and experiments[j] != model_name:
+   #             val = peak_fluxes[j] - ref_peak_flux
+   #             if val < yerrl:
+   #                 yerrl = val
+   #             if val > yerrh:
+   #                 yerrh = val
+   #
+   #     print('yerrl = ' + str(yerrl) + ' yerrh = ' + str(yerrh))
+   #     y_pos = np.arange(len(labels))
+   #     plt.bar(y_pos, [ref_peak_flux,model_peak_flux],
+   #             yerr = [[abs(yerrl),0],[yerrh,0]], color=colors, align='center',
+   #             alpha=0.5,capsize=10)
+   #     plt.xticks(y_pos, labels)
+   #     plt.ylabel(threshold[0] + ' MeV Peak Flux 1/[cm^2 s sr]')
+   #     plt.title(str(sep_keys[i])[0:10] +' Event ' + threshold[0] +' MeV Peak '
+   #                     'Flux (' + thresh_label + ')')
+
+
+
+def time_bar_charts(experiments, flux_types, model_name, model_flux_type,
+            threshold, sep_keys, expmt_keys, proton_dict):
+    """Makes bar charts of event rise times and durations."""
+    Nsep = len(sep_keys)
+    Nexp = len(experiments)
+    thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
+    #BAR CHART OF SEP EVENT RISE TIMES
+    for i in range(Nsep):
+        rise_time = make_array_from_dict(expmt_keys, 'proton_rise_time',
+            proton_dict[sep_keys[i]])
+        fig = plt.figure(figsize=(6,5))
+        colors = []
+        labels = []
+        for j in range(Nexp):
+            labels.append(experiments[j] + '\n' + flux_types[j])
+            #set colors for bars
+            if experiments[j] == model_name:
+                colors.append('red')
+            else:
+                colors.append('blue')
+        for j in range(len(rise_time)-1,-1,-1):
+            if rise_time[j] == []:
+                del rise_time[j]
+                del labels[j]
+                del colors[j]
+
+        y_pos = np.arange(len(labels))
+        plt.bar(y_pos, rise_time, align='center', color=colors, alpha=0.5)
+        plt.xticks(y_pos, labels)
+        plt.ylabel('Rise Time [Hours]')
+        plt.title(str(sep_keys[i])[0:10] +' Event Rise Time \n('
+                    + thresh_label + ')')
+        figname = plotpath+'/rise_time_bar_'+str(sep_keys[i].year)+'_'\
+            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+        fig.savefig(figname)
+        print('Wrote to file: ' + figname)
+
+
+    #BAR CHART OF SEP EVENT DURATIONS
+    for i in range(Nsep):
+        durations = make_array_from_dict(expmt_keys, 'proton_duration',
+            proton_dict[sep_keys[i]])
+        fig = plt.figure(figsize=(6,5))
+        colors = []
+        labels = []
+        for j in range(Nexp):
+            labels.append(experiments[j] + '\n' + flux_types[j])
+            #set colors for bars
+            if experiments[j] == model_name:
+                colors.append('red')
+            else:
+                colors.append('blue')
+        for j in range(len(durations)-1,-1,-1):
+            if durations[j] == []:
+                del durations[j]
+                del labels[j]
+                del colors[j]
+
+        y_pos = np.arange(len(labels))
+        plt.bar(y_pos, durations, align='center', color=colors,alpha=0.5)
+        plt.xticks(y_pos, labels)
+        plt.ylabel('Duration [Hours]')
+        plt.title(str(sep_keys[i])[0:10] +' Event Duration \n('
+                    + thresh_label + ')')
+        figname = plotpath+'/duration_bar_'+str(sep_keys[i].year)+'_'\
+            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+        fig.savefig(figname)
+        print('Wrote to file: ' + figname)
+
+
+
+def time_profile_comparison(experiments, flux_types, model_name,
+            model_flux_type,threshold, sep_keys, expmt_keys):
+    """Creates a plot of all of the measured and modeled time profiles for the
+       integral flux specified by threshold. (>10 MeV, >100 MeV)
+    """
+    all_dates = []
+    all_fluxes = []
+    Nexp = len(experiments)
+    Nsep = len(sep_keys)
+    thresh_label = threshold[0] + ' MeV, ' + str(threshold[1]) + ' pfu'
+    intflux_dict = {}
+    for i in range(Nsep):
+        one_dict = {}
+        for j in range(Nexp):
+            dates, fluxes = read_time_profile(threshold[0], sep_keys[i],
+                    experiments[j], flux_types[j])
+            if len(fluxes) == 0:
+                one_dict.update({expmt_keys[j]:{}})
+            else:
+                one_dict.update({expmt_keys[j]:{'dates':dates,
+                                'fluxes':fluxes}})
+        intflux_dict.update({sep_keys[i]:one_dict})
+
+
+    colors = cm.rainbow(np.linspace(0, 1, Nexp))
+    #PLOT OF EVENT-INTEGRATED FLUENCE SPECTRA
+    for i in range(Nsep):
+        fig = plt.figure(figsize=(10,5))
+        ax = plt.subplot(111)
+        #plt.grid(which="both", axis="both")
+        plt.title(str(sep_keys[i])[0:10] + ' ' + threshold[0]
+                + ' MeV Integral Flux Time Series')
+        plt.xlabel('Date')
+        plt.ylabel('Integral Flux 1/[cm^2 s sr]')
+        for j in range(Nexp):
+            if not intflux_dict[sep_keys[i]][expmt_keys[j]]:
+                continue #no values for experiment
+            date = intflux_dict[sep_keys[i]][expmt_keys[j]]['dates']
+            flux = intflux_dict[sep_keys[i]][expmt_keys[j]]['fluxes']
+            ax.plot(date, flux, color = colors[j],
+                    label=(experiments[j] + ", " + flux_types[j]))
+        plt.axhline(float(threshold[1]),color='red',linestyle=':',
+                    label=(threshold[1] + ' pfu'))
+        chartBox = ax.get_position()
+        ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.82,
+                         chartBox.height])
+        ax.legend(loc='upper center', bbox_to_anchor=(1.18, 0.95))
+        plt.ylim(1e-2,1e4)
+        plt.yscale("log")
+        figname = plotpath+'/integral_flux_time_profile_'\
+            +str(sep_keys[i].year)+'_'\
+            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+        fig.savefig(figname)
+        print('Wrote to file: ' + figname)
+
+
+
+def run_all(all_sep_dates, model_name, model_flux_type, str_threshold,
+        showplot):
+    """Runs all of the subroutines that make the desired plots. Basically,
+       the "main".
+    """
+
+    experiments, flux_types, threshold, sep_keys, expmt_keys, proton_keys, \
+    proton_dict = setup(all_sep_dates, model_name, model_flux_type, \
+                        str_threshold)
+
+    sns.set()
+    #reference_comparison(experiments, flux_types, threshold, sep_keys,
+    #            expmt_keys, proton_dict, showplot)
+    fluence_comparison(experiments, flux_types, model_name, model_flux_type,
+                threshold, sep_keys, expmt_keys, proton_dict)
+    peak_flux_comparison(experiments, flux_types, model_name, model_flux_type,
+                threshold, sep_keys,expmt_keys, proton_dict)
+    time_bar_charts(experiments, flux_types, model_name, model_flux_type,
+                threshold, sep_keys, expmt_keys, proton_dict)
+    time_profile_comparison(experiments, flux_types, model_name,
+                model_flux_type, threshold, sep_keys, expmt_keys)
+    print('If plots are empty, then no data was available for requested '
+        'thresholds, or no data files were present.')
+    if showplot:
+        plt.show()
+    if not showplot:
+        plt.close('all')
 
 
 
@@ -281,469 +882,10 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    sep_dates = args.SEPEventDate.strip().split(",")
+    all_sep_dates = args.SEPEventDate
     model_name = args.ModelName
     model_flux_type = args.FluxType
-    threshold = args.Threshold.strip().split(",")
-    threshold[0] = '>'+threshold[0]
+    str_threshold = args.Threshold
     showplot = args.showplot
 
-    sep_keys = []
-    for i in range(len(sep_dates)):
-        date = datetime.datetime.strptime(sep_dates[i], "%Y-%m-%d")
-        sep_keys.append(date)
-    Nsep = len(sep_keys)
-    experiments = ['GOES-13','GOES-13','GOES-15','GOES-15','SEPEM','SEPEM_BG',
-                model_name]
-    flux_types = ['integral','differential','integral','differential',
-            'differential','differential',model_flux_type]
-    Nexp = len(experiments) #number of comparisons for plots
-    expmt_keys = [] #keys defining the experiment + flux type combos
-    for i in range(Nexp):
-        expmt_keys.append(experiments[i] + ' ' + flux_types[i])
-
-    #READ IN SEP PROTON FLUX FOR SPECIFIED SEP EVENTS AND ALL EXPERIMENT
-    #AND MODEL COMBINATIONS
-    proton_dict = {}
-    for i in range(Nsep):
-        proton_keys, proton_one = read_proton_info(threshold,\
-                sep_keys[i], expmt_keys, experiments, flux_types)
-        proton_dict.update({sep_keys[i]:proton_one})
-
-    ref_key = 'GOES-13 integral'  #choose reference data set
-    #RATIO of peak flux and time difference w.r.t. GOES-13
-    ref_time_diff_all = []
-    ref_peak_ratio_all = []
-    for i in range(Nsep):
-        ref_time_diff = reference_time_difference(expmt_keys,ref_key,
-                    'proton_peak_time',proton_dict[sep_keys[i]])
-        ref_peak_ratio = reference_ratio(expmt_keys,ref_key,'proton_peak_flux',
-                    proton_dict[sep_keys[i]])
-        ref_time_diff_all.append(ref_time_diff)
-        ref_peak_ratio_all.append(ref_peak_ratio)
-
-
-    #FLUENCE COMPARISON
-    fluence_dict = {}
-    for i in range(Nsep):
-        fluence_keys, fluence_one = read_fluence_info(threshold, sep_keys[i],
-                        expmt_keys, experiments, flux_types)
-        fluence_dict.update({sep_keys[i]:fluence_one})
-
-
-    #-----------PLOTTING-----------
-    if showplot:
-        thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
-        sns.set()
-        colors = cm.rainbow(np.linspace(0, 1, Nexp))
-        #PLOT OF PROTON PEAK TIME DIFFERENCE VS PROTON PEAK FLUX RATIO
-        for i in range(Nsep):
-            plt.figure(figsize=(8,5))
-            ax = plt.subplot(111)
-            #plt.grid(which="both", axis="both")
-            plt.title(str(sep_keys[i])[0:10] + ' SEP Peak ('+thresh_label+ ')')
-            plt.xlabel('Hours from GOES-13 Integral Start Time')
-            plt.ylabel('Ratio: Proton ' + threshold[0] + ' MeV\n Peak '
-                        'Flux/GOES-13 Integral')
-            for j in range(Nexp):
-                if not ref_peak_ratio_all[i][j]:
-                    continue #skip experiment combo if doesn't exist
-                ax.plot(ref_time_diff_all[i][j], ref_peak_ratio_all[i][j],
-                        'bo', color=colors[j],
-                        label=(experiments[j] + ", " + flux_types[j]))
-            chartBox = ax.get_position()
-            ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.75,
-                             chartBox.height])
-            ax.legend(loc='upper center', bbox_to_anchor=(1.25, 0.95))
-
-
-        #PLOT OF EVENT-INTEGRATED FLUENCE SPECTRA
-        for i in range(Nsep):
-            plt.figure(figsize=(8,6))
-            ax = plt.subplot(111)
-            #plt.grid(which="both", axis="both")
-            plt.title(str(sep_keys[i])[0:10] + ' Event-Integrated Fluence '
-                        'Spectrum ('+thresh_label+ ')')
-            plt.xlabel('Energy [MeV]')
-            if model_flux_type == "integral":
-                plt.ylabel('Integral Flux 1/[cm^2 s sr]')
-            if model_flux_type == "differential":
-                plt.ylabel('Differential Flux 1/[MeV cm^2 s sr]')
-            for j in range(Nexp):
-                if flux_types[j] != model_flux_type:
-                    continue  #only plot same type of flux
-                if not fluence_dict[sep_keys[i]][expmt_keys[j]]:
-                    continue #no values for experiment
-                energy_bins = fluence_dict[sep_keys[i]][expmt_keys[j]]['Emid']
-                spectrum = fluence_dict[sep_keys[i]][expmt_keys[j]]['fluence']
-               # if experiments[j] == model_name:
-               #     colors = 'red'
-               # else:
-                #    colors = 'blue'
-
-                ax.plot(energy_bins, spectrum,'bo', color = colors[j],
-                        label=(experiments[j] + ", " + flux_types[j]))
-            chartBox = ax.get_position()
-            ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.75,
-                             chartBox.height])
-            ax.legend(loc='upper center', bbox_to_anchor=(1.25, 0.95))
-            plt.xscale("log")
-            plt.yscale("log")
-
-
-        #BAR CHART OF SEP EVENT PEAK FLUXES - ALL EXPERIMENTS
-        for i in range(Nsep):
-            peak_fluxes = make_array_from_dict(expmt_keys, 'proton_peak_flux',
-                proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-                #set colors for bars
-                if experiments[j] == model_name:
-                    colors.append('red')
-                else:
-                    colors.append('blue')
-            for j in range(Nexp-1,-1,-1):
-                if peak_fluxes[j] == []:
-                    del peak_fluxes[j]
-                    del labels[j]
-                    del colors[j]
-                #else:
-                #    #Convert to percent
-                 #   ref_peak_ratio_all[i][j] = ref_peak_ratio_all[i][j]*100.
-
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, peak_fluxes, color=colors, align='center', alpha=0.5)
-            plt.xticks(y_pos, labels)
-            plt.ylabel(threshold[0] + ' MeV Peak Flux 1/[cm^2 s sr]')
-            plt.title(str(sep_keys[i])[0:10] +' Event ' + threshold[0]
-                    +' MeV Peak Flux (' + thresh_label + ')')
-
-
-        #BAR CHART OF SEP EVENT PEAK FLUXES - ERROR BAR PLOT W/GOES-13 REFERENCE
-        for i in range(Nsep):
-            peak_fluxes = make_array_from_dict(expmt_keys, 'proton_peak_flux',
-                proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            yerrl = 1e9
-            yerrh = -1e9
-            selected_peak_flux = []
-            for j in range(Nexp):
-                #Pull out only the reference value
-                if expmt_keys[j] == ref_key:
-                    ref_peak_flux = peak_fluxes[j]
-                    labels.append(experiments[j] + ' ' + flux_types[j] +
-                            '\n with data range')
-                    colors.append('blue')
-                #set colors for bars
-                if experiments[j] == model_name:
-                    model_peak_flux = peak_fluxes[j]
-                    labels.append(experiments[j] + '\n' + flux_types[j])
-                    colors.append('red')
-                #Get the range of data values
-                if peak_fluxes[j] != [] and experiments[j] != model_name:
-                    val = peak_fluxes[j] - ref_peak_flux
-                    if val < yerrl:
-                        yerrl = val
-                    if val > yerrh:
-                        yerrh = val
-
-            print('yerrl = ' + str(yerrl) + ' yerrh = ' + str(yerrh))
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, [ref_peak_flux,model_peak_flux],
-                    yerr = [[abs(yerrl),0],[yerrh,0]], color=colors, align='center',
-                    alpha=0.5,capsize=10)
-            plt.xticks(y_pos, labels)
-            plt.ylabel(threshold[0] + ' MeV Peak Flux 1/[cm^2 s sr]')
-            plt.title(str(sep_keys[i])[0:10] +' Event ' + threshold[0] +' MeV Peak '
-                            'Flux (' + thresh_label + ')')
-
-
-
-        #BAR CHART OF SEP EVENT RISE TIMES
-        for i in range(Nsep):
-            rise_time = make_array_from_dict(expmt_keys, 'proton_rise_time',
-                proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-                #set colors for bars
-                if experiments[j] == model_name:
-                    colors.append('red')
-                else:
-                    colors.append('blue')
-            for j in range(len(rise_time)-1,-1,-1):
-                if rise_time[j] == []:
-                    del rise_time[j]
-                    del labels[j]
-                    del colors[j]
-
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, rise_time, align='center', color=colors, alpha=0.5)
-            plt.xticks(y_pos, labels)
-            plt.ylabel('Rise Time [Hours]')
-            plt.title(str(sep_keys[i])[0:10] +' Event Rise Time ('
-                        + thresh_label + ')')
-
-
-        #BAR CHART OF SEP EVENT DURATIONS
-        for i in range(Nsep):
-            durations = make_array_from_dict(expmt_keys, 'proton_duration',
-                proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-                #set colors for bars
-                if experiments[j] == model_name:
-                    colors.append('red')
-                else:
-                    colors.append('blue')
-            for j in range(len(durations)-1,-1,-1):
-                if durations[j] == []:
-                    del durations[j]
-                    del labels[j]
-                    del colors[j]
-
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, durations, align='center', color=colors,alpha=0.5)
-            plt.xticks(y_pos, labels)
-            plt.ylabel('Duration [Hours]')
-            plt.title(str(sep_keys[i])[0:10] +' Event Duration ('
-                        + thresh_label + ')')
-
-
-        #BAR CHART OF SEP FLUENCE for >10 MeV
-        for i in range(Nsep):
-            fluence = make_array_from_dict(expmt_keys,
-                    'fluence_gt10',proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-                #set colors for bars
-                if experiments[j] == model_name:
-                    colors.append('red')
-                else:
-                    colors.append('blue')
-            for j in range(len(fluence)-1,-1,-1):
-                if fluence[j] == []:
-                    del fluence[j]
-                    del labels[j]
-                    del colors[j]
-
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, fluence, align='center', color=colors,alpha=0.5)
-            plt.xticks(y_pos, labels)
-            plt.ylabel('>10 MeV Fluence [cm^-2]')
-            plt.title(str(sep_keys[i])[0:10] +' Event-Integrated >10 MeV '
-                        'Fluence ('+ thresh_label + ')')
-
-
-        #BAR CHART OF SEP FLUENCE for >100 MeV
-        for i in range(Nsep):
-            fluence = make_array_from_dict(expmt_keys,
-                    'fluence_gt100',proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-                #set colors for bars
-                if experiments[j] == model_name:
-                    colors.append('red')
-                else:
-                    colors.append('blue')
-            for j in range(len(fluence)-1,-1,-1):
-                if fluence[j] == []:
-                    del fluence[j]
-                    del labels[j]
-                    del colors[j]
-
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, fluence, align='center', color=colors,alpha=0.5)
-            plt.xticks(y_pos, labels)
-            plt.ylabel('>100 MeV Fluence [cm^-2]')
-            plt.title(str(sep_keys[i])[0:10] +' Event-Integrated >100 MeV '
-                        'Fluence (' + thresh_label + ')')
-
-
-        #BAR CHART OF START TIMES WITH RESPECT TO GOES-13 INTEGRAL
-        for i in range(Nsep):
-            ref_time_diff = reference_time_difference(expmt_keys,ref_key,
-                        'proton_start_time',proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-                #set colors for bars
-                if experiments[j] == model_name:
-                    colors.append('red')
-                else:
-                    colors.append('blue')
-            for j in range(len(ref_time_diff)-1,-1,-1):
-                if ref_time_diff[j] == []:
-                    del ref_time_diff[j]
-                    del labels[j]
-                    del colors[j]
-
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, ref_time_diff, align='center', color=colors,alpha=0.5)
-            plt.xticks(y_pos, labels)
-            plt.ylabel('Time from GOES-13 Integral Start Time [Hours]')
-            plt.title(str(sep_keys[i])[0:10] +' Event Start Times' +
-                        ' (' + thresh_label + ')')
-
-        #BAR CHART OF PEAK TIMES WITH RESPECT TO GOES-13 INTEGRAL
-        for i in range(Nsep):
-            ref_time_diff = reference_time_difference(expmt_keys,ref_key,
-                        'proton_peak_time',proton_dict[sep_keys[i]])
-            plt.figure(figsize=(8,5))
-            colors = []
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-                #set colors for bars
-                if experiments[j] == model_name:
-                    colors.append('red')
-                else:
-                    colors.append('blue')
-            for j in range(len(ref_time_diff)-1,-1,-1):
-                if ref_time_diff[j] == []:
-                    del ref_time_diff[j]
-                    del labels[j]
-                    del colors[j]
-
-            y_pos = np.arange(len(labels))
-            plt.bar(y_pos, ref_time_diff, align='center', color=colors,alpha=0.5)
-            plt.xticks(y_pos, labels)
-            plt.ylabel('Time from GOES-13 Integral Peak Time [Hours]')
-            plt.title(str(sep_keys[i])[0:10] +' Event Peak Times' +
-                        ' (' + thresh_label + ')')
-
-
-
-
-        #TIMELINE PLOT OF SEP START TIMES
-        levels = np.tile([-5, 5, -3, 3, -1, 1],int(np.ceil(Nexp/6)))[:Nexp]
-        for i in range(Nsep):
-            start_times = make_array_from_dict(expmt_keys, 'proton_start_time',
-               proton_dict[sep_keys[i]])
-            fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
-            ax.set(title=str(sep_keys[i])[0:10] + ' Event Start Times ('
-                        + thresh_label + ')')
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-            for j in range(len(start_times)-1,-1,-1):
-                if start_times[j] == []: #missing experiment
-                    del start_times[j]
-                    del labels[j]
-            if start_times == []:
-                continue
-            markerline, stemline, baseline = ax.stem(start_times,
-                levels[:len(start_times)], linefmt='C3-', basefmt='k-')
-            plt.setp(markerline, mec="k", mfc="w", zorder=3)
-            markerline.set_ydata(np.zeros(len(start_times)))
-            vert = np.array(['top', 'bottom'])[(levels > 0).astype(int)]
-            for d, l, r, va in zip(start_times, levels, labels, vert):
-                ax.annotate(r, xy=(d, l), xytext=(-3, np.sign(l)*3),
-                    textcoords="offset points", va=va, ha="right")
-
-            #SET TIME LABEL POSITIONS to 2 hour divisions
-            ax.get_xaxis().set_major_locator(mdates.HourLocator(interval=1))
-            ax.get_xaxis().set_major_formatter(mdates.DateFormatter("%b-%d\n "
-                            "%H:%M"))
-            plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
-
-            ax.get_yaxis().set_visible(False)
-            for spine in ["left", "top", "right"]:
-                ax.spines[spine].set_visible(False)
-            ax.margins(y=0.1)
-
-
-
-        #TIMELINE PLOT OF SEP PEAK TIMES
-        levels = np.tile([-5, 5, -3, 3, -1, 1],int(np.ceil(Nexp/6)))[:Nexp]
-        for i in range(Nsep):
-            peak_times = make_array_from_dict(expmt_keys, 'proton_peak_time',
-               proton_dict[sep_keys[i]])
-            fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
-            ax.set(title=str(sep_keys[i])[0:10] + ' Event Peak Times ('
-                        + thresh_label + ')')
-            labels = []
-            for j in range(Nexp):
-                labels.append(experiments[j] + '\n' + flux_types[j])
-            for j in range(len(peak_times)-1,-1,-1):
-                if peak_times[j] == []: #missing experiment
-                    del peak_times[j]
-                    del labels[j]
-            if peak_times == []:
-                continue
-            markerline, stemline, baseline = ax.stem(peak_times,
-                levels[:len(peak_times)], linefmt='C3-', basefmt='k-')
-            plt.setp(markerline, mec="k", mfc="w", zorder=3)
-            markerline.set_ydata(np.zeros(len(peak_times)))
-            vert = np.array(['top', 'bottom'])[(levels > 0).astype(int)]
-            for d, l, r, va in zip(peak_times, levels, labels, vert):
-                ax.annotate(r, xy=(d, l), xytext=(-3, np.sign(l)*3),
-                    textcoords="offset points", va=va, ha="right")
-
-            #SET TIME LABEL POSITIONS to 2 hour divisions
-            ax.get_xaxis().set_major_locator(mdates.HourLocator(interval=1))
-            ax.get_xaxis().set_major_formatter(mdates.DateFormatter("%b-%d\n "
-                        "%H:%M"))
-            plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
-
-            ax.get_yaxis().set_visible(False)
-            for spine in ["left", "top", "right"]:
-                ax.spines[spine].set_visible(False)
-            ax.margins(y=0.1)
-
-
-        # #TIMELINE PLOT OF SEP END TIMES
-        # levels = np.tile([-5, 5, -3, 3, -1, 1],int(np.ceil(Nexp/6)))[:Nexp]
-        # for i in range(Nsep):
-        #     end_times = make_array_from_dict(expmt_keys, 'proton_end_time',
-        #             proton_gt10_dict[sep_keys[i]])
-        #     fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
-        #     ax.set(title=str(sep_keys[i])[0:10] + " SEP End Times")
-        #     labels = []
-        #     for k in range(Nexp):
-        #         labels.append(experiments[k] + '\n' + flux_types[k])
-        #     for j in range(len(end_times)-1,-1,-1):
-        #         if end_times[j] == []:
-        #             del end_times[j]
-        #             del labels[j]
-        #     markerline, stemline, baseline = ax.stem(end_times,
-        #         levels[:len(end_times)], linefmt='C3-', basefmt='k-')
-        #     plt.setp(markerline, mec="k", mfc="w", zorder=3)
-        #     markerline.set_ydata(np.zeros(len(end_times)))
-        #     vert = np.array(['top', 'bottom'])[(levels > 0).astype(int)]
-        #     for d, l, r, va in zip(end_times, levels, labels, vert):
-        #         ax.annotate(r, xy=(d, l), xytext=(-3, np.sign(l)*3),
-        #             textcoords="offset points", va=va, ha="right")
-        #
-        #     #SET TIME LABEL POSITIONS to 2 hour divisions
-        #     ax.get_xaxis().set_major_locator(mdates.HourLocator(interval=2))
-        #     ax.get_xaxis().set_major_formatter(mdates.DateFormatter("%b-%d\n "
-        #                     "%H:%M"))
-        #     plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
-        #
-        #     ax.get_yaxis().set_visible(False)
-        #     for spine in ["left", "top", "right"]:
-        #         ax.spines[spine].set_visible(False)
-        #     ax.margins(y=0.1)
-
-        print('If plots are empty, then no data was available for requested '
-            'thresholds, or no data files were present.')
-        plt.show()
+    run_all(all_sep_dates, model_name, model_flux_type, str_threshold, showplot)
