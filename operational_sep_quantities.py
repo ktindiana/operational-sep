@@ -688,6 +688,7 @@ def read_in_user_files(filenames1):
     NFILES = len(filenames1)
     ncol = len(user_col) #include column for date
     for i in range(NFILES):
+        print('Reading in ' + datapath + '/' + filenames1[i])
         with open(datapath + '/' + filenames1[i]) as csvfile:
             #Count header lines indicated by hash #
             nhead = 0
@@ -1521,7 +1522,6 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
         #Always calculate fluences for integral fluxes >10, >100 MeV and
         #any user input threshold fluences
-        integral_fluence = []
         if flux_type == "integral":
             integral_fluence = report_threshold_fluences(experiment, flux_type,
                         model_name, energy_thresholds, energy_bins, sep_dates,

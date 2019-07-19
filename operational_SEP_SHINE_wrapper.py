@@ -1,5 +1,6 @@
 import operational_sep_quantities as sep
 import compare_data_model as compare
+from importlib import reload
 
 __version__ = "0.4"
 __author__ = "Katie Whitman"
@@ -27,7 +28,7 @@ model_end_dates = ['2012-03-14','2012-05-20','2017-09-16']
 #Specify model file names associated with the SEP events as a list
 #---expect files to be in data folder---
 model_file_names = ['MODEL/sample_model_mar2012.csv',
-                    'MODEL/sample_model_may2012.csv',
+                    'MODEL/sample_model_may2012.csv', #only this one exists
                     'MODEL/sample_model_sep2017.csv']
 
 your_model_name = 'MODEL'
@@ -42,7 +43,7 @@ sep_dates = '2012-03-07,2012-05-17,2017-09-10'
 
 #Choose whether to run operational_sep_quantities for model or data.
 run_model = True
-run_data = False
+run_data = True
 #!!!!!!!!!!!!!!!!!!! END EDITS !!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -57,11 +58,13 @@ if run_model:
         user_file = model_file_names[i]
         showplot = False #set False if don't want to see plots
         detect_prev_event = True #probably doesn't hurt, turn off if need to
-        threshold = '100,1' #default; modify to add threshold to 10,10 and 100,1
+        threshold = '100,1' #default; modify to add another
+                            #threshold to 10,10 and 100,1, e.g. 50,0.5
         #CALCULATE SEP INFO AND OUTPUT RESULTS
         try:
             sep.run_all(start_date, end_date, experiment, model_flux_type,
                 model_name, user_file, showplot, detect_prev_event, threshold)
+            sep = reload(sep)
         except SystemExit:
             continue
 
@@ -94,6 +97,7 @@ if run_data:
             try:
                 sep.run_all(start_date, end_date, experiment, flux_type, model_name,
                     user_file, showplot, detect_prev_event, threshold)
+                sep = reload(sep)
             except SystemExit:
                 continue
 

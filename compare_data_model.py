@@ -175,7 +175,7 @@ def read_fluence_info(threshold, sep_date, expmt_keys, experiments, flux_types):
             #empty dictionaries
             dict.update({expmt_keys[j]: {}})
             continue
-
+        print('Reading in ' + fname)
         #Read in the file
         infile = open(fname,"r")
         Emid = []
