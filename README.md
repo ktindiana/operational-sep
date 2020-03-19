@@ -3,6 +3,16 @@ Calculate solar energetic particle (SEP) proton flux quantities relevant to spac
 
 This code was developed in support of the SHINE 2019 SEP modeling challenge session to assist SEP modelers to calculate and report the quantities calculated in this code.
 
+The code calculates:
+- Start Time when thresholds are crossed: >10 MeV exceeds 10 pfu; >100 MeV exceeds 1 pfu
+- End Time: when flux falls below 0.85 x threshold values
+- Peak Flux for >10 MeV, >100 MeV: Maximum flux value between the start and end times; no attempt to differentiate between initial peak and ESP
+- Time of Peak Flux for >10 MeV, >100 MeV
+- Duration >10 MeV, >100 MeV; end time - start time
+- Event fluence (total integrated event intensity) for >10 MeV, >100 MeV in cm-2
+- Event fluence spectrum
+- Plots of time profile for >10 MeV, >100 MeV and fluence spectrum
+
 ## Run code from command line as, e.g.:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --DetectPreviousEvent
 
