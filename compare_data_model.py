@@ -88,8 +88,8 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
             'fluence_gt10','fluence_gt100']
     date_cols = [2,4,6]
     float_cols = [3,8,9]
-    threshold_found = False
     for j in range(Nexp):
+        threshold_found = False
         year = sep_date.year
         month = sep_date.month
         day = sep_date.day
@@ -103,6 +103,7 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
             continue
 
         #Read in the file
+        print('Reading in file ' + fname)
         infile = open(fname,"r")
         #SKIP LINES starting with hash #
         for line in infile:
@@ -120,18 +121,29 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
                         val = row[i]  #string
                         for col in date_cols: #if column should be a date
                             if i == col:
-                                val = datetime.datetime.strptime(row[i],
+                                if row[i] != str(badval):
+                                    val = datetime.datetime.strptime(row[i],
                                                        "%Y-%m-%d %H:%M:%S")
+                                else:
+                                    val = badval
                         for col in float_cols: #if column should be a number
                             if i == col:
                                 val = float(row[i])
 
                         if proton_keys[i-2] == 'proton_rise_time': #recalculate
-                            val = calculate_time_difference(\
+                            if row_dict['proton_start_time'] == badval or \
+                            row_dict['proton_peak_time'] == badval:
+                                val = badval
+                            else:
+                                val = calculate_time_difference(\
                                     'proton_start_time',row_dict,
                                     'proton_peak_time',row_dict)
                         if proton_keys[i-2] == 'proton_duration': #recalculate
-                            val = calculate_time_difference(\
+                            if row_dict['proton_start_time'] == badval or \
+                            row_dict['proton_peak_time'] == badval:
+                                val = badval
+                            else:
+                                val = calculate_time_difference(\
                                     'proton_start_time',row_dict,
                                     'proton_end_time',row_dict)
                         #string all the columns together to make one dict per row
@@ -287,6 +299,9 @@ def reference_time_difference(keys,ref_key,select_key,dict):
         if not dict[keys[i]]: #empty dictionary
             time_difference.append([])
             continue
+        if dict[keys[i]] == badval or dict[ref_key] == badval: #empty dictionary
+            time_difference.append([])
+            continue
         time_diff = calculate_time_difference(select_key, dict[ref_key],
                     select_key, dict[keys[i]])
         time_difference.append(time_diff)
@@ -338,7 +353,7 @@ def make_array_from_dict(keys, select_key, dict):
 
 
 
-def setup(all_sep_dates, model_name, model_flux_type, str_threshold):
+def setup(all_sep_dates, all_model_names, all_model_flux_types, str_threshold):
     """This is the place to specify which experiments you want to compare. The
        current data sets are associated with operational use. If a data set
        is missing, the code will just skip it. You could add more data sources
@@ -351,6 +366,13 @@ def setup(all_sep_dates, model_name, model_flux_type, str_threshold):
 
     sep_dates = all_sep_dates.strip().split(",")
     threshold = str_threshold.strip().split(",")
+    model_names = all_model_names.strip().split(",")
+    model_flux_types = all_model_flux_types.strip().split(",")
+    if len(model_flux_types) != len(model_names):
+        sys.exit('setup: Number of input models did not equal the number of '
+                'flux types. Please make sure to enter a model name and the '
+                'corresponding flux type for each model.')
+
     threshold[0] = '>'+threshold[0]
 
     sep_keys = []
@@ -358,9 +380,17 @@ def setup(all_sep_dates, model_name, model_flux_type, str_threshold):
         date = datetime.datetime.strptime(sep_dates[i], "%Y-%m-%d")
         sep_keys.append(date)
     Nsep = len(sep_keys)
-    experiments = ['GOES-13','GOES-13','GOES-15','GOES-15','SEPEM', model_name]
+    experiments = ['GOES-13','GOES-13','GOES-15','GOES-15','SEPEM']
+    if threshold[0] == '>100':
+        experiments = ['GOES-13','GOES-13','GOES-15','GOES-15']
+    for model_name in model_names:
+        experiments.append(model_name)
     flux_types = ['integral','differential','integral','differential',
-            'differential', model_flux_type]
+            'differential']
+    if threshold[0] == '>100':
+        flux_types = ['integral','differential','integral','differential']
+    for model_flux_type in model_flux_types:
+        flux_types.append(model_flux_type)
     Nexp = len(experiments) #number of comparisons for plots
     expmt_keys = [] #keys defining the experiment + flux type combos
     for i in range(Nexp):
@@ -379,8 +409,8 @@ def setup(all_sep_dates, model_name, model_flux_type, str_threshold):
 
 
 
-def reference_comparison(experiments, flux_types, model_name, model_flux_type,
-        threshold, sep_keys, expmt_keys, proton_dict):
+def reference_comparison(experiments, flux_types, model_names, threshold,
+            sep_keys, expmt_keys, proton_dict):
     """Compares event peak times and start times w.r.t. the GOES-13 integral
        channel. There is also a plot that shows peak time wrt to GOES-13
        integral channel on x-axis and peak flux wrt GOES-13 integral channel on
@@ -433,10 +463,11 @@ def reference_comparison(experiments, flux_types, model_name, model_flux_type,
         for j in range(Nexp):
             labels.append(experiments[j] + '\n' + flux_types[j])
             #set colors for bars
-            if experiments[j] == model_name:
-                colors.append('red')
-            else:
-                colors.append('blue')
+            color = 'blue'
+            for model_name in model_names:
+                if experiments[j] == model_name:
+                    color = 'red'
+            colors.append(color)
         for j in range(len(ref_time_diff)-1,-1,-1):
             if ref_time_diff[j] == []:
                 del ref_time_diff[j]
@@ -479,8 +510,8 @@ def reference_comparison(experiments, flux_types, model_name, model_flux_type,
 
 
 
-def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
-            threshold, sep_keys, expmt_keys, proton_dict):
+def fluence_comparison(experiments, flux_types, model_names, threshold,
+            sep_keys, expmt_keys, proton_dict):
     """Makes plot of fluence spectrum. Makes bar charts of >10 MeV fluence and
        >100 MeV fluence. All fluences are associated with the time period
        defined by the threshold indicated by the user. So if threshold was
@@ -499,7 +530,9 @@ def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
         fluence_dict.update({sep_keys[i]:fluence_one})
 
     colors = cm.rainbow(np.linspace(0, 1, Nexp))
-    #PLOT OF EVENT-INTEGRATED FLUENCE SPECTRA
+    ######TWO PLOTS OF EVENT-INTEGRATED FLUENCE SPECTRA######
+    #ONE FOR DIFFERENTIAL SPECTRA
+    select_flux_type = "differential"
     for i in range(Nsep):
         fig = plt.figure(figsize=(8,5))
         ax = plt.subplot(111)
@@ -507,21 +540,18 @@ def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
         plt.title(str(sep_keys[i])[0:10] + ' Event-Integrated Fluence '
                     'Spectrum \n('+thresh_label+ ')')
         plt.xlabel('Energy [MeV]')
-        if model_flux_type == "integral":
+        if select_flux_type == "integral":
             plt.ylabel('Integral Fluence 1/[cm^2 sr]')
-        if model_flux_type == "differential":
+        if select_flux_type == "differential":
             plt.ylabel('Differential Fluence 1/[MeV cm^2 sr]')
         for j in range(Nexp):
-            if flux_types[j] != model_flux_type:
+            if flux_types[j] != select_flux_type:
                 continue  #only plot same type of flux
             if not fluence_dict[sep_keys[i]][expmt_keys[j]]:
                 continue #no values for experiment
             energy_bins = fluence_dict[sep_keys[i]][expmt_keys[j]]['Emid']
             spectrum = fluence_dict[sep_keys[i]][expmt_keys[j]]['fluence']
-           # if experiments[j] == model_name:
-           #     colors = 'red'
-           # else:
-            #    colors = 'blue'
+
 
             ax.plot(energy_bins, spectrum,'bo', color = colors[j],
                     label=(experiments[j] + ", " + flux_types[j]))
@@ -533,26 +563,63 @@ def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
         plt.yscale("log")
         figname = plotpath+'/fluence_spectrum_'+str(sep_keys[i].year)+'_'\
             +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+select_flux_type+'.png'
         fig.savefig(figname)
         print('Wrote to file: ' + figname)
 
-    #BAR CHART OF SEP FLUENCE for >10 MeV
+    #ONE FOR INTEGRAL SPECTRA
+    select_flux_type = "integral"
     for i in range(Nsep):
-        fluence = make_array_from_dict(expmt_keys,
-                'fluence_gt10',proton_dict[sep_keys[i]])
+        fig = plt.figure(figsize=(8,5))
+        ax = plt.subplot(111)
+        #plt.grid(which="both", axis="both")
+        plt.title(str(sep_keys[i])[0:10] + ' Event-Integrated Fluence '
+                    'Spectrum \n('+thresh_label+ ')')
+        plt.xlabel('Energy [MeV]')
+        if select_flux_type == "integral":
+            plt.ylabel('Integral Fluence 1/[cm^2 sr]')
+        if select_flux_type == "differential":
+            plt.ylabel('Differential Fluence 1/[MeV cm^2 sr]')
+        for j in range(Nexp):
+            if flux_types[j] != select_flux_type:
+                continue  #only plot same type of flux
+            if not fluence_dict[sep_keys[i]][expmt_keys[j]]:
+                continue #no values for experiment
+            energy_bins = fluence_dict[sep_keys[i]][expmt_keys[j]]['Emid']
+            spectrum = fluence_dict[sep_keys[i]][expmt_keys[j]]['fluence']
+
+
+            ax.plot(energy_bins, spectrum,'bo', color = colors[j],
+                    label=(experiments[j] + ", " + flux_types[j]))
+        chartBox = ax.get_position()
+        ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.75,
+                         chartBox.height])
+        ax.legend(loc='upper center', bbox_to_anchor=(1.25, 0.95))
+        plt.xscale("log")
+        plt.yscale("log")
+        figname = plotpath+'/fluence_spectrum_'+str(sep_keys[i].year)+'_'\
+            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+select_flux_type+'.png'
+        fig.savefig(figname)
+        print('Wrote to file: ' + figname)
+
+    #####BAR CHARTS OF SEP FLUENCE for >10 MeV#####
+    for i in range(Nsep):
+        fluence = make_array_from_dict(expmt_keys,'fluence_gt10',
+                    proton_dict[sep_keys[i]])
         fig = plt.figure(figsize=(6,5))
         colors = []
         labels = []
         for j in range(Nexp):
             labels.append(experiments[j] + '\n' + flux_types[j])
             #set colors for bars
-            if experiments[j] == model_name:
-                colors.append('red')
-            else:
-                colors.append('blue')
+            color = 'blue'
+            for model_name in model_names:
+                if experiments[j] == model_name:
+                    color = 'red'
+            colors.append(color)
         for j in range(len(fluence)-1,-1,-1):
-            if fluence[j] == []:
+            if fluence[j] == [] or fluence[j] == badval:
                 del fluence[j]
                 del labels[j]
                 del colors[j]
@@ -566,7 +633,7 @@ def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
                     'Fluence \n('+ thresh_label + ')')
         figname = plotpath+'/fluence_gt10_bar_'+str(sep_keys[i].year)+'_'\
             +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
         fig.savefig(figname)
         print('Wrote to file: ' + figname)
 
@@ -580,12 +647,13 @@ def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
         for j in range(Nexp):
             labels.append(experiments[j] + '\n' + flux_types[j])
             #set colors for bars
-            if experiments[j] == model_name:
-                colors.append('red')
-            else:
-                colors.append('blue')
+            color = 'blue'
+            for model_name in model_names:
+                if experiments[j] == model_name:
+                    color = 'red'
+            colors.append(color)
         for j in range(len(fluence)-1,-1,-1):
-            if fluence[j] == []:
+            if fluence[j] == [] or fluence[j] == badval:
                 del fluence[j]
                 del labels[j]
                 del colors[j]
@@ -599,14 +667,14 @@ def fluence_comparison(experiments, flux_types, model_name, model_flux_type,
                     'Fluence \n(' + thresh_label + ')')
         figname = plotpath+'/fluence_gt100_bar_'+str(sep_keys[i].year)+'_'\
             +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
         fig.savefig(figname)
         print('Wrote to file: ' + figname)
 
 
 
-def peak_flux_comparison(experiments, flux_types, model_name, model_flux_type,
-            threshold, sep_keys, expmt_keys, proton_dict):
+def peak_flux_comparison(experiments, flux_types, model_names, threshold,
+            sep_keys, expmt_keys, proton_dict):
    """Makes bar charts of event peak flux. A second version of the bar chart
       is commented out below. It showed the data and model comparison in a
       different style.
@@ -625,12 +693,13 @@ def peak_flux_comparison(experiments, flux_types, model_name, model_flux_type,
        for j in range(Nexp):
            labels.append(experiments[j] + '\n' + flux_types[j])
            #set colors for bars
-           if experiments[j] == model_name:
-               colors.append('red')
-           else:
-               colors.append('blue')
+           color = 'blue'
+           for model_name in model_names:
+               if experiments[j] == model_name:
+                   color = 'red'
+           colors.append(color)
        for j in range(Nexp-1,-1,-1):
-           if peak_fluxes[j] == []:
+           if peak_fluxes[j] == [] or peak_fluxes[j] == badval:
                del peak_fluxes[j]
                del labels[j]
                del colors[j]
@@ -642,12 +711,13 @@ def peak_flux_comparison(experiments, flux_types, model_name, model_flux_type,
        plt.bar(y_pos, peak_fluxes, color=colors, align='center', alpha=0.5)
        plt.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
        plt.xticks(y_pos, labels)
+       plt.yscale("log")
        plt.ylabel(threshold[0] + ' MeV Peak Flux 1/[cm^2 s sr]')
        plt.title(str(sep_keys[i])[0:10] +' Event ' + threshold[0]
                +' MeV Peak Flux \n(' + thresh_label + ')')
        figname = plotpath+'/peak_flux_bar_'+str(sep_keys[i].year)+'_'\
            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-           +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+           +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
        fig.savefig(figname)
        print('Wrote to file: ' + figname)
 
@@ -693,8 +763,8 @@ def peak_flux_comparison(experiments, flux_types, model_name, model_flux_type,
 
 
 
-def time_bar_charts(experiments, flux_types, model_name, model_flux_type,
-            threshold, sep_keys, expmt_keys, proton_dict):
+def time_bar_charts(experiments, flux_types, model_names, threshold,
+            sep_keys, expmt_keys, proton_dict):
     """Makes bar charts of event rise times and durations."""
     Nsep = len(sep_keys)
     Nexp = len(experiments)
@@ -709,12 +779,13 @@ def time_bar_charts(experiments, flux_types, model_name, model_flux_type,
         for j in range(Nexp):
             labels.append(experiments[j] + '\n' + flux_types[j])
             #set colors for bars
-            if experiments[j] == model_name:
-                colors.append('red')
-            else:
-                colors.append('blue')
+            color = 'blue'
+            for model_name in model_names:
+                if experiments[j] == model_name:
+                    color = 'red'
+            colors.append(color)
         for j in range(len(rise_time)-1,-1,-1):
-            if rise_time[j] == []:
+            if rise_time[j] == [] or rise_time[j] == badval:
                 del rise_time[j]
                 del labels[j]
                 del colors[j]
@@ -727,7 +798,7 @@ def time_bar_charts(experiments, flux_types, model_name, model_flux_type,
                     + thresh_label + ')')
         figname = plotpath+'/rise_time_bar_'+str(sep_keys[i].year)+'_'\
             +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
         fig.savefig(figname)
         print('Wrote to file: ' + figname)
 
@@ -742,12 +813,13 @@ def time_bar_charts(experiments, flux_types, model_name, model_flux_type,
         for j in range(Nexp):
             labels.append(experiments[j] + '\n' + flux_types[j])
             #set colors for bars
-            if experiments[j] == model_name:
-                colors.append('red')
-            else:
-                colors.append('blue')
+            color = 'blue'
+            for model_name in model_names:
+                if experiments[j] == model_name:
+                    color = 'red'
+            colors.append(color)
         for j in range(len(durations)-1,-1,-1):
-            if durations[j] == []:
+            if durations[j] == [] or durations[j] == badval:
                 del durations[j]
                 del labels[j]
                 del colors[j]
@@ -760,17 +832,18 @@ def time_bar_charts(experiments, flux_types, model_name, model_flux_type,
                     + thresh_label + ')')
         figname = plotpath+'/duration_bar_'+str(sep_keys[i].year)+'_'\
             +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
         fig.savefig(figname)
         print('Wrote to file: ' + figname)
 
 
 
-def time_profile_comparison(experiments, flux_types, model_name,
-            model_flux_type,threshold, sep_keys, expmt_keys):
+def time_profile_comparison(experiments, flux_types, model_names,
+            threshold, sep_keys, expmt_keys):
     """Creates a plot of all of the measured and modeled time profiles for the
        integral flux specified by threshold. (>10 MeV, >100 MeV)
     """
+    points_only_models = ['AFRLPPS','SEPSTER','UMASEP'] #Plot only points
     all_dates = []
     all_fluxes = []
     Nexp = len(experiments)
@@ -805,46 +878,51 @@ def time_profile_comparison(experiments, flux_types, model_name,
                 continue #no values for experiment
             date = intflux_dict[sep_keys[i]][expmt_keys[j]]['dates']
             flux = intflux_dict[sep_keys[i]][expmt_keys[j]]['fluxes']
-            ax.plot(date, flux, color = colors[j],
-                    label=(experiments[j] + ", " + flux_types[j]))
+            plotsty = ''
+            for model in points_only_models:
+                if experiments[j] == model:
+                    plotsty = 'o'
+            ax.plot(date, flux, plotsty, color = colors[j],
+                            label=(experiments[j] + ", " + flux_types[j]))
         plt.axhline(float(threshold[1]),color='red',linestyle=':',
                     label=(threshold[1] + ' pfu'))
         chartBox = ax.get_position()
         ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.82,
                          chartBox.height])
         ax.legend(loc='upper center', bbox_to_anchor=(1.18, 0.95))
-        plt.ylim(1e-2,1e4)
+        plt.ylim(1e-2,1e6)
         plt.yscale("log")
         figname = plotpath+'/integral_flux_time_profile_'\
             +str(sep_keys[i].year)+'_'\
             +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+model_name+'.png'
+            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
         fig.savefig(figname)
         print('Wrote to file: ' + figname)
 
 
 
-def run_all(all_sep_dates, model_name, model_flux_type, str_threshold,
+def run_all(all_sep_dates, all_model_names, all_model_flux_types, str_threshold,
         showplot):
     """Runs all of the subroutines that make the desired plots. Basically,
        the "main".
     """
 
     experiments, flux_types, threshold, sep_keys, expmt_keys, proton_keys, \
-    proton_dict = setup(all_sep_dates, model_name, model_flux_type, \
+    proton_dict = setup(all_sep_dates, all_model_names, all_model_flux_types, \
                         str_threshold)
 
     sns.set()
     #reference_comparison(experiments, flux_types, threshold, sep_keys,
     #            expmt_keys, proton_dict, showplot)
-    fluence_comparison(experiments, flux_types, model_name, model_flux_type,
-                threshold, sep_keys, expmt_keys, proton_dict)
-    peak_flux_comparison(experiments, flux_types, model_name, model_flux_type,
-                threshold, sep_keys,expmt_keys, proton_dict)
-    time_bar_charts(experiments, flux_types, model_name, model_flux_type,
-                threshold, sep_keys, expmt_keys, proton_dict)
-    time_profile_comparison(experiments, flux_types, model_name,
-                model_flux_type, threshold, sep_keys, expmt_keys)
+    model_names = all_model_names.strip().split(",")
+    fluence_comparison(experiments, flux_types, model_names, threshold,
+                sep_keys, expmt_keys, proton_dict)
+    peak_flux_comparison(experiments, flux_types, model_names, threshold,
+                sep_keys,expmt_keys, proton_dict)
+    time_bar_charts(experiments, flux_types, model_names, threshold,
+                sep_keys, expmt_keys, proton_dict)
+    time_profile_comparison(experiments, flux_types, model_names, threshold,
+                sep_keys, expmt_keys)
     print('If plots are empty, then no data was available for requested '
         'thresholds, or no data files were present.')
     if showplot:
@@ -861,17 +939,19 @@ if __name__ == "__main__":
                     "date of SEP event in YYYY-MM-DD or a sequence of "
                     "SEP dates separated by commas with no spaces, "
                     "e.g. 2012-03-07,2012-05-17"))
-    parser.add_argument("--ModelName", type=str, default='', help=("Name of "
-                "your model. Please use operational_sep_quantities.py "
-                "to create results for your model and then rename them with "
-                "names e.g."
+    parser.add_argument("--ModelNames", type=str, default='', help=("Name of "
+                "one or more models separated by commas with no spaces. Please "
+                "use operational_sep_quantities.py to create results for your "
+                "model (or manually prepare the files) and then rename them "
+                "with names e.g."
                 "sep_values_ModelName_differential_2012_5_17.csv,  "
                 "fluence_ModelName_integral_gt10_2012_5_17.csv, and"
                 "fluence_ModelName_integral_gt100_2012_5_17.csv"))
-    parser.add_argument("--FluxType", type=str, choices=['integral',
-            'differential'], default='differential',help=("Are your model "
-                    "results derived from differential or "
-                    "integral fluxes? (Default is differential)"))
+    parser.add_argument("--FluxType", type=str, default='differential',
+                    help=("Indicate whether model(s) outputs results derived "
+                    "from differential or integral fluxes. Write type for "
+                    "each model with no spaces and separated by commas. "
+                    "(Default is differential)"))
     parser.add_argument("--Threshold", type=str, default="100,1",
             help=("The energy and flux thresholds (written as 100,1 with no "
                     "spaces) which will be used to plot the event. "
@@ -883,9 +963,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     all_sep_dates = args.SEPEventDate
-    model_name = args.ModelName
+    model_names = args.ModelNames
     model_flux_type = args.FluxType
     str_threshold = args.Threshold
     showplot = args.showplot
 
-    run_all(all_sep_dates, model_name, model_flux_type, str_threshold, showplot)
+    run_all(all_sep_dates, model_names, model_flux_type, str_threshold, showplot)

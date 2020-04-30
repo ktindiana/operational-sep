@@ -23,15 +23,14 @@ __email__ = "kathryn.whitman@nasa.gov"
 """
 
 #!!!!!!!!!!!!!!!!!!! EDIT HERE !!!!!!!!!!!!!!!!!!!!!!
-model_start_dates = ['2012-03-07','2012-05-17','2017-09-10']
-model_end_dates = ['2012-03-14','2012-05-20','2017-09-16']
+model_start_dates = ['2012-05-17','2017-09-10']
+model_end_dates = ['2012-05-20','2017-09-16']
 #Specify model file names associated with the SEP events as a list
 #---expect files to be in data folder---
-model_file_names = ['MODEL/sample_model_mar2012.csv',
-                    'MODEL/sample_model_may2012.csv', #only this one exists
-                    'MODEL/sample_model_sep2017.csv']
+model_file_names = ['SEPMOD/flux_out_may2012.txt',
+                    'SEPMOD/flux_out_sep2017.txt']
 
-your_model_name = 'MODEL'
+your_model_name = 'SEPMOD'
 model_flux_type = 'integral'
 
 #List all SEP dates available for your model as a single string (comma
@@ -39,11 +38,11 @@ model_flux_type = 'integral'
 #May or may not be the same as model_start_dates. Should be date on the day
 #the SEP flux crossed threshold.
 #Plots will be created for these dates
-sep_dates = '2012-03-07,2012-05-17,2017-09-10'
+sep_dates = '2012-05-17,2017-09-10'
 
 #Choose whether to run operational_sep_quantities for model or data.
 run_model = True
-run_data = True
+run_data = False
 #!!!!!!!!!!!!!!!!!!! END EDITS !!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -97,6 +96,7 @@ if run_data:
             try:
                 sep.run_all(start_date, end_date, experiment, flux_type, model_name,
                     user_file, showplot, detect_prev_event, threshold)
+                if showplot: plt.show()
                 sep = reload(sep)
             except SystemExit:
                 continue

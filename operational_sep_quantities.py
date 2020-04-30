@@ -18,7 +18,7 @@ import scipy.integrate
 from numpy import exp
 import array as arr
 
-__version__ = "0.4"
+__version__ = "0.6"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -27,6 +27,17 @@ __email__ = "kathryn.whitman@nasa.gov"
 #output files
 #CHANGES in 0.4: user passes filename through an argument if selects "user" for
 #experiment rather than setting filename at the top of the code
+#Changes in 0.5: Added ability to download and plot SOHO/ERNE data for the
+#>10 MeV threshold calculations. -- INCOMPLETE
+#Changes in 0.5: Indicate peak flux selection on plots.
+#Changes in 0.6: SEP event considered to start only after 3 consecutive points.
+#   Start time set to the first of the three points.
+#Changes in 0.6: Added the --TwoPeaks flag to allow users to indicate that
+#   the event has an initial threshold crossing for just a few points,
+#   drops below threshold, then continues the increase to the main part of
+#   the event. This is phenomenalogical addition after finding a few events
+#   with this problem.
+
 #See full program description in all_program_info() below
 datapath = 'data'
 outpath = 'output'
@@ -35,7 +46,7 @@ badval = -1 #bad data points will be set to this value; must be negative
 ######FOR USER DATA SETS######
 #(expect the first column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
-user_col = arr.array('i',[1,2,3,4,5,6])
+user_col = arr.array('i',[1,2,3,4,5])
 
 #DELIMETER between columns; for whitespace separating columns, use " " or ""
 user_delim = ","
@@ -44,7 +55,9 @@ user_delim = ","
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
-user_energy_bins = [[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
+user_energy_bins = [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
+#EPREM [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
+#SEPMOD [[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
 ############################
 
 #FILENAME(s) containing user input fluxes - WILL BE SET THROUGH ARGUMENT
@@ -762,6 +775,21 @@ def define_energy_bins(experiment,flux_type):
                        [66.13,95.64],[95.64,138.3],[138.3,200.0],
                        [200.0,289.2]]
 
+    if experiment == "ERNEf10":
+        #The top 3 channels tend to saturate and show incorrect values during
+        #high intensity SEP events. For this reason, only the >10 MeV
+        #integral fluxes should be derived from ERNE data.
+        #f10 format, from 2 December 1996
+        energy_bins = [[10.0,13.0],[14.0,17.0],[17.0,22.0],[21.0,28.0],
+                       [26.0,32.0],[32.0,40.0],[41.0,51.0],
+                       [51.0,67.0],[54.0,79.0],[79.0,114.0],[111.0,140.]]
+
+    if experiment == "ERNEf40":
+        #f40 format, from 19 May 2000
+        energy_bins = [[10.0,13.0],[14.0,17.0],[17.0, 22.0],[21.0,28.0],
+                       [26.0,32.0],[32.0,40.0],[40.0,51.0],[51.0,67.0],
+                       [64.0,80.0],[80.0,101.0],[101.0,131.0]]
+
     if (flux_type == "integral" and experiment != "SEPEM"):
          energy_bins = [[5.0,-1],[10.0,-1],[30.0,-1],
                         [50.0,-1],[60.0,-1],[100.0,-1],[700.0,-1]]
@@ -820,33 +848,62 @@ def do_interpolation(i,dates,flux):
     """
     ndates = len(dates)
 
-    #search for first previous good value prior to the gap
-    for j in range(i,-1,-1):
-        if flux[j] != badval:
-            preflux = flux[j]
-            predate = dates[j]
-            print('The first good value previous to gap is on '
-                + str(dates[j]) + ' with value ' + str(flux[j]))
-            break
-        if j == 0:
-            sys.exit('There is a data gap at the beginning of the '
-                    'selected time period. Program cannot estimate '
-                    'flux in data gap.')
+    #If first point is bad point, use the next good point to fill gap
+    if i == 0:
+        for j in range(i,ndates-1):
+            if flux[j] != badval:
+                postflux = flux[j]
+                postdate = dates[j]
+                print('First point in array is bad. The first good value after '
+                    'the gap is on '+ str(dates[j]) + ' with value '
+                    + str(flux[j]))
+                break
+        preflux = postflux
 
-    #search for first previous good value after to the gap
-    for j in range(i,ndates-1):
-        if flux[j] != badval:
-            postflux = flux[j]
-            postdate = dates[j]
-            print('The first good value after to gap is on '
-                + str(dates[j]) + ' with value ' + str(flux[j]))
-            break
-        if j == ndates-1:
-           sys.exit('There is a data gap up to the end of the '
-                   'selected time period. Program cannot estimate '
-                   'flux in data gap.')
+    #If last point is bad point, use the first prior good point to fill gap
+    if i == ndates - 1:
+        for j in range(i,-1,-1):
+            if flux[j] != badval:
+                preflux = flux[j]
+                predate = dates[j]
+                print('Last point in the array is bad. The first good value '
+                    'previous to gap is on '+ str(dates[j]) + ' with value '
+                    + str(flux[j]))
+                break
+        postflux = preflux
 
-    interp_flux = preflux + (dates[i] - predate).total_seconds()\
+    #Within the flux array
+    if i != 0 and i != ndates-1:
+        #search for first previous good value prior to the gap
+        for j in range(i,-1,-1):
+            if flux[j] != badval:
+                preflux = flux[j]
+                predate = dates[j]
+                print('The first good value previous to gap is on '
+                    + str(dates[j]) + ' with value ' + str(flux[j]))
+                break
+            if j == 0:
+                sys.exit('There is a data gap at the beginning of the '
+                        'selected time period. Program cannot estimate '
+                        'flux in data gap.')
+
+        #search for first previous good value after to the gap
+        for j in range(i,ndates-1):
+            if flux[j] != badval:
+                postflux = flux[j]
+                postdate = dates[j]
+                print('The first good value after to gap is on '
+                    + str(dates[j]) + ' with value ' + str(flux[j]))
+                break
+            if j == ndates-1:
+               sys.exit('There is a data gap up to the end of the '
+                       'selected time period. Program cannot estimate '
+                       'flux in data gap.')
+
+    if preflux == postflux:
+        interp_flux = preflux
+    if preflux != postflux:
+        interp_flux = preflux + (dates[i] - predate).total_seconds()\
              *(postflux - preflux)/(postdate - predate).total_seconds()
     print('Filling gap at time ' + str(dates[i])
             + ' with interpolated flux ' + str(interp_flux))
@@ -1040,6 +1097,9 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
        Group to determine actions that should be taken during an SEP event are:
             >10 MeV proton flux exceeds 10 pfu (1/[cm^2 s sr])
             >100 MeV proton flux exceeds 1 pfu (1/[cm^2 s sr])
+        An SEP event is considered to start if 3 consecutive points are
+        above threshold. The start time is set to the first point that crossed
+        threshold.
        If the user input differential flux, then the program has converted it
        to integral fluxes to calculate the integral threshold crossings.
        If the user selected fluxes that were already integral fluxes, then
@@ -1086,8 +1146,11 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     for i in range(ndates):
         if not threshold_crossed:
             if(fluxes[i] > flux_threshold):
-                crossing_time = dates[i]
-                threshold_crossed = True
+                if i+2 < ndates:
+                    if fluxes[i+1] > flux_threshold and fluxes[i+2] > \
+                    flux_threshold:
+                        crossing_time = dates[i]
+                        threshold_crossed = True
         if threshold_crossed and not event_ended:
             if (fluxes[i] > end_threshold):
                 end_counter = 0  #reset if go back above threshold
@@ -1206,7 +1269,7 @@ def get_fluence_spectrum(experiment, flux_type, model_name, energy_threshold,
 
 
 def calculate_event_info(energy_thresholds,flux_thresholds,dates,
-                integral_fluxes, detect_prev_event):
+                integral_fluxes, detect_prev_event, two_peaks):
     """Uses the integral fluxes (either input or estimated from differential
        channels) and all the energy and flux thresholds set in the main program
        to calculate SEP event quantities.
@@ -1243,6 +1306,24 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
             ct,pf,pt,rt,eet,dur = integral_threshold_crossing(\
                             energy_thresholds[i],flux_thresholds[i],
                             tmp_dates,tmp_fluxes[i])
+
+        if dur != 0:
+            if two_peaks and dur < timedelta(days=1):
+                print("User specified that event has two peaks. Extending "
+                    "event to second decrease below threshold.")
+                last_date = dates[len(dates)-1]
+                tmp_dates, tmp_fluxes = extract_date_range(eet,last_date,dates,
+                                    integral_fluxes)
+                ct2,pf2,pt2,rt2,eet2,dur2 = integral_threshold_crossing(\
+                                energy_thresholds[i],flux_thresholds[i],
+                                tmp_dates,tmp_fluxes[i])
+
+            dur = eet2 - ct #adjust duration to include both peaks
+            eet = eet2 #adjust event end time
+            if pf2 > pf: #determine which peak has the highest flux
+                pf = pf2
+                pt = pt2
+                rt = pt2 - ct
 
         crossing_time.append(ct)
         peak_flux.append(pf)
@@ -1414,7 +1495,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
 
 ######## MAIN PROGRAM #########
 def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
-        user_file, showplot, detect_prev_event, str_thresh):
+        user_file, showplot, detect_prev_event, two_peaks, str_thresh):
     """"Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
@@ -1490,7 +1571,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #that has radiation dose signifigance for astronauts behind shielding.
     crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration=\
         calculate_event_info(energy_thresholds,flux_thresholds, dates,
-                    integral_fluxes, detect_prev_event)
+                    integral_fluxes, detect_prev_event, two_peaks)
 
     #Calculate event-integrated fluences for all thresholds
     nthresh = len(energy_thresholds)
@@ -1513,6 +1594,10 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         print('=====Calculating event fluence for event defined by >'
                 + str(energy_thresholds[i]) + ' MeV, for '
                 + str(crossing_time[i]) + ' to ' + str(event_end_time[i]))
+        if crossing_time[i] == event_end_time[i]:
+            print("Event start and end time the same (did you set "
+            "--DetectPreviousEvent? May not work in this case). Exiting.")
+            return
         fluence, energies = get_fluence_spectrum(experiment, flux_type,
                          model_name, energy_thresholds[i], flux_thresholds[i],
                          sep_dates, sep_fluxes, energy_bins, True)
@@ -1566,6 +1651,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             plt.axvline(crossing_time[i],color='black',linestyle=':')
             plt.axvline(event_end_time[i],color='black',linestyle=':')
             plt.axhline(flux_thresholds[i],color='red',linestyle=':')
+            plt.plot_date(peak_time[i],peak_flux[i],'ro')
             if flux_type == "integral":
                 plt.title(experiment + ' Flux for >'+str(energy_thresholds[i])
                            + ' MeV', x=0.75, y=0.8)
@@ -1662,7 +1748,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         plt.xscale("log")
         plt.yscale("log")
         ax.legend(loc='upper right')
-        plt.show()
+
 
 
 
@@ -1708,8 +1794,13 @@ if __name__ == "__main__":
     parser.add_argument("--showplot",
             help="Flag to display plots", action="store_true")
     parser.add_argument("--DetectPreviousEvent",
-            help=("Flag to indicate that the threshold is crossed due to a "
-                   "previous event."), action="store_true")
+            help=("Flag to indicate that the threshold is crossed at the "
+                   "first point due to a previous event."), action="store_true")
+    parser.add_argument("--TwoPeaks",
+            help=("Flag to indicate that the event exceeds threshold (usually "
+                    "for a couple of points), then drops below threshold "
+                    "before increasing again to the true peak of the event."),
+                    action="store_true")
 
 
     args = parser.parse_args()
@@ -1723,6 +1814,8 @@ if __name__ == "__main__":
     str_thresh = args.Threshold
     showplot = args.showplot
     detect_prev_event = args.DetectPreviousEvent
+    two_peaks = args.TwoPeaks
 
     run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
-        user_file, showplot, detect_prev_event, str_thresh)
+        user_file, showplot, detect_prev_event, two_peaks, str_thresh)
+    if showplot: plt.show()
