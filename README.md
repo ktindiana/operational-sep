@@ -1,5 +1,5 @@
 # operational-sep
-Calculate solar energetic particle (SEP) proton flux quantities relevant to space radiation operations. Robust, user-friendly code written in python3. Works for only one SEP event at a time. May not work under all circumstances. Check back for updates, as this code will be modified as it is tested for a variety of SEP events.
+Calculate solar energetic particle (SEP) proton flux quantities relevant to space radiation operations. Robust, user-friendly code written in python3. Works for only one SEP event at a time.  Check back for updates, as this code will be modified as it is tested for a variety of SEP events. Please send bug reports to kathryn.whitman@nasa.gov.
 
 This code was developed in support of the SHINE 2019 SEP modeling challenge session to assist SEP modelers to calculate and report the quantities calculated in this code.
 
@@ -11,10 +11,17 @@ The code calculates:
 - Duration >10 MeV, >100 MeV; end time - start time
 - Event fluence (total integrated event intensity) for >10 MeV, >100 MeV in cm-2
 - Event fluence spectrum
-- Plots of time profile for >10 MeV, >100 MeV and fluence spectrum
+- Plots of time profiles for >10 MeV, >100 MeV and fluence spectrum
+- Indicates point selected as peak with red dot
 
 ## Run code from command line as, e.g.:
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot
+
+OR if the flux is already above threshold at the very first point due to a previous event, then falls below threshold prior to the start of the desired event:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --DetectPreviousEvent
+
+OR if the event has an initial increase above threshold for a few points, drops below threshold, then increases again above threshold for the remainder of the event:
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --TwoPeaks
 
 ## Run code from command line for user-input file as, e.g.:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel --UserFile MyFluxes.txt --FluxType integral --showplot
@@ -26,11 +33,12 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate '2012-05-
     experiment = 'GOES-13'
     flux_type = 'integral'
     model_name = '' #if experiment is user, set model_name to describe data set
-    user_file = ''
+    user_file = ''  #name of the file containing the user-input fluxes
     showplot = True
-    detect_prev_event = True
+    detect_prev_event = False  #Try set to true if previous event still above threshold
+    two_peaks = False  #Try set true if one event crosses threshold twice, e.g. >100 MeV 2011-08-04
     threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
-    sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file, showplot, detect_prev_event, threshold)
+    sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file, showplot, detect_prev_event, two_peaks, threshold)
 
 Full documentation for operational_sep_quantities.py:
 ## NAME
@@ -77,6 +85,12 @@ Full documentation for operational_sep_quantities.py:
     threshold is already crossed for the very first time in your specified
     time period, and if the flux drops below threshold before the next event
     starts.
+    
+    If the event has an initial increase above threshold for a few points, falls
+    below threshold, then continues to increase above threshold again, you 
+    may try to use the --TwoPeaks feature to capture the full duration of the 
+    event. The initial increase above threshold must be less than a day. An 
+    example of this scenario can be seen in >100 MeV for 2011-08-04.
 
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
     python3 operational_sep_quantities.py --StartDate 2012-05-17
@@ -98,9 +112,10 @@ Full documentation for operational_sep_quantities.py:
     user_file = ''
     showplot = True
     detect_prev_event = True
+    two_peaks = False
     threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
     sep.run_all(start_date, end_date, experiment, flux_type, model_name,
-        user_file, showplot, detect_prev_event, threshold)
+        user_file, showplot, detect_prev_event, two_peaks, threshold)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -163,7 +178,7 @@ Full documentation for operational_sep_quantities.py:
                 must be modified/rewritten. AUTOMATICALLY DETERMINED.
 
     
-### calculate_event_info(energy_thresholds, flux_thresholds, dates, integral_fluxes, detect_prev_event)
+### calculate_event_info(energy_thresholds, flux_thresholds, dates, integral_fluxes, detect_prev_event, two_peaks)
         Uses the integral fluxes (either input or estimated from differential
         channels) and all the energy and flux thresholds set in the main program
         to calculate SEP event quantities.
@@ -179,6 +194,15 @@ Full documentation for operational_sep_quantities.py:
         flux to drop below threshold and then increase above threshold again
         during the specified time period. If this flag is not set, then the code
         simply take the first threshold crossing as the start of the SEP event.
+        
+       If the two_peaks flag is set to true, the code will use the first
+       identified threshold crossing as the start time. A second threshold
+       crossing will be allowed. The event end will be determined as the drop
+       below threshold after the second threshold crossing. The duration will
+       be the end time - first threshold crossing time. The peak will be
+       determined as the largest flux value found in both threshold crossings.
+       The peak and rise times will be calculated from the first threshold
+       crossing time.
     
 ###    calculate_fluence(dates, flux)
         This subroutine sums up all of the flux in the 1D array "flux". The
@@ -345,7 +369,7 @@ Full documentation for operational_sep_quantities.py:
         been saved in the output fluence file. If the user selected differential
         channels, then these values come from the estimated integral fluxes.
     
-###    run_all(str_startdate, str_enddate, experiment, flux_type, showplot, detect_prev_event, str_thresh)
+###    run_all(str_startdate, str_enddate, experiment, flux_type, showplot, detect_prev_event, two_peaks, str_thresh)
         Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
@@ -354,7 +378,7 @@ Full documentation for operational_sep_quantities.py:
         your model (e.g. MyModel), otherwise set to ''.
         user_file is a string. Defaul is ''. If user is selected for experiment,
         then name of flux file is specified in user_file.
-        showplot and detect_prev_event are booleans.
+        showplot, detect_prev_event, and two_peaks are booleans.
         Set str_thresh to be '100,1' for default value or modify to add your own
         threshold.
     
@@ -373,12 +397,12 @@ Full documentation for operational_sep_quantities.py:
     user_fname = []
 
 ### VERSION
-    0.4
+    0.6
 
 ### AUTHOR
     Katie Whitman
 
 ### FILE
-    /Users/kwhitman/Documents/Programs/SEP/ISEP/operational_sep_quantities.py
+    operational-sep/operational_sep_quantities.py
 
 

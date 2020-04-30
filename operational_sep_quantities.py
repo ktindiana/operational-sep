@@ -107,6 +107,12 @@ def all_program_info(): #only for documentation purposes
     time period, and if the flux drops below threshold before the next event
     starts.
 
+    If the event has an initial increase above threshold for a few points, falls
+    below threshold, then continues to increase above threshold again, you
+    may try to use the --TwoPeaks feature to capture the full duration of the
+    event. The initial increase above threshold must be less than a day. An
+    example of this scenario can be seen in >100 MeV for 2011-08-04.
+
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
     python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
@@ -127,9 +133,10 @@ def all_program_info(): #only for documentation purposes
     user_file = '' #if experiment is user, specify filename containing fluxes
     showplot = True  #Turn to False if don't want to see plots
     detect_prev_event = True  #Helps if previous event causes high intensities
+    two_peaks = False  #Helps if two increases above threshold in one event
     threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
     sep.run_all(start_date, end_date, experiment, flux_type, model_name,
-        user_file, showplot, detect_prev_event, threshold)
+        user_file, showplot, detect_prev_event, two_peaks, threshold)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -1285,6 +1292,15 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
        flux to drop below threshold and then increase above threshold again
        during the specified time period. If this flag is not set, then the code
        simply take the first threshold crossing as the start of the SEP event.
+
+       If the two_peaks flag is set to true, the code will use the first
+       identified threshold crossing as the start time. A second threshold
+       crossing will be allowed. The event end will be determined as the drop
+       below threshold after the second threshold crossing. The duration will
+       be the end time - first threshold crossing time. The peak will be
+       determined as the largest flux value found in both threshold crossings.
+       The peak and rise times will be calculated from the first threshold
+       crossing time.
     """
     nthresh = len(flux_thresholds)
     crossing_time = []
@@ -1504,7 +1520,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         your model (e.g. MyModel), otherwise set to ''.
         user_file is a string. Defaul is ''. If user is selected for experiment,
         then name of flux file is specified in user_file.
-        showplot and detect_prev_event are booleans.
+        showplot, detect_prev_event, and two_peaks are booleans.
         Set str_thresh to be '100,1' for default value or modify to add your own
         threshold.
     """
