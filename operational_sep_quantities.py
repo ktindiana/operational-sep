@@ -588,8 +588,12 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
         if (experiment == "GOES-08" or experiment == "GOES-10" or
             experiment == "GOES-11" or experiment == "GOES-12"):
             if flux_type == "differential":
+                #CORRECTED CHANNELS
                 columns = [18,19,20,21,22,23] #eps
                 hepad_columns = [1,2,3,4]
+                #UNCORRECTED channels
+                #columns = [5,6,7,8,9,10] #eps
+                #hepad_columns = [1,2,3,4]
             if flux_type == "integral":
                 columns = [25,26,27,28,29,30] #eps
                 hepad_columns = [4]
@@ -1323,7 +1327,7 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                             energy_thresholds[i],flux_thresholds[i],
                             tmp_dates,tmp_fluxes[i])
 
-        if dur != 0:
+        if dur != 0 and two_peaks:
             if two_peaks and dur < timedelta(days=1):
                 print("User specified that event has two peaks. Extending "
                     "event to second decrease below threshold.")
