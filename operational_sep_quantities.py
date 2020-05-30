@@ -906,10 +906,16 @@ def do_interpolation(i,dates,flux):
                 print('The first good value after to gap is on '
                     + str(dates[j]) + ' with value ' + str(flux[j]))
                 break
-            if j == ndates-1:
-               sys.exit('There is a data gap up to the end of the '
-                       'selected time period. Program cannot estimate '
-                       'flux in data gap.')
+            if j == ndates-2 and flux[j] == badval:
+                if flux[ndates-1] != badval:
+                    postflux = flux[ndates-1]
+                    postdate = dates[ndates-1]
+                else:
+                    postflux = preflux
+                    postdate = predate
+                    print(' Bad values continue to the end of the data set. '
+                        'Using the first good value previous to gap on '
+                        + str(postdate) + ' with value ' + str(postflux))
 
     if preflux == postflux:
         interp_flux = preflux
