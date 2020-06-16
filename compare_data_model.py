@@ -890,7 +890,7 @@ def time_profile_comparison(experiments, flux_types, model_names,
         ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.82,
                          chartBox.height])
         ax.legend(loc='upper center', bbox_to_anchor=(1.18, 0.95))
-        plt.ylim(1e-2,1e6)
+        plt.ylim(1e-6,1e4)
         plt.yscale("log")
         figname = plotpath+'/integral_flux_time_profile_'\
             +str(sep_keys[i].year)+'_'\

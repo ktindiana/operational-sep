@@ -18,7 +18,7 @@ import scipy.integrate
 from numpy import exp
 import array as arr
 
-__version__ = "0.6"
+__version__ = "0.7"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -37,6 +37,33 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   drops below threshold, then continues the increase to the main part of
 #   the event. This is phenomenalogical addition after finding a few events
 #   with this problem.
+#Changes in 0.7: The main function now returns flags to indicate various
+#   things that may help a user identify if an event has been poorly timed.
+#   These return flags are generated with the idea that this could would
+#   be run in batch mode for multiple events without looking at the output.
+#   The flags would help a user decide after the fact if event timing should be
+#   checked more closely. The flags include:
+#       - Event starts at first time point on start date (i.e. previous
+#           event already ongoing)
+#       - Event is less than 12 hours long (i.e. start time might indicate an
+#           initial rise above threshold, but miss main event. TwoPeaks flag
+#           was created to handle events like this.)
+#       - >100 MeV, 1 pfu threshold start is more than 12 hours after >10 MeV,
+#           10 pfu threshold start (e.g. there might be multiple events in a
+#           row and the first event is only >10 MeV and second events has >100)
+#       - Event ends on very last time point indicating that it ended with the
+#           time range rather than dropping below the threshold
+#   A flag was added with the "UMASEP" option. When this flag is selected, the
+#   code finds all information for four energy channels and thresholds used by
+#   UMASEP: >10 MeV, 10 pfu; >100 MeV, 1 pfu; >30 MeV, 1 pfu; >50 MeV, 1 pfu
+#   The proton flux in each of these channels is reported for specific times
+#   after threshold crossing (Ts) and added to the sep_values_ output file for
+#   times Ts + 3, 4, 5, 6, and 7 hours
+#   Returns start date of SEP event found so that know the names of the output
+#   files produced by this code.
+#   Added a saveplot option to automatically write plots to file with a
+#   unique filename.
+
 
 #See full program description in all_program_info() below
 datapath = 'data'
@@ -46,18 +73,19 @@ badval = -1 #bad data points will be set to this value; must be negative
 ######FOR USER DATA SETS######
 #(expect the first column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
-user_col = arr.array('i',[1,2,3,4,5])
+user_col = arr.array('i',[1,2,3,4,5,6,7,8])
 
 #DELIMETER between columns; for whitespace separating columns, use " " or ""
-user_delim = ","
+user_delim = ""
 
 #DEFINE ENERGY BINS associated with user file and columns specified above as:
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
-user_energy_bins = [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
+user_energy_bins = [[750,-1],[500,-1],[300,-1],[100,-1],\
+                    [60,-1],[50,-1],[30,-1],[10,-1]]
 #EPREM [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
-#SEPMOD [[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
+#SEPMOD [[1000,-1],[750,-1],[500,-1],[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
 ############################
 
 #FILENAME(s) containing user input fluxes - WILL BE SET THROUGH ARGUMENT
@@ -91,13 +119,16 @@ def all_program_info(): #only for documentation purposes
        End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
        Duration
        Event-integrated fluences
+       Proton fluxes at various times after threshold crossing (UMASEP option)
 
     User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1) or
-    integral fluxes (e.g. [s sr cm^2]^-1). The program has no internal checks or
-    requirements on units - EXCEPT FOR THE THRESHOLD DEFINITIONS OF >10, 10
-    and >100, 1. If you change those thresholds in the main program accordingly,
-    you should be able to use other units. Also, all of the plots and messages
-    refer to MeV, pfu, and cm.
+    integral fluxes (e.g. [s sr cm^2]^-1 or pfu). The program has no internal
+    checks orrequirements on units - EXCEPT FOR THE THRESHOLD DEFINITIONS
+    OF >10, 10 and >100, 1. If you convert those thresholds in the main program
+    to your units, you should be able to generate consistent results.
+    Also, all of the plots and messages refer to MeV, pfu, and cm. Change those
+    labels everywhere if you choose other units. Currently no features to change
+    units automatically.
 
     If a previous event is ongoing and the specified time period starts with a
     threshold already crossed, you may try to set the --DetectPreviousEvent
@@ -109,14 +140,25 @@ def all_program_info(): #only for documentation purposes
 
     If the event has an initial increase above threshold for a few points, falls
     below threshold, then continues to increase above threshold again, you
-    may try to use the --TwoPeaks feature to capture the full duration of the
+    may try to use the --TwoPeak feature to capture the full duration of the
     event. The initial increase above threshold must be less than a day. An
     example of this scenario can be seen in >100 MeV for 2011-08-04.
+
+    A flag was added with the "UMASEP" option. When this flag is used
+    (--UMASEP), the code finds all information for four energy channels and
+    thresholds used by UMASEP: >10 MeV, 10 pfu; >100 MeV, 1 pfu; >30 MeV, 1 pfu;
+    >50 MeV, 1 pfu. The proton flux in each of these channels is reported for
+    multiple times after threshold crossing (Ts). The applied time delays are
+    as follows:
+        >10 MeV - Ts + 3, 4, 5, 6, 7 hours
+        >30 MeV - Ts + 3, 4, 5, 6, 7 hours
+        >50 MeV - Ts + 3, 4, 5, 6, 7 hours
+        >100 MeV - Ts + 3, 4, 5, 6, 7 hours
 
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
     python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
-        --FluxType integral --showplot
+        --FluxType integral --showplot --saveplot
 
     RUN CODE FROM COMMAND FOR USER DATA SET (put on one line), e.g.:
     python3 operational_sep_quantities.py --StartDate 2012-05-17
@@ -132,11 +174,15 @@ def all_program_info(): #only for documentation purposes
     model_name = '' #if experiment is user, set model_name to describe data set
     user_file = '' #if experiment is user, specify filename containing fluxes
     showplot = True  #Turn to False if don't want to see plots
+    saveplot = False #turn to true if you want to save plots to file
     detect_prev_event = True  #Helps if previous event causes high intensities
     two_peaks = False  #Helps if two increases above threshold in one event
+    umasep = False #Set to true if want UMASEP values (see explanation above)
     threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
-    sep.run_all(start_date, end_date, experiment, flux_type, model_name,
-        user_file, showplot, detect_prev_event, two_peaks, threshold)
+    FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
+    sep_day = sep.run_all(start_date, end_date, experiment, flux_type, \
+        model_name, user_file, showplot, saveplot, detect_prev_event,  \
+        two_peaks, umasep, threshold)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -1044,6 +1090,8 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                 logE1 = np.log(bin_center[i])
                 logE2 = np.log(bin_center[i+1])
                 endE = bin_center[i+1]
+                if i+1 == nbins-1:
+                    endE = energy_bins[nbins-1][1] #extend to edge of last bin
 
                 f = lambda x:exp(logF1
                             + (np.log(x)-logE1)*(logF2-logF1)/(logE2-logE1))
@@ -1265,10 +1313,10 @@ def get_fluence_spectrum(experiment, flux_type, model_name, energy_threshold,
                         + '_' +str(year) + '_' + str(month) + '_' + str(day) \
                         +'.csv'
         fout = open(foutname,"w+")
-        fout.write('#Event defined by >' + str(energy_threshold) + ', '
+        fout.write('\"#Event defined by >' + str(energy_threshold) + ', '
                     + str(flux_threshold) + ' pfu; start time '
                     + str(sep_dates[0]) + ', end time '
-                    + str(sep_dates[len(sep_dates)-1]) + '\n')
+                    + str(sep_dates[len(sep_dates)-1]) + '\"\n')
         if flux_type == "differential":
             fout.write("#Elow,Emid,Ehigh,Fluence 1/[MeV cm^2 sr]\n")
         if flux_type == "integral":
@@ -1334,7 +1382,7 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                             tmp_dates,tmp_fluxes[i])
 
         if dur != 0 and two_peaks:
-            if two_peaks and dur < timedelta(days=1):
+            if dur < timedelta(days=1):
                 print("User specified that event has two peaks. Extending "
                     "event to second decrease below threshold.")
                 last_date = dates[len(dates)-1]
@@ -1344,12 +1392,16 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                                 energy_thresholds[i],flux_thresholds[i],
                                 tmp_dates,tmp_fluxes[i])
 
-            dur = eet2 - ct #adjust duration to include both peaks
-            eet = eet2 #adjust event end time
-            if pf2 > pf: #determine which peak has the highest flux
-                pf = pf2
-                pt = pt2
-                rt = pt2 - ct
+                #Only apply changes if another threshold crossing was found and
+                #new event end time is not the last point in the file
+                if dur2 != 0:
+                    if eet2 < dates[len(dates)-1]:
+                        dur = eet2 - ct #adjust duration to include both peaks
+                        eet = eet2 #adjust event end time
+                        if pf2 > pf: #determine which peak has the highest flux
+                            pf = pf2
+                            pt = pt2
+                            rt = pt2 - ct
 
         crossing_time.append(ct)
         peak_flux.append(pf)
@@ -1370,6 +1422,87 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                 + str(event_end_time[i]) + '  ' + str(duration[i])
              )
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
+
+
+def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
+                integral_fluxes, crossing_time):
+    """Uses the integral fluxes (either input or estimated from differential
+       channels) and all the energy and flux thresholds set in the main program
+       to calculate SEP event quantities specific to the UMASEP model.
+            Flux at threshold crossing time + 3, 4, 5, 6, 7 hours
+    """
+    nthresh = len(flux_thresholds)
+    proton_flux = []
+    delays = [datetime.timedelta(hours=3), datetime.timedelta(hours=4),
+                    datetime.timedelta(hours=5), datetime.timedelta(hours=6),
+                    datetime.timedelta(hours=7)]
+    ndelay = len(delays)
+    delay_times = []
+    proton_delay_times = []  #actual time point corresponding to flux
+
+    #Match the correct time delay with the correct threshold
+    for i in range(nthresh):
+        if crossing_time[i] == 0:
+            delay_times.append(0)
+            continue
+        all_delays = []
+        for delay in delays:
+            all_delays.append(crossing_time[i] + delay)
+            #Make sure that delayed time doesn't exceed input time range
+            if crossing_time[i] + delay > dates[len(dates)-1]:
+                sys.exit("An UMASEP delayed time (Ts+7, 6, 5, and 3 hrs) "
+                        "exceeded the user's input time range. Please rerun "
+                        "and extend end time.")
+
+        delay_times.append(all_delays) #all delays for a given threshold
+
+    for i in range(nthresh):
+        save_flux = [0]*ndelay
+        save_dates = [0]*ndelay
+        if delay_times[i] == 0:
+            proton_delay_times.append(0)
+            proton_flux.append(0)
+            continue
+        for k in range(ndelay):
+            save_index = -1
+            for j in range(len(dates)):
+                if dates[j] <= delay_times[i][k]:
+                    save_index = j
+
+            #GET FLUX AT DELAYED TIME WITH 10 MINUTE AVERAGE
+            #May choose to modify if input data set has something other than
+            #5 minute time cadence.
+            if save_index == -1: #should not happen, unless dates has no length
+                sys.exit("Did not find an appropriate UMASEP flux point. "
+                        "Exiting.")
+            if save_index == 0: #also should be no way for this to happen
+                save_flux[k] = (integral_fluxes[i][save_index] + \
+                            integral_fluxes[i][save_index +1])/2.
+            else: #also should be no way for this to happen
+                save_flux[k] = (integral_fluxes[i][save_index] + \
+                            integral_fluxes[i][save_index - 1])/2.
+            save_dates[k] = dates[save_index]
+
+#            print(
+#                   'Flux      Threshold    Time Crossed         '+
+#                   'Target Delayed Time       Actual Delayed Time    ' +
+#                   'Proton Flux at Delay'
+#                  )
+#            print(
+#                    '>' + str(energy_thresholds[i]) + ' MeV   '
+#                    + str(flux_thresholds[i]) + ' pfu       '
+#                    + str(crossing_time[i]) + '  '
+#                    + str(delay_times[i][k]) + '  '
+#                    + str(save_dates[k]) + '  '
+#                    + '   ' + str(save_flux[k])
+#                )
+
+
+        proton_flux.append(save_flux)
+        proton_delay_times.append(save_dates)
+
+    return proton_delay_times, proton_flux
+
 
 
 def report_threshold_fluences(experiment, flux_type, model_name,
@@ -1398,7 +1531,7 @@ def report_threshold_fluences(experiment, flux_type, model_name,
 
     integral_fluence, integral_energies = get_fluence_spectrum(experiment,
                     "integral",model_name, 0, 0,sep_dates, sep_integral_fluxes,
-                    tmp_energy_bins, False)
+                    tmp_energy_bins, False) #don't save file
 
     for i in range(nthresh):
         integral_fluence[i] = integral_fluence[i]*4.*math.pi
@@ -1455,13 +1588,24 @@ def save_integral_fluxes_to_file(experiment, flux_type, model_name,
 
 def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
                 flux_thresholds, crossing_time, peak_flux, peak_time, rise_time,
-                event_end_time, duration, integral_fluences):
+                event_end_time, duration, integral_fluences, umasep,
+                umasep_times, umasep_fluxes):
     """Write all calculated values to file for all thresholds. Event-integrated
        fluences for >10, >100 MeV (and user-defined threshold) will also be
        included. Writes out file with name e.g.
        output/sep_values_experiment_fluxtype_YYYY_M_D.csv
+       If the UMASEP option was selected, add on the proton values calculated
+       at the UMASEP Ts + Xhr time points.
     """
     nthresh = len(energy_thresholds)
+    numa = 0
+    if umasep:
+        for i in range(nthresh):
+            if umasep_times[i] == 0:
+                continue
+            if len(umasep_times[i]) > numa:
+                numa = len(umasep_times[i])
+
     year = 0
     month = 0
     day = 0
@@ -1472,7 +1616,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
             day = crossing_time[i].day
     if year == 0:
         sys.exit("No thresholds were crossed during this time period. "
-                "Sep values not written to file. Exiting.")
+                "SEP values not written to file. Exiting.")
 
     foutname = outpath + '/sep_values_' + experiment + '_' \
                 + flux_type + '_' + str(year) + '_' + str(month) + '_' \
@@ -1493,6 +1637,9 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
             'End Time,Duration')
     for i in range(nthresh):
         fout.write(',Fluence >' + str(energy_thresholds[i]) + ' MeV [cm^-2]')
+    if umasep:
+        for jj in range(numa):
+            fout.write(', UMASEP Delay (hr), Flux pfu')
     fout.write('\n')
     nthresh = len(energy_thresholds)
 
@@ -1514,14 +1661,20 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
             fout.write(str_duration[k] + ' ')
         for j in range(nthresh):
             fout.write(',' + str(integral_fluences[i,j]))
+        if umasep:
+            for jj in range(numa):
+                fout.write(',' + str(umasep_times[i][jj] - crossing_time[i]) \
+                    + ',' + str(umasep_fluxes[i][jj]))
         fout.write('\n')
 
     fout.close()
+    return year, month, day
 
 
 ######## MAIN PROGRAM #########
 def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
-        user_file, showplot, detect_prev_event, two_peaks, str_thresh):
+        user_file, showplot, saveplot, detect_prev_event, two_peaks, umasep,
+        str_thresh):
     """"Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
@@ -1530,10 +1683,21 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         your model (e.g. MyModel), otherwise set to ''.
         user_file is a string. Defaul is ''. If user is selected for experiment,
         then name of flux file is specified in user_file.
-        showplot, detect_prev_event, and two_peaks are booleans.
+        showplot, detect_prev_event, two_peaks, and umasep are booleans.
         Set str_thresh to be '100,1' for default value or modify to add your own
         threshold.
+        This routine will generate boolean flags that indicate if the event
+        starts at the very first time point, ends on the very last time point,
+        has a duration less than 12 hours, or has a >100 MeV onset more than
+        24 hours after the >10 MeV onset. These flags intend to help the user
+        running the program in batch mode if a certain event might have
+        incorrect timing.
     """
+    #Define important flags here
+    FirstStart = False #threshold crossed on first data point
+    LastEnd = False #event ends on last data point instead of threshold
+    ShortEvent = False #Start to end less than 12 hours, perhaps 2 peak issue
+    LateHundred = False #>100 MeV threshold crossed >24 hours after >10 MeV
 
     str_thresh = str_thresh.strip().split(",")
     input_threshold = [float(str_thresh[0]), float(str_thresh[1])]
@@ -1548,15 +1712,18 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #CHECKS ON INPUTS
     if (str_startdate == "" or str_enddate == ""):
         sys.exit('You must enter a valid date range. Exiting.')
+
     if (experiment == "SEPEM" and flux_type == "integral"):
         sys.exit('The SEPEM (RSDv2) data set only provides differential fluxes.'
             ' Please change your FluxType to differential. Exiting.')
+
     sepem_end_date = datetime.datetime(2015,12,31,23,55,00)
     if(experiment == "SEPEM" and (startdate > sepem_end_date or
                    enddate > sepem_end_date)):
         sys.exit('The SEPEM (RSDv2) data set only extends to '
                   + str(sepem_end_date) +
             '. Please change your requested dates. Exiting.')
+
 
     user_fname[0] = user_file #input as argument, default is 'tmp.txt'
 
@@ -1586,6 +1753,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         energy_thresholds.append(input_threshold[0])
         flux_thresholds.append(input_threshold[1])
 
+    if umasep: #add two additional thresholds
+        energy_thresholds.append(30)
+        flux_thresholds.append(1) #EDIT FOR LATER
+        energy_thresholds.append(50)
+        flux_thresholds.append(1) #EDIT FOR LATER
+
     #Estimate or select integral fluxes corresponding the energy_thresholds
     integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
                     flux_thresholds, energy_thresholds, energy_bins)
@@ -1599,12 +1772,35 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         calculate_event_info(energy_thresholds,flux_thresholds, dates,
                     integral_fluxes, detect_prev_event, two_peaks)
 
+
+    umasep_times =[]
+    umasep_fluxes=[]
+    if umasep:
+        umasep_times, umasep_fluxes = calculate_umasep_info(energy_thresholds,
+                        flux_thresholds, dates, integral_fluxes, crossing_time)
+
     #Calculate event-integrated fluences for all thresholds
     nthresh = len(energy_thresholds)
     all_integral_fluences = np.zeros(shape=(nthresh,nthresh)) #fluences corresponding to >10, >100 MeV
     all_fluence = np.zeros(shape=(nthresh,len(energy_bins)))
     all_energies = np.zeros(shape=(nthresh,len(energy_bins)))
+
+    #######Quality check for >10 and >100######
+    if crossing_time[0] != 0 and crossing_time[1] != 0:
+        if crossing_time[1] - crossing_time[0] > datetime.timedelta(hours=12):
+            LateHundred = True #>100 threshold crossed late after >10 crossed
+    ##########################
+
     for i in range(nthresh):
+        #######Quality Checks#######
+        if crossing_time[i] == startdate:
+            FirstStart = True  #threshold crossed on first time point
+        if event_end_time[i] == enddate:
+            LastEnd = True
+        if crossing_time[i] != 0 and event_end_time[i] != 0:
+            if event_end_time[i]-crossing_time[i]<datetime.timedelta(hours=12):
+                ShortEvent = True
+        ############################
         #If no threshold was crossed during specified date range
         if crossing_time[i] == 0:
             print("The >" + str(energy_thresholds[i]) + " MeV threshold was "
@@ -1621,12 +1817,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 + str(energy_thresholds[i]) + ' MeV, for '
                 + str(crossing_time[i]) + ' to ' + str(event_end_time[i]))
         if crossing_time[i] == event_end_time[i]:
-            print("Event start and end time the same (did you set "
+            sys.exit("Event start and end time the same (did you set "
             "--DetectPreviousEvent? May not work in this case). Exiting.")
-            return
+
         fluence, energies = get_fluence_spectrum(experiment, flux_type,
                          model_name, energy_thresholds[i], flux_thresholds[i],
-                         sep_dates, sep_fluxes, energy_bins, True)
+                         sep_dates, sep_fluxes, energy_bins, True) #savefile
 
         all_fluence[i] = fluence
         all_energies[i] = energies
@@ -1650,132 +1846,154 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
 
     #Save all calculated values for all threshold definitions to file
-    print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
-                    flux_thresholds, crossing_time, peak_flux, peak_time,
-                    rise_time, event_end_time, duration, all_integral_fluences)
+    sep_year, sep_month, sep_day = print_values_to_file(experiment, flux_type,
+                    model_name, energy_thresholds, flux_thresholds,
+                    crossing_time, peak_flux, peak_time, rise_time,
+                    event_end_time, duration, all_integral_fluences,
+                    umasep, umasep_times, umasep_fluxes)
     #Write >10, >100 and user input threshold integral fluxes to file
     save_integral_fluxes_to_file(experiment, flux_type, model_name,
             energy_thresholds, crossing_time, dates, integral_fluxes)
 
     #===============PLOTS==================
     #Plot selected results
-    if showplot:
-        #Event definition from integral fluxes
-        if flux_type == "differential":
-            print("Plotting estimated integral fluxes with threshold "
-                   "crossings.")
+    #Event definition from integral fluxes
+    if flux_type == "differential":
+        print("Plotting estimated integral fluxes with threshold "
+               "crossings.")
+    if flux_type == "integral":
+        print("Plotting integral fluxes with threshold crossings.")
+    #plot integral fluxes (either input or estimated)
+    nthresh = len(flux_thresholds)
+    figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
+            + '_' + experiment + '_' + flux_type + '_' + 'Event_Def'
+    fig = plt.figure(figname,figsize=(9,7))
+    for i in range(nthresh):
+        if crossing_time[i] == 0:
+            continue
+        plt.subplot(nthresh, 1, i+1)
+        plt.plot_date(dates,integral_fluxes[i],'-')
+        plt.axvline(crossing_time[i],color='black',linestyle=':')
+        plt.axvline(event_end_time[i],color='black',linestyle=':')
+        plt.axhline(flux_thresholds[i],color='red',linestyle=':')
+        plt.plot_date(peak_time[i],peak_flux[i],'ro')
+        if umasep:
+            for k in range(len(umasep_times[i])):
+                plt.plot_date(umasep_times[i][k],umasep_fluxes[i][k],'bo')
         if flux_type == "integral":
-            print("Plotting integral fluxes with threshold crossings.")
-        #plot integral fluxes (either input or estimated)
-        nthresh = len(flux_thresholds)
-        plt.figure("Event_Def",figsize=(9,6))
-        for i in range(nthresh):
-            if crossing_time[i] == 0:
-                continue
-            plt.subplot(nthresh, 1, i+1)
-            plt.plot_date(dates,integral_fluxes[i],'-')
-            plt.axvline(crossing_time[i],color='black',linestyle=':')
-            plt.axvline(event_end_time[i],color='black',linestyle=':')
-            plt.axhline(flux_thresholds[i],color='red',linestyle=':')
-            plt.plot_date(peak_time[i],peak_flux[i],'ro')
-            if flux_type == "integral":
-                plt.title(experiment + ' Flux for >'+str(energy_thresholds[i])
-                           + ' MeV', x=0.75, y=0.8)
-                if experiment == 'user' and model_name != '':
-                    plt.title(model_name + ' Flux for >'
-                        + str(energy_thresholds[i]) + ' MeV', x=0.75, y=0.8)
-
-            if flux_type == "differential":
-                plt.title(experiment + ' Estimated Flux for >'
-                           + str(energy_thresholds[i]) + ' MeV', x=0.7, y=0.8)
-                if experiment == 'user' and model_name != '':
-                    plt.title(model_name + ' Estimated Flux for >'
-                               + str(energy_thresholds[i]) + ' MeV',
-                               x=0.7, y=0.8)
-            plt.xlabel('Date')
-            plt.ylabel('Integral Flux 1/[cm^2 s sr]')
-            plt.yscale("log")
-            ymin = max(1e-4, min(integral_fluxes[i]))
-           # plt.ylim(ymin, peak_flux[i]+peak_flux[i]*.2)
-
-
-
-        #All energy channels in specified date range with event start and stop
-        print("Plotting fluxes in original energy bins. Any bad data points "
-              "were interpolated. Lines indicate event start and stop for "
-              "thresholds.")
-        #Plot all channels of user specified data
-        plt.figure("All_Bins",figsize=(9,4))
-        ax = plt.subplot(111)
-        nbins = len(energy_bins)
-        for i in range(nbins):
-            legend_label = ""
-            if energy_bins[i][1] != -1:
-                legend_label = str(energy_bins[i][0]) + '-' \
-                               + str(energy_bins[i][1]) + ' MeV'
-            else:
-                legend_label = '>'+ str(energy_bins[i][0]) + ' MeV'
-            ax.plot_date(dates,fluxes[i],'-',label=legend_label)
-        colors = ['black','red','blue']
-        for j in range(len(energy_thresholds)):
-            if crossing_time[j] == 0:
-                continue
-            line_label = '>' + str(energy_thresholds[j]) + ' MeV, ' \
-                        + str(flux_thresholds[j]) + ' pfu'
-            ax.axvline(crossing_time[j],color=colors[j],linestyle=':',
-                        label=line_label)
-            ax.axvline(event_end_time[j],color=colors[j],linestyle=':')
-        if flux_type == "integral":
-            plt.ylabel('Integral Flux 1/[cm^2 s sr]')
-            plt.title(experiment + " Integral Energy Bins with Threshold "
-                            "Crossings")
+            plt.title(experiment + ' Flux for >'+str(energy_thresholds[i])
+                       + ' MeV', x=0.75, y=0.8)
             if experiment == 'user' and model_name != '':
-                plt.title(model_name + " Integral Energy Bins with Threshold "
-                                "Crossings")
+                plt.title(model_name + ' Flux for >'
+                    + str(energy_thresholds[i]) + ' MeV', x=0.75, y=0.8)
+
         if flux_type == "differential":
-            plt.ylabel('Flux 1/[MeV cm^2 s sr]')
-            plt.title(experiment + " Differential Energy Bins with Threshold "
-                            "Crossings")
+            plt.title(experiment + ' Estimated Flux for >'
+                       + str(energy_thresholds[i]) + ' MeV', x=0.7, y=0.8)
             if experiment == 'user' and model_name != '':
-                plt.title(model_name + " Differential Energy Bins with Threshold "
-                                "Crossings")
+                plt.title(model_name + ' Estimated Flux for >'
+                           + str(energy_thresholds[i]) + ' MeV',
+                           x=0.7, y=0.8)
         plt.xlabel('Date')
+        plt.ylabel('Integral Flux\n 1/[cm^2 s sr]')
         plt.yscale("log")
-        chartBox = ax.get_position()
-        ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.85,
-                         chartBox.height])
-        ax.legend(loc='upper center', bbox_to_anchor=(1.17, 0.95))
+        ymin = max(1e-4, min(integral_fluxes[i]))
+        # plt.ylim(ymin, peak_flux[i]+peak_flux[i]*.2)
+    if saveplot:
+        fig.savefig('plots/' + figname + '.png')
+    if not showplot:
+        plt.close(fig)
 
 
-        #Event-integrated fluence for energy channels
-        print("Plotting event-integrated fluence spectrum.")
-        #Plot fluence spectrum summed between SEP start and end dates
-        plt.figure("Fluence",figsize=(6,5))
-        ax = plt.subplot(111)
-        markers = ['bo','P','D']
-        for j in range(len(energy_thresholds)):
-            if crossing_time[j] == 0:
-                continue
-            legend_label = '>' + str(energy_thresholds[j]) + ' MeV, ' \
-                        + str(flux_thresholds[j]) + ' pfu'
-            ax.plot(all_energies[j,:],all_fluence[j,:],markers[j],
-                    color=colors[j],mfc='none',label=legend_label)
-        plt.grid(which="both", axis="both")
-        plt.title(experiment + ' Event-Integrated Fluences for All Event '
-                    'Definitions')
+    #All energy channels in specified date range with event start and stop
+    print("Plotting fluxes in original energy bins. Any bad data points "
+          "were interpolated. Lines indicate event start and stop for "
+          "thresholds.")
+    #Plot all channels of user specified data
+    figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
+            + '_' + experiment + '_' + flux_type + '_' + 'All_Bins'
+    fig = plt.figure(figname,figsize=(9,4))
+    ax = plt.subplot(111)
+    nbins = len(energy_bins)
+    for i in range(nbins):
+        legend_label = ""
+        if energy_bins[i][1] != -1:
+            legend_label = str(energy_bins[i][0]) + '-' \
+                           + str(energy_bins[i][1]) + ' MeV'
+        else:
+            legend_label = '>'+ str(energy_bins[i][0]) + ' MeV'
+        ax.plot_date(dates,fluxes[i],'-',label=legend_label)
+    colors = ['black','red','blue','green','cyan','magenta']
+    for j in range(len(energy_thresholds)):
+        if crossing_time[j] == 0:
+            continue
+        line_label = '>' + str(energy_thresholds[j]) + ' MeV, ' \
+                    + str(flux_thresholds[j]) + ' pfu'
+        ax.axvline(crossing_time[j],color=colors[j],linestyle=':',
+                    label=line_label)
+        ax.axvline(event_end_time[j],color=colors[j],linestyle=':')
+    if flux_type == "integral":
+        plt.ylabel('Integral Flux 1/[cm^2 s sr]')
+        plt.title(experiment + " Integral Energy Bins with Threshold "
+                        "Crossings")
         if experiment == 'user' and model_name != '':
-            plt.title(model_name + ' Event-Integrated Fluences for All Event '
-                        'Definitions')
-        plt.xlabel('Energy [MeV]')
-        if flux_type == "integral":
-            plt.ylabel('Integral Fluxes 1/[cm^2 sr]')
-        if flux_type == "differential":
-            plt.ylabel('Flux 1/[MeV cm^2 sr]')
-        plt.xscale("log")
-        plt.yscale("log")
-        ax.legend(loc='upper right')
+            plt.title(model_name + " Integral Energy Bins with Threshold "
+                            "Crossings")
+    if flux_type == "differential":
+        plt.ylabel('Flux 1/[MeV cm^2 s sr]')
+        plt.title(experiment + " Differential Energy Bins with Threshold "
+                        "Crossings")
+        if experiment == 'user' and model_name != '':
+            plt.title(model_name + " Differential Energy Bins with Threshold "
+                            "Crossings")
+    plt.xlabel('Date')
+    plt.yscale("log")
+    chartBox = ax.get_position()
+    ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.85,
+                     chartBox.height])
+    ax.legend(loc='upper center', bbox_to_anchor=(1.17, 0.95))
+    if saveplot:
+        fig.savefig('plots/' +figname + '.png')
+    if not showplot:
+        plt.close(fig)
 
 
+    #Event-integrated fluence for energy channels
+    print("Plotting event-integrated fluence spectrum.")
+    #Plot fluence spectrum summed between SEP start and end dates
+    figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
+            + '_' + experiment + '_' + flux_type + '_' + 'Fluence'
+    fig = plt.figure(figname,figsize=(6,5))
+    ax = plt.subplot(111)
+    markers = ['bo','P','D','v','^']
+    for j in range(len(energy_thresholds)):
+        if crossing_time[j] == 0:
+            continue
+        legend_label = '>' + str(energy_thresholds[j]) + ' MeV, ' \
+                    + str(flux_thresholds[j]) + ' pfu'
+        ax.plot(all_energies[j,:],all_fluence[j,:],markers[j],
+                color=colors[j],mfc='none',label=legend_label)
+    plt.grid(which="both", axis="both")
+    plt.title(experiment + ' Event-Integrated Fluences for All Event '
+                'Definitions')
+    if experiment == 'user' and model_name != '':
+        plt.title(model_name + ' Event-Integrated Fluences for All Event '
+                    'Definitions')
+    plt.xlabel('Energy [MeV]')
+    if flux_type == "integral":
+        plt.ylabel('Integral Fluxes 1/[cm^2 sr]')
+    if flux_type == "differential":
+        plt.ylabel('Flux 1/[MeV cm^2 sr]')
+    plt.xscale("log")
+    plt.yscale("log")
+    ax.legend(loc='upper right')
+    if saveplot:
+        fig.savefig('plots/' + figname + '.png')
+    if not showplot:
+        plt.close(fig)
+
+    return FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
+            sep_day
 
 
 if __name__ == "__main__":
@@ -1808,9 +2026,9 @@ if __name__ == "__main__":
     parser.add_argument("--ModelName", type=str, default='', help=("If you "
             "chose user for experiment, specify the name of the model or "
             "experiment that you are analyzing (no spaces)."))
-    parser.add_argument("--UserFile", type=str, default='tmp.txt', help=("If you "
-            "chose user for experiment, specify the filename containing the "
-            "fluxes. Specify energy bins and delimeter in code at top. "
+    parser.add_argument("--UserFile", type=str, default='tmp.txt', help=("If "
+            "you chose user for experiment, specify the filename containing "
+            "the fluxes. Specify energy bins and delimeter in code at top. "
             "Default is tmp.txt."))
     parser.add_argument("--Threshold", type=str, default="100,1",
             help=("The energy and flux thresholds (written as 100,1 with no "
@@ -1819,6 +2037,8 @@ if __name__ == "__main__":
                     "(1/[cm^2 s sr]). Default = '100,1'"))
     parser.add_argument("--showplot",
             help="Flag to display plots", action="store_true")
+    parser.add_argument("--saveplot",
+            help="Flag to save plots to file", action="store_true")
     parser.add_argument("--DetectPreviousEvent",
             help=("Flag to indicate that the threshold is crossed at the "
                    "first point due to a previous event."), action="store_true")
@@ -1827,6 +2047,11 @@ if __name__ == "__main__":
                     "for a couple of points), then drops below threshold "
                     "before increasing again to the true peak of the event."),
                     action="store_true")
+    parser.add_argument("--UMASEP",
+            help=("Flag to calculate flux values and thresholds specific to "
+                "the UMASEP model. Thresholds for >10, >30, >50, >100 MeV and "
+                "flux values at various time periods after crossing "
+                "thresholds."), action="store_true")
 
 
     args = parser.parse_args()
@@ -1839,9 +2064,14 @@ if __name__ == "__main__":
     user_file = args.UserFile
     str_thresh = args.Threshold
     showplot = args.showplot
+    saveplot = args.saveplot
     detect_prev_event = args.DetectPreviousEvent
     two_peaks = args.TwoPeaks
+    umasep = args.UMASEP
 
-    run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
-        user_file, showplot, detect_prev_event, two_peaks, str_thresh)
+    FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
+    sep_day = run_all(str_startdate, str_enddate, experiment, flux_type,
+        model_name,user_file, showplot, saveplot, detect_prev_event, two_peaks,
+        umasep, str_thresh)
+
     if showplot: plt.show()
