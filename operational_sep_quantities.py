@@ -84,8 +84,10 @@ user_delim = ""
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
 user_energy_bins = [[750,-1],[500,-1],[300,-1],[100,-1],\
                     [60,-1],[50,-1],[30,-1],[10,-1]]
+#SEPEM_H_GOES13 P3 - P7 [[4,9],[12,23],[26,38],[40,73],[100,142],[160,242]]
 #EPREM [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
-#SEPMOD [[1000,-1],[750,-1],[500,-1],[300,-1],[100,-1],[60,-1],[50,-1],[30,-1],[10,-1]]
+#SEPMOD [[750,-1],[500,-1],[300,-1],[100,-1],\
+#                    [60,-1],[50,-1],[30,-1],[10,-1]]
 ############################
 
 #FILENAME(s) containing user input fluxes - WILL BE SET THROUGH ARGUMENT
@@ -1450,7 +1452,7 @@ def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
             all_delays.append(crossing_time[i] + delay)
             #Make sure that delayed time doesn't exceed input time range
             if crossing_time[i] + delay > dates[len(dates)-1]:
-                sys.exit("An UMASEP delayed time (Ts+7, 6, 5, and 3 hrs) "
+                sys.exit("An UMASEP delayed time (Ts+3, 4, 5, 6, 7 hrs) "
                         "exceeded the user's input time range. Please rerun "
                         "and extend end time.")
 
@@ -1478,7 +1480,7 @@ def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
             if save_index == 0: #also should be no way for this to happen
                 save_flux[k] = (integral_fluxes[i][save_index] + \
                             integral_fluxes[i][save_index +1])/2.
-            else: #also should be no way for this to happen
+            else:
                 save_flux[k] = (integral_fluxes[i][save_index] + \
                             integral_fluxes[i][save_index - 1])/2.
             save_dates[k] = dates[save_index]

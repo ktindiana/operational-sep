@@ -118,6 +118,7 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
                     threshold_found = True
                     row_dict = {}
                     for i in range(2,len(row)):
+                        if i-2 >= len(proton_keys): continue #MODIFY FOR UMASEP
                         val = row[i]  #string
                         for col in date_cols: #if column should be a date
                             if i == col:
@@ -195,7 +196,7 @@ def read_fluence_info(threshold, sep_date, expmt_keys, experiments, flux_types):
         #SKIP LINES starting with hash #
         for line in infile:
             line = line.lstrip()
-            if line[0] == "#":
+            if line[0] == "#" or line[0] == "\"":
                 continue
             else:
                 #Break up line into different column by splitting at commas
@@ -380,15 +381,19 @@ def setup(all_sep_dates, all_model_names, all_model_flux_types, str_threshold):
         date = datetime.datetime.strptime(sep_dates[i], "%Y-%m-%d")
         sep_keys.append(date)
     Nsep = len(sep_keys)
-    experiments = ['GOES-13','GOES-13','GOES-15','GOES-15','SEPEM']
+    experiments = ['GOES-13','GOES-15']
+#    experiments = ['GOES-13','GOES-13','GOES-15','GOES-15','SEPEM']
     if threshold[0] == '>100':
-        experiments = ['GOES-13','GOES-13','GOES-15','GOES-15']
+        experiments = ['GOES-13','GOES-15']
+#        experiments = ['GOES-13','GOES-13','GOES-15','GOES-15']
     for model_name in model_names:
         experiments.append(model_name)
-    flux_types = ['integral','differential','integral','differential',
-            'differential']
+    flux_types = ['integral','integral']
+#    flux_types = ['integral','differential','integral','differential',
+#            'differential']
     if threshold[0] == '>100':
-        flux_types = ['integral','differential','integral','differential']
+        flux_types = ['integral','integral']
+#        flux_types = ['integral','differential','integral','differential']
     for model_flux_type in model_flux_types:
         flux_types.append(model_flux_type)
     Nexp = len(experiments) #number of comparisons for plots
@@ -511,7 +516,7 @@ def reference_comparison(experiments, flux_types, model_names, threshold,
 
 
 def fluence_comparison(experiments, flux_types, model_names, threshold,
-            sep_keys, expmt_keys, proton_dict):
+            sep_keys, expmt_keys, proton_dict, saveplot):
     """Makes plot of fluence spectrum. Makes bar charts of >10 MeV fluence and
        >100 MeV fluence. All fluences are associated with the time period
        defined by the threshold indicated by the user. So if threshold was
@@ -561,11 +566,12 @@ def fluence_comparison(experiments, flux_types, model_names, threshold,
         ax.legend(loc='upper center', bbox_to_anchor=(1.25, 0.95))
         plt.xscale("log")
         plt.yscale("log")
-        figname = plotpath+'/fluence_spectrum_'+str(sep_keys[i].year)+'_'\
-            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+select_flux_type+'.png'
-        fig.savefig(figname)
-        print('Wrote to file: ' + figname)
+        if saveplot:
+            figname = plotpath+'/fluence_spectrum_'+str(sep_keys[i].year)+'_'\
+                +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                +threshold[0][1:]+'_'+threshold[1]+'pfu_'+select_flux_type+'.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
     #ONE FOR INTEGRAL SPECTRA
     select_flux_type = "integral"
@@ -597,11 +603,12 @@ def fluence_comparison(experiments, flux_types, model_names, threshold,
         ax.legend(loc='upper center', bbox_to_anchor=(1.25, 0.95))
         plt.xscale("log")
         plt.yscale("log")
-        figname = plotpath+'/fluence_spectrum_'+str(sep_keys[i].year)+'_'\
-            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu_'+select_flux_type+'.png'
-        fig.savefig(figname)
-        print('Wrote to file: ' + figname)
+        if saveplot:
+            figname = plotpath+'/fluence_spectrum_'+str(sep_keys[i].year)+'_'\
+                +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                +threshold[0][1:]+'_'+threshold[1]+'pfu_'+select_flux_type+'.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
     #####BAR CHARTS OF SEP FLUENCE for >10 MeV#####
     for i in range(Nsep):
@@ -631,11 +638,12 @@ def fluence_comparison(experiments, flux_types, model_names, threshold,
         plt.ylabel('>10 MeV Fluence [cm^-2]')
         plt.title(str(sep_keys[i])[0:10] +' Event-Integrated >10 MeV '
                     'Fluence \n('+ thresh_label + ')')
-        figname = plotpath+'/fluence_gt10_bar_'+str(sep_keys[i].year)+'_'\
-            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
-        fig.savefig(figname)
-        print('Wrote to file: ' + figname)
+        if saveplot:
+            figname = plotpath+'/fluence_gt10_bar_'+str(sep_keys[i].year)+'_'\
+                +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
     #BAR CHART OF SEP FLUENCE for >100 MeV
     for i in range(Nsep):
@@ -665,61 +673,60 @@ def fluence_comparison(experiments, flux_types, model_names, threshold,
         plt.ylabel('>100 MeV Fluence [cm^-2]')
         plt.title(str(sep_keys[i])[0:10] +' Event-Integrated >100 MeV '
                     'Fluence \n(' + thresh_label + ')')
-        figname = plotpath+'/fluence_gt100_bar_'+str(sep_keys[i].year)+'_'\
-            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
-        fig.savefig(figname)
-        print('Wrote to file: ' + figname)
+        if saveplot:
+            figname = plotpath+'/fluence_gt100_bar_'+str(sep_keys[i].year)+'_'\
+                +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
 
 
 def peak_flux_comparison(experiments, flux_types, model_names, threshold,
-            sep_keys, expmt_keys, proton_dict):
-   """Makes bar charts of event peak flux. A second version of the bar chart
-      is commented out below. It showed the data and model comparison in a
-      different style.
-   """
-   Nsep = len(sep_keys)
-   Nexp = len(experiments)
-   thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
+            sep_keys, expmt_keys, proton_dict, saveplot):
+    """Makes bar charts of event peak flux. A second version of the bar chart
+        is commented out below. It showed the data and model comparison in a
+        different style.
+    """
+    Nsep = len(sep_keys)
+    Nexp = len(experiments)
+    thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
 
-   #BAR CHART OF SEP EVENT PEAK FLUXES - ALL EXPERIMENTS
-   for i in range(Nsep):
-       peak_fluxes = make_array_from_dict(expmt_keys, 'proton_peak_flux',
+    #BAR CHART OF SEP EVENT PEAK FLUXES - ALL EXPERIMENTS
+    for i in range(Nsep):
+        peak_fluxes = make_array_from_dict(expmt_keys, 'proton_peak_flux',
            proton_dict[sep_keys[i]])
-       fig = plt.figure(figsize=(6,5))
-       colors = []
-       labels = []
-       for j in range(Nexp):
-           labels.append(experiments[j] + '\n' + flux_types[j])
-           #set colors for bars
-           color = 'blue'
-           for model_name in model_names:
-               if experiments[j] == model_name:
-                   color = 'red'
-           colors.append(color)
-       for j in range(Nexp-1,-1,-1):
-           if peak_fluxes[j] == [] or peak_fluxes[j] == badval:
-               del peak_fluxes[j]
-               del labels[j]
-               del colors[j]
-           #else:
-           #    #Convert to percent
-            #   ref_peak_ratio_all[i][j] = ref_peak_ratio_all[i][j]*100.
+        fig = plt.figure(figsize=(6,5))
+        colors = []
+        labels = []
+        for j in range(Nexp):
+            labels.append(experiments[j] + '\n' + flux_types[j])
+            #set colors for bars
+            color = 'blue'
+            for model_name in model_names:
+                if experiments[j] == model_name:
+                    color = 'red'
+            colors.append(color)
+        for j in range(Nexp-1,-1,-1):
+            if peak_fluxes[j] == [] or peak_fluxes[j] == badval:
+                del peak_fluxes[j]
+                del labels[j]
+                del colors[j]
 
-       y_pos = np.arange(len(labels))
-       plt.bar(y_pos, peak_fluxes, color=colors, align='center', alpha=0.5)
-       plt.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
-       plt.xticks(y_pos, labels)
-       plt.yscale("log")
-       plt.ylabel(threshold[0] + ' MeV Peak Flux 1/[cm^2 s sr]')
-       plt.title(str(sep_keys[i])[0:10] +' Event ' + threshold[0]
-               +' MeV Peak Flux \n(' + thresh_label + ')')
-       figname = plotpath+'/peak_flux_bar_'+str(sep_keys[i].year)+'_'\
-           +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-           +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
-       fig.savefig(figname)
-       print('Wrote to file: ' + figname)
+        y_pos = np.arange(len(labels))
+        plt.bar(y_pos, peak_fluxes, color=colors, align='center', alpha=0.5)
+        plt.ticklabel_format(axis='y', style='sci', scilimits=(-2,2))
+        plt.xticks(y_pos, labels)
+        plt.yscale("log")
+        plt.ylabel(threshold[0] + ' MeV Peak Flux 1/[cm^2 s sr]')
+        plt.title(str(sep_keys[i])[0:10] +' Event ' + threshold[0]
+                +' MeV Peak Flux \n(' + thresh_label + ')')
+        if saveplot:
+            figname = plotpath+'/peak_flux_bar_'+str(sep_keys[i].year)+'_'\
+                    +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                    +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
    # #BAR CHART OF SEP EVENT PEAK FLUXES - ERROR BAR PLOT W/GOES-13 REFERENCE
    # for i in range(Nsep):
@@ -764,7 +771,7 @@ def peak_flux_comparison(experiments, flux_types, model_names, threshold,
 
 
 def time_bar_charts(experiments, flux_types, model_names, threshold,
-            sep_keys, expmt_keys, proton_dict):
+            sep_keys, expmt_keys, proton_dict, saveplot):
     """Makes bar charts of event rise times and durations."""
     Nsep = len(sep_keys)
     Nexp = len(experiments)
@@ -796,11 +803,12 @@ def time_bar_charts(experiments, flux_types, model_names, threshold,
         plt.ylabel('Rise Time [Hours]')
         plt.title(str(sep_keys[i])[0:10] +' Event Rise Time \n('
                     + thresh_label + ')')
-        figname = plotpath+'/rise_time_bar_'+str(sep_keys[i].year)+'_'\
-            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
-        fig.savefig(figname)
-        print('Wrote to file: ' + figname)
+        if saveplot:
+            figname = plotpath+'/rise_time_bar_'+str(sep_keys[i].year)+'_'\
+                +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
 
     #BAR CHART OF SEP EVENT DURATIONS
@@ -830,16 +838,17 @@ def time_bar_charts(experiments, flux_types, model_names, threshold,
         plt.ylabel('Duration [Hours]')
         plt.title(str(sep_keys[i])[0:10] +' Event Duration \n('
                     + thresh_label + ')')
-        figname = plotpath+'/duration_bar_'+str(sep_keys[i].year)+'_'\
-            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
-        fig.savefig(figname)
-        print('Wrote to file: ' + figname)
+        if saveplot:
+            figname = plotpath+'/duration_bar_'+str(sep_keys[i].year)+'_'\
+                +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
 
 
 def time_profile_comparison(experiments, flux_types, model_names,
-            threshold, sep_keys, expmt_keys):
+            threshold, sep_keys, expmt_keys, saveplot):
     """Creates a plot of all of the measured and modeled time profiles for the
        integral flux specified by threshold. (>10 MeV, >100 MeV)
     """
@@ -892,17 +901,18 @@ def time_profile_comparison(experiments, flux_types, model_names,
         ax.legend(loc='upper center', bbox_to_anchor=(1.18, 0.95))
         plt.ylim(1e-6,1e4)
         plt.yscale("log")
-        figname = plotpath+'/integral_flux_time_profile_'\
-            +str(sep_keys[i].year)+'_'\
-            +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
-            +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
-        fig.savefig(figname)
-        print('Wrote to file: ' + figname)
+        if saveplot:
+            figname = plotpath+'/integral_flux_time_profile_'\
+                +str(sep_keys[i].year)+'_'\
+                +str(sep_keys[i].month)+'_'+str(sep_keys[i].day)+'_gt' \
+                +threshold[0][1:]+'_'+threshold[1]+'pfu.png'
+            fig.savefig(figname)
+            print('Wrote to file: ' + figname)
 
 
 
 def run_all(all_sep_dates, all_model_names, all_model_flux_types, str_threshold,
-        showplot):
+        showplot, saveplot):
     """Runs all of the subroutines that make the desired plots. Basically,
        the "main".
     """
@@ -916,13 +926,13 @@ def run_all(all_sep_dates, all_model_names, all_model_flux_types, str_threshold,
     #            expmt_keys, proton_dict, showplot)
     model_names = all_model_names.strip().split(",")
     fluence_comparison(experiments, flux_types, model_names, threshold,
-                sep_keys, expmt_keys, proton_dict)
+                sep_keys, expmt_keys, proton_dict, saveplot)
     peak_flux_comparison(experiments, flux_types, model_names, threshold,
-                sep_keys,expmt_keys, proton_dict)
+                sep_keys,expmt_keys, proton_dict, saveplot)
     time_bar_charts(experiments, flux_types, model_names, threshold,
-                sep_keys, expmt_keys, proton_dict)
+                sep_keys, expmt_keys, proton_dict, saveplot)
     time_profile_comparison(experiments, flux_types, model_names, threshold,
-                sep_keys, expmt_keys)
+                sep_keys, expmt_keys, saveplot)
     print('If plots are empty, then no data was available for requested '
         'thresholds, or no data files were present.')
     if showplot:
@@ -959,6 +969,8 @@ if __name__ == "__main__":
                     "(1/[cm^2 s sr])."))
     parser.add_argument("--showplot",help="Set flag to display plots", \
                     action="store_true")
+    parser.add_argument("--saveplot",
+            help="Flag to save plots to file", action="store_true")
 
 
     args = parser.parse_args()
@@ -967,5 +979,7 @@ if __name__ == "__main__":
     model_flux_type = args.FluxType
     str_threshold = args.Threshold
     showplot = args.showplot
+    saveplot = args.saveplot
 
-    run_all(all_sep_dates, model_names, model_flux_type, str_threshold, showplot)
+    run_all(all_sep_dates, model_names, model_flux_type, str_threshold, \
+            showplot, saveplot)
