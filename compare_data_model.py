@@ -437,7 +437,7 @@ def reference_comparison(experiments, flux_types, model_names, threshold,
         ref_peak_ratio_all.append(ref_peak_ratio)
 
     thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
-    colors = cm.rainbow(np.linspace(0, 1, Nexp))
+    colors = cm.nipy_spectral(np.linspace(0, 1, Nexp+1))
     #PLOT OF PROTON PEAK TIME DIFFERENCE VS PROTON PEAK FLUX RATIO
     for i in range(Nsep):
         plt.figure(figsize=(8,5))
@@ -534,7 +534,7 @@ def fluence_comparison(experiments, flux_types, model_names, threshold,
                         expmt_keys, experiments, flux_types)
         fluence_dict.update({sep_keys[i]:fluence_one})
 
-    colors = cm.rainbow(np.linspace(0, 1, Nexp))
+    colors = cm.nipy_spectral(np.linspace(0, 1, Nexp+1))
     ######TWO PLOTS OF EVENT-INTEGRATED FLUENCE SPECTRA######
     #ONE FOR DIFFERENTIAL SPECTRA
     select_flux_type = "differential"
@@ -872,8 +872,8 @@ def time_profile_comparison(experiments, flux_types, model_names,
         intflux_dict.update({sep_keys[i]:one_dict})
 
 
-    colors = cm.rainbow(np.linspace(0, 1, Nexp))
-    #PLOT OF EVENT-INTEGRATED FLUENCE SPECTRA
+    colors = cm.nipy_spectral(np.linspace(0, 1, Nexp+1))
+    #PLOT OF TIME PROFILE
     for i in range(Nsep):
         fig = plt.figure(figsize=(10,5))
         ax = plt.subplot(111)
@@ -899,7 +899,7 @@ def time_profile_comparison(experiments, flux_types, model_names,
         ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.82,
                          chartBox.height])
         ax.legend(loc='upper center', bbox_to_anchor=(1.18, 0.95))
-        plt.ylim(1e-6,1e4)
+        plt.ylim(1e-2,1e4)
         plt.yscale("log")
         if saveplot:
             figname = plotpath+'/integral_flux_time_profile_'\
@@ -921,7 +921,7 @@ def run_all(all_sep_dates, all_model_names, all_model_flux_types, str_threshold,
     proton_dict = setup(all_sep_dates, all_model_names, all_model_flux_types, \
                         str_threshold)
 
-    sns.set()
+    sns.set(style="whitegrid")
     #reference_comparison(experiments, flux_types, threshold, sep_keys,
     #            expmt_keys, proton_dict, showplot)
     model_names = all_model_names.strip().split(",")
