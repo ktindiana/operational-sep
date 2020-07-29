@@ -8,10 +8,14 @@ import sys
 import os
 import asciitable
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
+
+#Changes in 0.2: Modified so that output list files will indicate when an
+#observation or flux did not exceed a certain threshold for a given SEP event.
+#Added a column specifying SEP date to sep_list
 
 """This and supporting codes are found in the respository:
         https://github.com/ktindiana/operational-sep
@@ -46,7 +50,8 @@ outpath = 'output'
 listpath = 'lists'
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('OpSEP')
+logger = logging.getLogger('sep')
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 ############## SET INPUTS ##################
 flux_type = 'integral'
@@ -54,22 +59,24 @@ showplot = False
 saveplot = True
 detect_prev_event_default = False #Set to true if get FirstStart flag
 two_peaks_default = False #Set to true if get ShortEvent flag
-
-
-#SET TO RUN MODELS
-#experiment = 'user'
-model_name = ''
-user_file = ''
 ############## END INPUTS #################
 
 #READ IN SEP DATES FROM A CSV FILE
 #ALSO READ IN ASSOCIATED EXPERIMENT FOR EACH DATE
 def read_sep_dates(sep_filename):
+    ''' Reads in a csv list file of SEP events. List must have the format:
+        Datetime, Experiment, Number of days, Flags
+        If the experiment is 'user', indicating a user-input flux file, then
+        the file must have the format:
+        Datetime, Experiment, Number of days, Flags, Model Name, User Filename
+    '''
     print('Reading in file ' + sep_filename)
     start_dates = []
     end_dates = []
     experiments = [] #e.g. GOES-11, GOES-13, GOES-15, SEPEM
     flags = []
+    model_names = []
+    user_files = []
 
     with open(sep_filename) as csvfile:
         readCSV = csv.reader(csvfile, delimiter=',')
@@ -91,39 +98,80 @@ def read_sep_dates(sep_filename):
             else:
                 flags.append('')
 
-    return start_dates, end_dates, experiments, flags
+            if row[1] == 'user':
+                if len(row) < 6:
+                    sys.exit("For a user file, you must specify model name and "
+                            "input filename in the list.")
+                model_names.append(row[4])
+                user_files.append(row[5])
+            else:
+                model_names.append('')
+                user_files.append('')
+
+    return start_dates, end_dates, experiments, flags, model_names, user_files
 
 
 def write_sep_lists(sep_year, sep_month, sep_day, experiment, flux_type,
-                    umasep):
+                    model_name, umasep, threshold):
     '''Reads in sep_values_* files output by operational_sep_quantities.
         Selected information is taken and sorted into lists for each threshold
         definition. Output is then an SEP list with associated quantities for
         each threshold.
+
+        If the operational thresholds or the user input threshold is not
+        present in the sep_values_ file, then values of None will be saved
+        for all columns for that date. This indicates in the output list file
+        that the model or observations did not cross those thresholds.
     '''
+    #Put together thresholds that might be found inside sep_values files
+    op_thresh = [['10','10'],['100','1']]
+    if threshold != '100,1':
+        thresh = threshold.split(",")
+        op_thresh.append([str(float(thresh[0])),str(float(thresh[1]))])
+    is_thresh = [False]*len(op_thresh)
+
     infile = outpath + '/' + 'sep_values_' + experiment + '_' + flux_type \
                 + '_' + str(sep_year) + '_' + str(sep_month) + '_' \
                 + str(sep_day) + '.csv'
+    if experiment == 'user' and model_name != '':
+        infile = outpath + '/' + 'sep_values_' + model_name + '_' + flux_type \
+                    + '_' + str(sep_year) + '_' + str(sep_month) + '_' \
+                    + str(sep_day) + '.csv'
     isgood = os.path.isfile(infile)
     if not isgood:
         print('Cannot open file ' + infile)
         return False
-    data = asciitable.read(infile)
+    data = open(infile).read()
+    lines = data.split('\n')
     #Pick out columns to extract and save to SEP list
     #start time, peak flux, peak time, end time
     #If UMASEP, then all delayed proton values
     cols = [2,3,4,6]
     umacols = [13,15,17,19,21]
 
-    for row in data:
+    for line in lines:
+        if line == '': continue
+        if line[0] == '#': continue
+        row = line.split(',')
         thresh = [row[0][1:len(row[0])], row[1]]
         threshfile = listpath + '/' +'sep_list_' + str(thresh[0]) + 'MeV_' \
                     + str(thresh[1]) + 'pfu.csv'
         isgood = os.path.isfile(threshfile)
         if not isgood:
             print('Cannot open file ' + threshfile)
-            return False
+            continue
+        #Check which threshold are and are not included in the sep_values_ file
+        for i in range(len(op_thresh)):
+            if thresh[0] == op_thresh[i][0] and thresh[1] == op_thresh[i][1]:
+                is_thresh[i] = True
+
         fin = open(threshfile,'a')
+        if experiment == 'user' and model_name != '':
+            fin.write(model_name + ',')
+        if experiment != 'user':
+            fin.write(experiment + ',')
+        date = '{0:d}-{1:02d}-{2:02d}'.format(sep_year, sep_month,sep_day)
+        fin.write(date + ',')
         for col in cols:
             fin.write(str(row[col]) + ',')
 
@@ -132,8 +180,37 @@ def write_sep_lists(sep_year, sep_month, sep_day, experiment, flux_type,
                 fin.write(str(row[ucol]) + ',')
 
         fin.write('\n')
+        fin.close()
 
-    fin.close()
+    #If a threshold is not present in a file for the requested date, then
+    #thresholds were not crossed. Record None for those values to indicate
+    #the event did not cross threshold.
+    for i in range(len(op_thresh)):
+        if not is_thresh[i]:   #False, missing threshold
+            threshfile = listpath + '/' +'sep_list_' + str(op_thresh[i][0])  \
+                        + 'MeV_' + str(op_thresh[i][1]) + 'pfu.csv'
+            isgood = os.path.isfile(threshfile)
+            if not isgood:
+                print('Cannot open file ' + threshfile)
+                continue
+
+            fin = open(threshfile,'a')
+            if experiment == 'user' and model_name != '':
+                fin.write(model_name + ',')
+            if experiment != 'user':
+                fin.write(experiment + ',')
+            date = '{0:d}-{1:02d}-{2:02d}'.format(sep_year, sep_month,sep_day)
+            fin.write(date + ',')
+            for col in cols:
+                fin.write('None' + ',')
+
+            if umasep:
+                for ucol in umacols:
+                    fin.write('None' + ',')
+
+            fin.write('\n')
+            fin.close()
+
     return True
 
 
@@ -174,15 +251,16 @@ if __name__ == "__main__":
     #Additional threshold
     if threshold != '100,1':
         thresh = threshold.split(",")
-        open(listpath + '/' 'sep_list_' + thresh[0] + 'MeV_' + thresh[1] \
-            + 'pfu.csv','w+').close()
+        open(listpath + '/' 'sep_list_' + str(float(thresh[0])) + 'MeV_' \
+            + str(float(thresh[1])) + 'pfu.csv','w+').close()
 
     #READ IN SEP DATES AND experiments
-    start_dates, end_dates, experiments, flags = read_sep_dates(sep_filename)
+    start_dates, end_dates, experiments, flags, model_names, user_files \
+        = read_sep_dates(sep_filename)
 
     #Prepare output file listing events and flags
     fout = open(outfname,"w+")
-    fout.write('#SEP Date,FirstStart,LastEnd,ShortEvent,LateHundred,'
+    fout.write('#Experiment,SEP Date,FirstStart,LastEnd,ShortEvent,LateHundred,'
                 + 'Exception\n')
 
     #---RUN ALL SEP EVENTS---
@@ -193,6 +271,8 @@ if __name__ == "__main__":
         end_date = end_dates[i]
         experiment = experiments[i]
         flag = flags[i]
+        model_name = model_names[i]
+        user_file = user_files[i]
         if flag == "DetectPreviousEvent":
             detect_prev_event = True
         elif flag == "TwoPeak":
@@ -210,12 +290,16 @@ if __name__ == "__main__":
 
             sep_date = datetime.datetime(year=sep_year, month=sep_month,
                             day=sep_day)
-            fout.write(str(sep_date)+','+ str(FirstStart)+','+str(LastEnd)+','\
-                        +str(ShortEvent) + ',' + str(LateHundred) + ', ')
+            if experiment == 'user' and model_name != '':
+                fout.write(model_name + ',')
+            if experiment != 'user':
+                fout.write(experiment + ',')
+            fout.write(str(sep_date)+','+ str(FirstStart)+',' +str(LastEnd)\
+                        +','+str(ShortEvent) + ',' + str(LateHundred) + ', ')
             fout.write('\n')
 
             success=write_sep_lists(sep_year, sep_month, sep_day, experiment,
-                        flux_type, umasep)
+                        flux_type, model_name, umasep, threshold)
             if not success:
                 print('Could not write values to file for ' + str(sep_year) \
                     + '/' + str(sep_month) + '/' + str(sep_day))

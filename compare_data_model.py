@@ -14,6 +14,7 @@ import matplotlib.mlab as mlab
 import matplotlib.cm as cm
 import matplotlib.dates as mdates
 import seaborn as sns
+from textwrap import fill
 
 __version__ = "0.4"
 __author__ = "Katie Whitman"
@@ -891,15 +892,18 @@ def time_profile_comparison(experiments, flux_types, model_names,
             for model in points_only_models:
                 if experiments[j] == model:
                     plotsty = 'o'
+            plot_label = experiments[j] + ", " + flux_types[j]
+            if len(plot_label) > 20:
+                plot_label = experiments[j] + ",\n" + flux_types[j]
             ax.plot(date, flux, plotsty, color = colors[j],
-                            label=(experiments[j] + ", " + flux_types[j]))
+                        label=plot_label)
         plt.axhline(float(threshold[1]),color='red',linestyle=':',
                     label=(threshold[1] + ' pfu'))
         chartBox = ax.get_position()
         ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.82,
                          chartBox.height])
         ax.legend(loc='upper center', bbox_to_anchor=(1.18, 0.95))
-        plt.ylim(1e-2,1e4)
+        plt.ylim(1e-4,1e4)
         plt.yscale("log")
         if saveplot:
             figname = plotpath+'/integral_flux_time_profile_'\

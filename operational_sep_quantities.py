@@ -1869,6 +1869,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     nthresh = len(flux_thresholds)
     figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
             + '_' + experiment + '_' + flux_type + '_' + 'Event_Def'
+    if experiment == 'user' and model_name != '':
+        figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
+                + '_' + model_name + '_' + flux_type + '_' + 'Event_Def'
     fig = plt.figure(figname,figsize=(9,7))
     for i in range(nthresh):
         if crossing_time[i] == 0:
@@ -1914,6 +1917,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Plot all channels of user specified data
     figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
             + '_' + experiment + '_' + flux_type + '_' + 'All_Bins'
+    if experiment == 'user' and model_name != '':
+        figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
+                + '_' + model_name + '_' + flux_type + '_' + 'All_Bins'
     fig = plt.figure(figname,figsize=(9,4))
     ax = plt.subplot(111)
     nbins = len(energy_bins)
@@ -1965,6 +1971,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Plot fluence spectrum summed between SEP start and end dates
     figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
             + '_' + experiment + '_' + flux_type + '_' + 'Fluence'
+    if experiment == 'user' and model_name != '':
+        figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
+                + '_' + model_name + '_' + flux_type + '_' + 'Fluence'
     fig = plt.figure(figname,figsize=(6,5))
     ax = plt.subplot(111)
     markers = ['bo','P','D','v','^']
