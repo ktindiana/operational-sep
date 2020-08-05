@@ -17,8 +17,11 @@ from dateutil.parser import parse
 import scipy.integrate
 from numpy import exp
 import array as arr
+import pandas as pd
+import scipy
+from scipy import signal
 
-__version__ = "0.7"
+__version__ = "0.8"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -63,6 +66,11 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   files produced by this code.
 #   Added a saveplot option to automatically write plots to file with a
 #   unique filename.
+#Changes in 0.7: Adding SEP event onset peak, i.e. the peak associated with the
+#   initial acceleration at the sun. Versions 0.6 and previous find the absolute
+#   peak in the entire time period between onset and end. For lower energy
+#   channels, that peak often corresponds to the ESP portion of the event.
+#   Now including a calculation of onset peak.
 
 
 #See full program description in all_program_info() below
@@ -1426,6 +1434,83 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
 
 
+def calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
+                crossing_time, event_end_time):
+    """Calculate the peak associated with the initial SEP onset. This subroutine
+        searches for the rollover that typically occurs after the SEP onset.
+        The peak value will be specified as the flux value at the rollover
+        location.
+        The onset peak may provide a more physically appropriate comparison
+        with models.
+    """
+    nthresh = len(energy_thresholds)
+    smooth_flux = [[]]*nthresh
+    smooth_win = [13,13]
+    for i in range(nthresh):
+        if crossing_time[i] == 0:
+            continue
+        smooth_flux[i] = signal.savgol_filter(integral_fluxes[i],
+                           smooth_win[i], # window size used for filtering; 2 hr smoothing
+                           3) # order of fitted polynomial
+
+
+    run_deriv = [[]]*nthresh
+    nwin = [12,6] #Number of points away for calculating derivative
+    for i in range(nthresh):
+        if crossing_time[i] == 0:
+            continue
+        run_deriv[i] = [0]
+        for j in range(1,nwin[i]):
+            deriv = smooth_flux[i][j] - smooth_flux[i][0]
+            run_deriv[i].append(deriv)
+        for j in range(nwin[i],len(smooth_flux[i])):
+            deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin[i]]
+            run_deriv[i].append(deriv)
+
+
+    #Search for onset peak
+    #Peak likely occurs near first time derivative goes from generally positive
+    #to zero
+    onset_date = [[]]*nthresh
+    onset_peak = [[]]*nthresh
+    for i in range(nthresh):
+        is_pos = True
+        if crossing_time[i] == 0:
+            continue
+
+        #Get value of maximum positive derivative in first 24 hours
+        index_24 = 0
+        for j in range(len(dates)):
+            if dates[j] <= (crossing_time[i] + timedelta(hours=24)):
+                index_24 = j
+
+        max_deriv = max(run_deriv[i][0:index_24])
+        max_index = run_deriv[i][0:index_24].index(max_deriv)
+
+        for j in range(max_index,len(run_deriv[i])):
+            if(is_pos and run_deriv[i][j] <= 0.25*max_deriv):
+                onset_date[i] = dates[j]
+                onset_peak[i] = integral_fluxes[i][j]
+                is_pos = False
+
+
+    for i in range(nthresh):
+        if crossing_time[i] == 0:
+            continue
+
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.plot_date(dates,integral_fluxes[i],'-')
+        ax.plot_date(dates,smooth_flux[i],'-',color="red")
+        ax.plot_date(onset_date[i],onset_peak[i],'o',color="black")
+        plt.yscale("log")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Flux")
+
+        ax2 = ax.twinx()
+        ax2.plot_date(dates,run_deriv[i],'-',color="green")
+        ax2.set_ylabel("Derivative")
+
+
 def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
                 integral_fluxes, crossing_time):
     """Uses the integral fluxes (either input or estimated from differential
@@ -1774,7 +1859,11 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         calculate_event_info(energy_thresholds,flux_thresholds, dates,
                     integral_fluxes, detect_prev_event, two_peaks)
 
+    #Calculate onset peak for all thresholds
+    calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
+                    crossing_time, event_end_time)
 
+    #Calculate times used in UMASEP
     umasep_times =[]
     umasep_fluxes=[]
     if umasep:
