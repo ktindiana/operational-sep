@@ -1474,24 +1474,26 @@ def calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
     onset_date = [[]]*nthresh
     onset_peak = [[]]*nthresh
     for i in range(nthresh):
-        is_pos = True
         if crossing_time[i] == 0:
             continue
 
         #Get value of maximum positive derivative in first 24 hours
-        index_24 = 0
+        #record where deriv first goes negative
+        index_neg = 0
+        index_cross = 0
+        first_neg = False
         for j in range(len(dates)):
-            if dates[j] <= (crossing_time[i] + timedelta(hours=24)):
-                index_24 = j
+            if dates[j] <= crossing_time[i]:
+                index_cross = j
+            if dates[j] > crossing_time[i] and run_deriv[i][j] < 0 \
+                and not first_neg:
+                index_neg = j
+                first_neg = True
 
-        max_deriv = max(run_deriv[i][0:index_24])
-        max_index = run_deriv[i][0:index_24].index(max_deriv)
 
-        for j in range(max_index,len(run_deriv[i])):
-            if(is_pos and run_deriv[i][j] <= 0.25*max_deriv):
-                onset_date[i] = dates[j]
-                onset_peak[i] = integral_fluxes[i][j]
-                is_pos = False
+        onset_peak[i] = max(integral_fluxes[i][index_cross:index_neg])
+        onset_index = np.argmax(integral_fluxes[i][index_cross:index_neg])
+        onset_date[i] = dates[index_cross + onset_index]
 
 
     for i in range(nthresh):
