@@ -1434,7 +1434,7 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
 
 
-def calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
+def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                 crossing_time, event_end_time):
     """Calculate the peak associated with the initial SEP onset. This subroutine
         searches for the rollover that typically occurs after the SEP onset.
@@ -1445,28 +1445,32 @@ def calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
     """
     nthresh = len(energy_thresholds)
     smooth_flux = [[]]*nthresh
-    smooth_win = [13,13]
+    smooth_win = 21
     for i in range(nthresh):
         if crossing_time[i] == 0:
             continue
-        smooth_flux[i] = signal.savgol_filter(integral_fluxes[i],
-                           smooth_win[i], # window size used for filtering; 2 hr smoothing
-                           3) # order of fitted polynomial
+        if (dates[1] - dates[0]) > datetime.timedelta(minutes=5):
+            smooth_flux[i] = integral_fluxes[i]
+        else:
+            smooth_flux[i] = signal.savgol_filter(integral_fluxes[i],
+                           smooth_win, # window size used for filtering; 2 hr smoothing
+                           11) # order of fitted polynomial
 
 
     run_deriv = [[]]*nthresh
-    nwin = [12,6] #Number of points away for calculating derivative
+    nwin = 8 #Number of points away for calculating derivative, 5 min data
+    if (dates[1] - dates[0]) > datetime.timedelta(minutes=5):
+        nwin = 1
     for i in range(nthresh):
         if crossing_time[i] == 0:
             continue
         run_deriv[i] = [0]
-        for j in range(1,nwin[i]):
+        for j in range(1,nwin):
             deriv = smooth_flux[i][j] - smooth_flux[i][0]
-            run_deriv[i].append(deriv)
-        for j in range(nwin[i],len(smooth_flux[i])):
-            deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin[i]]
-            run_deriv[i].append(deriv)
-
+            run_deriv[i].append(deriv/smooth_flux[i][0])
+        for j in range(nwin,len(smooth_flux[i])):
+            deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin]
+            run_deriv[i].append(deriv/smooth_flux[i][j-nwin])
 
     #Search for onset peak
     #Peak likely occurs near first time derivative goes from generally positive
@@ -1479,8 +1483,11 @@ def calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
 
         #Get value of maximum positive derivative in first 24 hours
         #record where deriv first goes negative
+        index_max = 0
+        max_deriv = -999
         index_neg = 0
         index_cross = 0
+        found_max = False
         first_neg = False
         for j in range(len(dates)):
             if dates[j] <= crossing_time[i]:
@@ -1510,6 +1517,7 @@ def calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
 
         ax2 = ax.twinx()
         ax2.plot_date(dates,run_deriv[i],'-',color="green")
+        ax2.axhline(0,color='red',linestyle=':')
         ax2.set_ylabel("Derivative")
 
 
@@ -1862,7 +1870,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     integral_fluxes, detect_prev_event, two_peaks)
 
     #Calculate onset peak for all thresholds
-    calculate_onset_peak(energy_thresholds, dates, integral_fluxes,
+    calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                     crossing_time, event_end_time)
 
     #Calculate times used in UMASEP
