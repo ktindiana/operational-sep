@@ -1445,16 +1445,16 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
     """
     nthresh = len(energy_thresholds)
     smooth_flux = [[]]*nthresh
-    smooth_win = 21
+    smooth_win = 9   #9 seems to work with order 7
     for i in range(nthresh):
         if crossing_time[i] == 0:
             continue
-        if (dates[1] - dates[0]) > datetime.timedelta(minutes=5):
-            smooth_flux[i] = integral_fluxes[i]
-        else:
-            smooth_flux[i] = signal.savgol_filter(integral_fluxes[i],
-                           smooth_win, # window size used for filtering; 2 hr smoothing
-                           11) # order of fitted polynomial
+        #if (dates[1] - dates[0]) > datetime.timedelta(minutes=5):
+        smooth_flux[i] = integral_fluxes[i]
+        #else:
+        #    smooth_flux[i] = signal.savgol_filter(integral_fluxes[i],
+        #                   smooth_win, # window size used for filtering; 2 hr smoothing
+        #                  7) # order of fitted polynomial
 
 
     run_deriv = [[]]*nthresh
@@ -1483,24 +1483,82 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
 
         #Get value of maximum positive derivative in first 24 hours
         #record where deriv first goes negative
-        index_max = 0
-        max_deriv = -999
-        index_neg = 0
         index_cross = 0
-        found_max = False
-        first_neg = False
+        index_24 = 0
         for j in range(len(dates)):
             if dates[j] <= crossing_time[i]:
                 index_cross = j
-            if dates[j] > crossing_time[i] and run_deriv[i][j] < 0 \
-                and not first_neg:
+            if dates[j] <= (crossing_time[i] + datetime.timedelta(hours=18)):
+                index_24 = j
+
+        #Max value of the normalized derivative in first 24 hours
+        max_index =  np.argmax(run_deriv[i][index_cross:index_24]) + index_cross
+        #Find where derivative falls below zero after the max
+        index_neg = 0
+        first_neg = False
+        deriv_thresh = -0.05
+        for j in range(max_index,index_24+1):
+            if run_deriv[i][j] < deriv_thresh and not first_neg:
                 index_neg = j
                 first_neg = True
+        while not first_neg:
+            deriv_thresh = deriv_thresh + 0.01
+            for j in range(max_index,index_24+1):
+                if run_deriv[i][j] < deriv_thresh and not first_neg:
+                    index_neg = j
+                    first_neg = True
+            if deriv_thresh >= 0:
+                sys.exit("calculate_onset_peak: Could not locate onset peak."
+                    + "below threshold " + str(deriv_thresh))
 
+        #Find the maximum flux in the range where the onset peak should be
+        onset_peak[i] = max(integral_fluxes[i][max_index:index_neg])
+        onset_index = np.argmax(integral_fluxes[i][max_index:index_neg])
+        onset_date[i] = dates[max_index + onset_index]
+        print("Found onset peak: \nOnset Peak: " + str(onset_peak[i])\
+            + "\nOnset peak time: " + str(onset_date[i]))
 
-        onset_peak[i] = max(integral_fluxes[i][index_cross:index_neg])
-        onset_index = np.argmax(integral_fluxes[i][index_cross:index_neg])
-        onset_date[i] = dates[index_cross + onset_index]
+        #Check and see if the event continues rising at a similar rate to the
+        #onset peak. If so, it's likely a little dip on the way up.
+        #Check the average derivative 2 hours prior to the onset peak
+        #and the average two hours after the peak. If similar, likely event is
+        #continuing to rise.
+        time_res = (dates[1] - dates[0]).total_seconds()
+        npts = math.ceil(60.*60./time_res)
+        stpt = index_neg - npts
+        if stpt < 0: stpt = 0
+        endpt = index_neg + npts
+        if endpt >= len(dates): endpt = len(dates)-1
+        deriv_ave_pre = sum(run_deriv[i][stpt:index_neg])/len(run_deriv[i][stpt:index_neg])
+        deriv_ave_post = sum(run_deriv[i][index_neg:endpt])/len(run_deriv[i][index_neg:endpt])
+        deriv_diff = (deriv_ave_pre - deriv_ave_post)/deriv_ave_pre
+        deriv_diff = abs(deriv_diff)
+
+        print("deriv_ave_pre: "+str(deriv_ave_pre)+" deriv_ave_post: "\
+            +str(deriv_ave_post)+" deriv_diff: "+str(deriv_diff))
+        #if the two differ by 10% or less
+        if deriv_diff <= 0.1 or \
+            (deriv_ave_post>0.1 and deriv_ave_post>deriv_ave_pre):
+            print("Recalculate onset peak")
+            #Max value of the normalized derivative in first 24 hours
+            max_index =  np.argmax(run_deriv[i][index_neg:index_24]) + index_neg
+            #Find where derivative falls below zero after the max
+            index_neg2 = 0
+            first_neg = False
+            for j in range(max_index,index_24+1):
+                if run_deriv[i][j] < 0 and not first_neg:
+                    index_neg2 = j
+                    first_neg = True
+            #Find the maximum flux in the range where the onset peak should be
+            check_peak = max(integral_fluxes[i][index_neg:index_neg2])
+            if check_peak > onset_peak[i]:
+                onset_peak[i] = max(integral_fluxes[i][index_neg:index_neg2])
+                onset_index = np.argmax(integral_fluxes[i][index_neg:index_neg2])
+                onset_date[i] = dates[index_neg + onset_index]
+                print("Recalculated onset peak: \nOnset Peak: " \
+                    + str(onset_peak[i]) + "\nOnset peak time: " \
+                    + str(onset_date[i]))
+
 
 
     for i in range(nthresh):
@@ -1508,15 +1566,16 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             continue
 
         fig, ax = plt.subplots(figsize=(9, 4))
-        ax.plot_date(dates,integral_fluxes[i],'-')
-        ax.plot_date(dates,smooth_flux[i],'-',color="red")
+        ax.plot_date(dates,integral_fluxes[i],'-',label=experiment)
+        ax.plot_date(dates,smooth_flux[i],'-',color="red",label="Smoothed")
         ax.plot_date(onset_date[i],onset_peak[i],'o',color="black")
         plt.yscale("log")
         ax.set_xlabel("Date")
         ax.set_ylabel("Flux")
 
         ax2 = ax.twinx()
-        ax2.plot_date(dates,run_deriv[i],'-',color="green")
+        ax2.plot_date(dates,run_deriv[i],'-',color="green",\
+                    label="Normalized Derivative")
         ax2.axhline(0,color='red',linestyle=':')
         ax2.set_ylabel("Derivative")
 
