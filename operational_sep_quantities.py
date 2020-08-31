@@ -1913,6 +1913,10 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Remove bad data points (negative fluxes) with linear interpolation in time
     fluxes = check_for_bad_data(dates,fluxes,energy_bins)
 
+    if len(dates) <= 1:
+        sys.exit("The specified start and end dates were not present in the "
+                "specified input file. Exiting.")
+
     #Define thresholds to use for start and end of event
     energy_thresholds = [10,100] #MeV; flux for particles of > this MeV
     flux_thresholds = [10,1] #pfu; exceed this level of intensity
