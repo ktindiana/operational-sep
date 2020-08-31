@@ -144,10 +144,10 @@ def write_sep_lists(sep_year, sep_month, sep_day, experiment, flux_type,
     data = open(infile).read()
     lines = data.split('\n')
     #Pick out columns to extract and save to SEP list
-    #start time, peak flux, peak time, end time
+    #start time, onset peak, onset time, peak flux, peak time, end time
     #If UMASEP, then all delayed proton values
-    cols = [2,3,4,6]
-    umacols = [13,15,17,19,21]
+    cols = [2,3,4,5,6,8]
+    umacols = [15,17,19,21,23]
 
     for line in lines:
         if line == '': continue

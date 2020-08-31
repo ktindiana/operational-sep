@@ -1435,7 +1435,7 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
 
 
 def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
-                crossing_time, event_end_time):
+                crossing_time, event_end_time, showplot):
     """Calculate the peak associated with the initial SEP onset. This subroutine
         searches for the rollover that typically occurs after the SEP onset.
         The peak value will be specified as the flux value at the rollover
@@ -1470,7 +1470,10 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             run_deriv[i].append(deriv/smooth_flux[i][0])
         for j in range(nwin,len(smooth_flux[i])):
             deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin]
-            run_deriv[i].append(deriv/smooth_flux[i][j-nwin])
+            if smooth_flux[i][j-nwin] > 0:
+                run_deriv[i].append(deriv/smooth_flux[i][j-nwin])
+            else:
+                run_deriv[i].append(0)
 
     #Search for onset peak
     #Peak likely occurs near first time derivative goes from generally positive
@@ -1539,7 +1542,6 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         #if the two differ by 10% or less
         if deriv_diff <= 0.1 or \
             (deriv_ave_post>0.1 and deriv_ave_post>deriv_ave_pre):
-            print("Recalculate onset peak")
             #Max value of the normalized derivative in first 24 hours
             max_index =  np.argmax(run_deriv[i][index_neg:index_24]) + index_neg
             #Find where derivative falls below zero after the max
@@ -1560,24 +1562,26 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                     + str(onset_date[i]))
 
 
+    if showplot:
+        for i in range(nthresh):
+            if crossing_time[i] == 0:
+                continue
 
-    for i in range(nthresh):
-        if crossing_time[i] == 0:
-            continue
+            fig, ax = plt.subplots(figsize=(9, 4))
+            ax.plot_date(dates,integral_fluxes[i],'-',label=experiment)
+            ax.plot_date(dates,smooth_flux[i],'-',color="red",label="Smoothed")
+            ax.plot_date(onset_date[i],onset_peak[i],'o',color="black")
+            plt.yscale("log")
+            ax.set_xlabel("Date")
+            ax.set_ylabel("Flux")
 
-        fig, ax = plt.subplots(figsize=(9, 4))
-        ax.plot_date(dates,integral_fluxes[i],'-',label=experiment)
-        ax.plot_date(dates,smooth_flux[i],'-',color="red",label="Smoothed")
-        ax.plot_date(onset_date[i],onset_peak[i],'o',color="black")
-        plt.yscale("log")
-        ax.set_xlabel("Date")
-        ax.set_ylabel("Flux")
+            ax2 = ax.twinx()
+            ax2.plot_date(dates,run_deriv[i],'-',color="green",\
+                        label="Normalized Derivative")
+            ax2.axhline(0,color='red',linestyle=':')
+            ax2.set_ylabel("Derivative")
 
-        ax2 = ax.twinx()
-        ax2.plot_date(dates,run_deriv[i],'-',color="green",\
-                    label="Normalized Derivative")
-        ax2.axhline(0,color='red',linestyle=':')
-        ax2.set_ylabel("Derivative")
+    return onset_date, onset_peak
 
 
 def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
@@ -1743,9 +1747,9 @@ def save_integral_fluxes_to_file(experiment, flux_type, model_name,
 
 
 def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
-                flux_thresholds, crossing_time, peak_flux, peak_time, rise_time,
-                event_end_time, duration, integral_fluences, umasep,
-                umasep_times, umasep_fluxes):
+                flux_thresholds, crossing_time, onset_peak, onset_date,
+                peak_flux, peak_time, rise_time, event_end_time, duration,
+                integral_fluences, umasep, umasep_times, umasep_fluxes):
     """Write all calculated values to file for all thresholds. Event-integrated
        fluences for >10, >100 MeV (and user-defined threshold) will also be
        included. Writes out file with name e.g.
@@ -1786,11 +1790,12 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
     #Write header
     if flux_type == "integral":
         fout.write('#Energy Threshold [MeV],Flux Threshold [pfu],Start Time,'
-            + 'Peak Flux [pfu],Peak Time,Rise Time,End Time,Duration')
+            + 'Onset Peak Flux [pfu],Onset Time,Max Flux [pfu]'
+            +',Max Time,Rise Time,End Time,Duration')
     if flux_type == "differential":
         fout.write('#Energy Threshold [MeV],Flux Threshold [pfu],'
-            + 'Start Time,Peak Flux 1/[MeV cm^2 s sr],Peak Time,Rise Time,'
-            'End Time,Duration')
+            + 'Start Time,Onset Peak Flux 1/[MeV cm^2 s sr],Onset Time,'
+            'Max Flux 1/[MeV cm^2 s sr],Max Time,Rise Time,End Time,Duration')
     for i in range(nthresh):
         fout.write(',Fluence >' + str(energy_thresholds[i]) + ' MeV [cm^-2]')
     if umasep:
@@ -1805,6 +1810,8 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
         fout.write('>' + str(energy_thresholds[i]) + ',')
         fout.write(str(flux_thresholds[i]) + ',')
         fout.write(str(crossing_time[i]) + ',')
+        fout.write(str(onset_peak[i]) + ',')
+        fout.write(str(onset_date[i]) + ',')
         fout.write(str(peak_flux[i]) + ',')
         fout.write(str(peak_time[i]) + ',')
         str_rise_time = str(rise_time[i]).split(',')
@@ -1869,6 +1876,10 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     if (str_startdate == "" or str_enddate == ""):
         sys.exit('You must enter a valid date range. Exiting.')
 
+    if (enddate < startdate):
+        sys.exit('End time before start time! Enter a valid date range. '
+                'Exiting.')
+
     if (experiment == "SEPEM" and flux_type == "integral"):
         sys.exit('The SEPEM (RSDv2) data set only provides differential fluxes.'
             ' Please change your FluxType to differential. Exiting.')
@@ -1929,8 +1940,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     integral_fluxes, detect_prev_event, two_peaks)
 
     #Calculate onset peak for all thresholds
-    calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
-                    crossing_time, event_end_time)
+    onset_date, onset_peak = calculate_onset_peak(experiment, energy_thresholds,
+                dates, integral_fluxes, crossing_time, event_end_time, showplot)
 
     #Calculate times used in UMASEP
     umasep_times =[]
@@ -2008,8 +2019,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Save all calculated values for all threshold definitions to file
     sep_year, sep_month, sep_day = print_values_to_file(experiment, flux_type,
                     model_name, energy_thresholds, flux_thresholds,
-                    crossing_time, peak_flux, peak_time, rise_time,
-                    event_end_time, duration, all_integral_fluences,
+                    crossing_time, onset_peak, onset_date, peak_flux, peak_time,
+                    rise_time, event_end_time, duration, all_integral_fluences,
                     umasep, umasep_times, umasep_fluxes)
     #Write >10, >100 and user input threshold integral fluxes to file
     save_integral_fluxes_to_file(experiment, flux_type, model_name,
@@ -2034,34 +2045,39 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     for i in range(nthresh):
         if crossing_time[i] == 0:
             continue
-        plt.subplot(nthresh, 1, i+1)
-        plt.plot_date(dates,integral_fluxes[i],'-')
+        if flux_type == "integral":
+            data_label = (experiment + ' >'+str(energy_thresholds[i])
+                       + ' MeV')
+            if experiment == 'user' and model_name != '':
+                data_label = (model_name + ' >'
+                    + str(energy_thresholds[i]) + ' MeV')
+
+        if flux_type == "differential":
+            data_label = (experiment + ' Estimated >'
+                       + str(energy_thresholds[i]) + ' MeV')
+            if experiment == 'user' and model_name != '':
+                data_label = (model_name + ' Estimated >'
+                           + str(energy_thresholds[i]) + ' MeV')
+        ax = plt.subplot(nthresh, 1, i+1)
+        plt.plot_date(dates,integral_fluxes[i],'-',label=data_label)
         plt.axvline(crossing_time[i],color='black',linestyle=':')
-        plt.axvline(event_end_time[i],color='black',linestyle=':')
-        plt.axhline(flux_thresholds[i],color='red',linestyle=':')
-        plt.plot_date(peak_time[i],peak_flux[i],'ro')
+        plt.axvline(event_end_time[i],color='black',linestyle=':',
+                    label="Start, End")
+        plt.axhline(flux_thresholds[i],color='red',linestyle=':',
+                    label="Threshold")
+        plt.plot_date(onset_date[i],onset_peak[i],'o',color="black",
+                    label="Onset Peak")
+        plt.plot_date(peak_time[i],peak_flux[i],'ro',label="Max Flux")
         if umasep:
             for k in range(len(umasep_times[i])):
                 plt.plot_date(umasep_times[i][k],umasep_fluxes[i][k],'bo')
-        if flux_type == "integral":
-            plt.title(experiment + ' Flux for >'+str(energy_thresholds[i])
-                       + ' MeV', x=0.75, y=0.8)
-            if experiment == 'user' and model_name != '':
-                plt.title(model_name + ' Flux for >'
-                    + str(energy_thresholds[i]) + ' MeV', x=0.75, y=0.8)
 
-        if flux_type == "differential":
-            plt.title(experiment + ' Estimated Flux for >'
-                       + str(energy_thresholds[i]) + ' MeV', x=0.7, y=0.8)
-            if experiment == 'user' and model_name != '':
-                plt.title(model_name + ' Estimated Flux for >'
-                           + str(energy_thresholds[i]) + ' MeV',
-                           x=0.7, y=0.8)
         plt.xlabel('Date')
         plt.ylabel('Integral Flux\n 1/[cm^2 s sr]')
         plt.yscale("log")
         ymin = max(1e-4, min(integral_fluxes[i]))
         # plt.ylim(ymin, peak_flux[i]+peak_flux[i]*.2)
+        ax.legend(loc='upper right')
     if saveplot:
         fig.savefig('plots/' + figname + '.png')
     if not showplot:
