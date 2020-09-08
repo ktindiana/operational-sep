@@ -1442,6 +1442,8 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         location.
         The onset peak may provide a more physically appropriate comparison
         with models.
+        If code cannot identify onset peak, it will return a value of -1 on
+        the date 1970-01-01.
     """
     nthresh = len(energy_thresholds)
     smooth_flux = [[]]*nthresh
@@ -1464,16 +1466,22 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
     for i in range(nthresh):
         if crossing_time[i] == 0:
             continue
+        zeroes = False #Models may output zero flux
+        if 0 in smooth_flux[i]: zeroes = True
+
         run_deriv[i] = [0]
         for j in range(1,nwin):
             deriv = smooth_flux[i][j] - smooth_flux[i][0]
-            run_deriv[i].append(deriv/smooth_flux[i][0])
+            if not zeroes:
+                run_deriv[i].append(deriv/smooth_flux[i][0])
+            else:
+                run_deriv[i].append(deriv)
         for j in range(nwin,len(smooth_flux[i])):
             deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin]
-            if smooth_flux[i][j-nwin] > 0:
-                run_deriv[i].append(deriv/smooth_flux[i][j-nwin])
+            if not zeroes:
+                run_deriv[i].append(deriv/smooth_flux[i][0])
             else:
-                run_deriv[i].append(0)
+                run_deriv[i].append(deriv)
 
     #Search for onset peak
     #Peak likely occurs near first time derivative goes from generally positive
@@ -1505,15 +1513,20 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                 index_neg = j
                 first_neg = True
         while not first_neg:
-            deriv_thresh = deriv_thresh + 0.01
+            deriv_thresh = round(deriv_thresh + 0.01, 2) #negative value
             for j in range(max_index,index_24+1):
                 if run_deriv[i][j] < deriv_thresh and not first_neg:
                     index_neg = j
                     first_neg = True
-            if deriv_thresh >= 0:
-                sys.exit("calculate_onset_peak: Could not locate onset peak."
-                    + "below threshold " + str(deriv_thresh))
+            if deriv_thresh > 0:
+                print("calculate_onset_peak: Could not locate onset peak."
+                    + "below threshold " + str(deriv_thresh)
+                    + "Setting onset peak to -1.")
+                onset_peak[i] = -1
+                onset_date[i] = datetime.datetime(year=1970, month=1, day=1)
 
+        if onset_peak[i]:
+            continue
         #Find the maximum flux in the range where the onset peak should be
         onset_peak[i] = max(integral_fluxes[i][max_index:index_neg])
         onset_index = np.argmax(integral_fluxes[i][max_index:index_neg])
@@ -1523,7 +1536,7 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
 
         #Check and see if the event continues rising at a similar rate to the
         #onset peak. If so, it's likely a little dip on the way up.
-        #Check the average derivative 2 hours prior to the onset peak
+        #Check the average derivative 1 hour prior to the onset peak
         #and the average two hours after the peak. If similar, likely event is
         #continuing to rise.
         time_res = (dates[1] - dates[0]).total_seconds()
