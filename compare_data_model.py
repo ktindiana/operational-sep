@@ -84,11 +84,12 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
     """
     Nexp = len(expmt_keys)
     proton_dict = {}
-    proton_keys = ['proton_start_time','proton_peak_flux','proton_peak_time',
-            'proton_rise_time','proton_end_time','proton_duration',
-            'fluence_gt10','fluence_gt100']
-    date_cols = [2,4,6]
-    float_cols = [3,8,9]
+    proton_keys = ['proton_start_time','onset_peak_flux','onset_peak_time',
+                'proton_peak_flux','proton_peak_time',
+                'proton_rise_time','proton_end_time','proton_duration',
+                'fluence_gt10','fluence_gt100']
+    date_cols = [2,4,6,8]  #After addition of Onset Peak and Max Flux
+    float_cols = [3,5,10,11]
     for j in range(Nexp):
         threshold_found = False
         year = sep_date.year
@@ -121,16 +122,14 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
                     for i in range(2,len(row)):
                         if i-2 >= len(proton_keys): continue #MODIFY FOR UMASEP
                         val = row[i]  #string
-                        for col in date_cols: #if column should be a date
-                            if i == col:
-                                if row[i] != str(badval):
-                                    val = datetime.datetime.strptime(row[i],
+                        if i in date_cols: #if column should be a date
+                            if row[i] != str(badval):
+                                val = datetime.datetime.strptime(row[i],
                                                        "%Y-%m-%d %H:%M:%S")
-                                else:
-                                    val = badval
-                        for col in float_cols: #if column should be a number
-                            if i == col:
-                                val = float(row[i])
+                            else:
+                                val = badval
+                        if i in float_cols: #if column should be a number
+                            val = float(row[i])
 
                         if proton_keys[i-2] == 'proton_rise_time': #recalculate
                             if row_dict['proton_start_time'] == badval or \
