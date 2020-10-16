@@ -2375,8 +2375,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 #Extract the original fluxes for the SEP start and stop times
                 sep_d, sep_f = extract_date_range(ct[0],eet[0],dates,fluxes)
                 fl, en = get_fluence_spectrum(experiment, flux_type,
-                                 model_name, input_threshold[0],
-                                 input_threshold[1], sep_d, sep_f,
+                                 model_name, input_threshold[i][0],
+                                 input_threshold[i][1], sep_d, sep_f,
                                  energy_bins, is_diff_thresh, True) #savefile
 
                 od,op=calculate_onset_peak(experiment, energy_thresh,
