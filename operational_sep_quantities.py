@@ -122,9 +122,9 @@ def all_program_info(): #only for documentation purposes
         >10 MeV exceeds 10 pfu
         >100 MeV exceed 1 pfu
 
-    The user may add an additional threshold through the command line.
+    The user may add multiple additional thresholds through the command line.
     This program will check if data is already present in a 'data' directory. If
-    not, GOES data will be automatically downloaded from NOAA ftp site. SEPEM
+    not, GOES or EPHIN data will be automatically downloaded from the web. SEPEM
     (RSDv2) data must be downloaded by the user and unzipped inside the 'data'
     directory. Because the SEPEM data set is so large (every 5 minutes from 1974
     to 2015), the program will break up the data into yearly files for faster
@@ -132,8 +132,10 @@ def all_program_info(): #only for documentation purposes
 
     The values calculated here are important for space radiation operations:
        Onset time, i.e. time to cross thresholds
-       Peak intensity
-       Time of peak intensity
+       Onset peak intensity
+       Onset peak time
+       Maximum intensity
+       Time of maximum intensity
        Rise time (onset to peak)
        End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
        Duration
@@ -240,7 +242,8 @@ def all_program_info(): #only for documentation purposes
     NOTE: The flux file may contain header lines that start with a hash #,
     including blank lines.
     NOTE: Any bad or missing fluxes must be indicated by a negative value.
-    NOTE: Put your flux file into the "datapath" directory.
+    NOTE: Put your flux file into the "datapath" directory. Filenames will be
+    relative to this path.
     NOTE: Please use only differential or integral channels. Please do not mix
     them. You may have one integral channel in the last bin, as this is the way
     HEPAD works and the code has been written to include that HEPAD >700 MeV
@@ -1959,7 +1962,11 @@ def report_threshold_fluences(experiment, flux_type, model_name,
 
 def save_integral_fluxes_to_file(experiment, flux_type, model_name,
         energy_thresholds, crossing_time, dates, integral_fluxes):
-    """
+    """Output the time series of integral fluxes to a file. If the input
+        data set was in integral channels, then this file will contain exactly
+        the same values in the time series.
+        If the input data set was in differential energy bins, then this file
+        contains the estimated integral fluxes calculated in this program.
     """
     nthresh = len(energy_thresholds)
     ndates = len(dates)
