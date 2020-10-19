@@ -2185,11 +2185,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         sys.exit('The SOHO/EPHIN data set only provides differential fluxes.'
             ' Please change your FluxType to differential. Exiting.')
 
-    if is_diff_thresh and flux_type == "integral":
-        sys.exit('The input flux type is specified as integral, but you have '
-                'requested a threshold in a differential energy bin. '
-                'Flux must be differential to impelement a threshold on a '
-                'differential energy bin. Exiting.')
+    for diff_thresh in is_diff_thresh:
+        if diff_thresh and flux_type == "integral":
+            sys.exit('The input flux type is specified as integral, but you have '
+                    'requested a threshold in a differential energy bin. '
+                    'Flux must be differential to impelement a threshold on a '
+                    'differential energy bin. Exiting.')
 
     sepem_end_date = datetime.datetime(2015,12,31,23,55,00)
     if(experiment == "SEPEM" and (startdate > sepem_end_date or
