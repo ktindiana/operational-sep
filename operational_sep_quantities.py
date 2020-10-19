@@ -2068,7 +2068,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
                     'with >) - differential fluxes were converted '
                     'to integral fluxes. Onset Peak Flux and Max Flux are '
                     'estimated integral flux values.\n')
-        if is_diff_thresh:
+        if True in is_diff_thresh:
             fout.write('#The bottom threshold(s) are differential thresholds '
                         'using the energy bin with low edge specified in the '
                         'Energy Threshold column and differential flux in the '
@@ -2089,7 +2089,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
     for i in range(nthresh):
         if crossing_time[i] == 0: #no threshold crossed
             continue
-        if is_diff_thresh and i==nthresh-1:
+        if is_diff_thresh[i]:
             fout.write(str(energy_thresholds[i]) + ',')
         else:
             fout.write('>' + str(energy_thresholds[i]) + ',')
@@ -2158,6 +2158,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             is_diff_thresh[i] = True
             thresh0 = str_thresh[i][0].split("-")
             input_threshold.append([float(thresh0[0]), float(str_thresh[i][1])])
+            print("Found differential threshold " + str_thresh[i][0])
         else:
             input_threshold.append([float(str_thresh[i][0]), \
                                     float(str_thresh[i][1])])
@@ -2428,7 +2429,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     model_name, energy_thresholds, flux_thresholds,
                     crossing_time, onset_peak, onset_date, peak_flux, peak_time,
                     rise_time, event_end_time, duration, all_integral_fluences,
-                    is_diff_thresh, umasep, umasep_times, umasep_fluxes)
+                    plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
 
     #===============PLOTS==================
     if saveplot or showplot:
