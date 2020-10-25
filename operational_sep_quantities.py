@@ -2108,7 +2108,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
         for k in range(len(str_duration)):
             fout.write(str_duration[k] + ' ')
         for j in range(nthresh):
-            fout.write(',' + str(integral_fluences[i,j]))
+            fout.write(',' + str(integral_fluences[i,j]*4.*math.pi)) #[cm-2]
         if umasep:
             for jj in range(numa):
                 fout.write(',' + str(umasep_times[i][jj] - crossing_time[i]) \
@@ -2345,9 +2345,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
 
     #For plotting, we need to expand the is_diff_thresh list to include
-    #the integral thresholds
+    #the integral thresholds (for all fluxes calculated above)
     plot_diff_thresh = [False]*nthresh  #integral thresholds
-    plt_energy = []
+    plt_energy = []  #string thresholds for plot labels
     plt_flux = []
     for i in range(nthresh):
         plt_energy.append(str(energy_thresholds[i]))
