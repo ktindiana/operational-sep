@@ -546,7 +546,7 @@ def check_ephin_data(startdate, enddate, experiment, flux_type):
 
         exists = os.path.isfile(datapath + '/EPHIN/' + fname)
         if not exists: #download file if not found on your computer
-            url = ('http://ulysses.physik.uni-kiel.de/costep/level3/l3i/10min/%s'
+            url = ('http://ulysses.physik.uni-kiel.de/costep/level3/l3i/30min/%s'
                     % (fname))
             print('Downloading EPHIN data: ' + url)
             try:
@@ -2074,7 +2074,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
                         'Energy Threshold column and differential flux in the '
                         'Flux Threshold column to define the SEP quantities.\n')
             fout.write('#Onset Peak Flux and Max Flux have units of '
-                        '1/[MeV cm^2 s sr] for the bottom rows.\n')
+                        '1/[MeV cm^2 s sr] for the differential thresholds.\n')
         fout.write('#Energy Threshold [MeV],Flux Threshold [pfu],'
             + 'Start Time,Onset Peak Flux 1/[cm2 s sr],Onset Time,'
             'Max Flux 1/[cm2 s sr],Max Time,Rise Time,End Time,Duration')
