@@ -25,22 +25,22 @@ The code calculates:
 ## Run code from command line as, e.g.:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot
 
-**For a start time other than midnight:**
+**For a start time other than midnight:**\
 python3 operational_sep_quantities.py --StartDate "2012-01-27 16:00:00" --EndDate 2012-02-02 --Experiment GOES-13 --FluxType integral --showplot
 
-**OR if the flux is already above threshold at the very first point due to a previous event, then falls below threshold prior to the start of the desired event:**
+**OR if the flux is already above threshold at the very first point due to a previous event, then falls below threshold prior to the start of the desired event:**\
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --DetectPreviousEvent
 
-**OR if the event has an initial increase above threshold for a few points, drops below threshold, then increases again above threshold for the remainder of the event:**
+**OR if the event has an initial increase above threshold for a few points, drops below threshold, then increases again above threshold for the remainder of the event:**\
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --TwoPeaks
 
-**Input a user-defined threshold of >30 MeV exceeds 1 pfu:**
+**Input a user-defined threshold of >30 MeV exceeds 1 pfu:**\
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --Threshold 30,1
 
-**Input multiple user-defined threshold of >30 MeV exceeds 1 pfu, >50 MeV exceeds 1pfu, >5 MeV exceeds 100 pfu:**
+**Input multiple user-defined threshold of >30 MeV exceeds 1 pfu, >50 MeV exceeds 1pfu, >5 MeV exceeds 100 pfu:**\
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --Threshold "30,1;50,1;5,100"
 
-**Input a user-defined threshold for a differential channel. Must specify both edges of the bin. The thresholds specifies that the flux in the 40.9 - 53 energy bin exceeds 0.001 [MeV-1 cm-2 s-1 sr-1]:**
+**Input a user-defined threshold for a differential channel. Must specify both edges of the bin. The thresholds specifies that the flux in the 40.9 - 53 energy bin exceeds 0.001 [MeV-1 cm-2 s-1 sr-1]:**\
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment EPHIN --FluxType differential --showplot --Threshold 40.9-53,0.001
 
 
