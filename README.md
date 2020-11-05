@@ -1,27 +1,48 @@
 # operational-sep
-Calculate solar energetic particle (SEP) proton flux quantities relevant to space radiation operations. Robust, user-friendly code written in python3. Works for only one SEP event at a time.  Check back for updates, as this code will be modified as it is tested for a variety of SEP events. Please send bug reports to kathryn.whitman@nasa.gov.
+Calculate solar energetic particle (SEP) proton flux quantities relevant to space radiation operations. The goal is for this code to be a robust, user-friendly code written in python3. Works for only one SEP event at a time.  Check back for updates, as this code will be modified as it is tested for a variety of SEP events. Please send bug reports and feedback to kathryn.whitman@nasa.gov.
 
-This code was developed in support of the SHINE 2019 SEP modeling challenge session to assist SEP modelers to calculate and report the quantities calculated in this code.
+This code was originally developed in support of the SHINE 2019 SEP modeling challenge session to assist SEP modelers in calculating and reporting the quantities in this code. The code continues to be developed and expanded for the purpose of SEP event analysis and SEP model validation.
+
+Users may specify any of the native data sets or supply their own flux time profiles. If differential fluxes are used, the >10 and >100 MeV integral fluxes will be estimated from the available differential channels.
+
+Data sets that are native to this code currently include GOES-08 to GOES-15, SEPEM RSDv2, and SOHO/EPHIN Level3 data. Native data sets will continue to be expanded and various calibration schemes from the literature will be made available. 
 
 The code calculates:
-- Start Time when thresholds are crossed: >10 MeV exceeds 10 pfu; >100 MeV exceeds 1 pfu
+- Values based on the operational thresholds: >10 MeV exceeds 10 pfu, >100 MeV exceeds 1 pfu
+- Values based on user input thresholds which can be applied to both integral or differential channels
+- Start Time when thresholds are crossed
 - End Time: when flux falls below 0.85 x threshold values
-- Peak Flux for >10 MeV, >100 MeV: Maximum flux value between the start and end times; no attempt to differentiate between initial peak and ESP
-- Time of Peak Flux for >10 MeV, >100 MeV
-- Duration >10 MeV, >100 MeV; end time - start time
+- Onset Peak Flux - the onset peak is defined to be the flux value at the location that the initial intensity rise turns over and becomes more gradual; a preliminary algorithm has been developed to locate the onset peak in an automated fashion and is still under development.
+- Time of Onset Peak
+- Maximum Flux for >10 MeV, >100 MeV and any other channel for which a threshold has been applied: Maximum flux value between the start and end times; this may be the ESP for lower energy channels
+- Time of Maximum Flux
+- Duration - defined as end time - start time
 - Event fluence (total integrated event intensity) for >10 MeV, >100 MeV in cm-2
-- Event fluence spectrum
-- Plots of time profiles for >10 MeV, >100 MeV and fluence spectrum
-- Indicates point selected as peak with red dot
+- Event fluence spectrum in [cm-2 sr]
+- Plots of time profiles for >10 MeV, >100 MeV, any user defined-thresholds and fluence spectrum
+- Plots of time profiles and their derivatives as part of the identification of the onset peak
 
 ## Run code from command line as, e.g.:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot
 
-OR if the flux is already above threshold at the very first point due to a previous event, then falls below threshold prior to the start of the desired event:
+**For a start time other than midnight:**
+python3 operational_sep_quantities.py --StartDate "2012-01-27 16:00:00" --EndDate 2012-02-02 --Experiment GOES-13 --FluxType integral --showplot
+
+**OR if the flux is already above threshold at the very first point due to a previous event, then falls below threshold prior to the start of the desired event:**
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --DetectPreviousEvent
 
-OR if the event has an initial increase above threshold for a few points, drops below threshold, then increases again above threshold for the remainder of the event:
+**OR if the event has an initial increase above threshold for a few points, drops below threshold, then increases again above threshold for the remainder of the event:**
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --TwoPeaks
+
+**Input a user-defined threshold of >30 MeV exceeds 1 pfu:**
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --Threshold 30,1
+
+**Input multiple user-defined threshold of >30 MeV exceeds 1 pfu, >50 MeV exceeds 1pfu, >5 MeV exceeds 100 pfu:**
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot --Threshold "30,1;50,1;5,100"
+
+**Input a user-defined threshold for a differential channel. Must specify both edges of the bin. The thresholds specifies that the flux in the 40.9 - 53 energy bin exceeds 0.001 [MeV-1 cm-2 s-1 sr-1]:**
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment EPHIN --FluxType differential --showplot --Threshold 40.9-53,0.001
+
 
 ## Run code from command line for user-input file as, e.g.:
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel --UserFile MyFluxes.txt --FluxType integral --showplot
@@ -35,10 +56,12 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate '2012-05-
     model_name = '' #if experiment is user, set model_name to describe data set
     user_file = ''  #name of the file containing the user-input fluxes
     showplot = True
+    saveplot = False
     detect_prev_event = False  #Try set to true if previous event still above threshold
     two_peaks = False  #Try set true if one event crosses threshold twice, e.g. >100 MeV 2011-08-04
-    threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
-    sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file, showplot, detect_prev_event, two_peaks, threshold)
+    umasep = False #Calculates flux at various times and energies related to UMASEP
+    threshold = '100,1' #default; modify to add a threshold
+    sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file, showplot, saveplot, detect_prev_event, two_peaks, umasep, threshold)
 
 ## Full documentation for operational_sep_quantities.py:
 ### NAME
@@ -81,7 +104,7 @@ V1.1
        Onset peak time
        Maximum intensity
        Time of maximum intensity
-       Rise time (onset to peak)
+       Rise time (onset to max intensity)
        End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
        Duration
        Event-integrated fluences
