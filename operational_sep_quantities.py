@@ -88,23 +88,23 @@ outpath = 'output'
 badval = -1 #bad data points will be set to this value; must be negative
 
 ######FOR USER DATA SETS######
-#(expect the first column contains date in YYYY-MM-DD HH:MM:SS format)
+#(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
-user_col = arr.array('i',[1,2,3,4,5,6,7,8])
+user_col = arr.array('i',[1,2])
 
 #DELIMETER between columns; for whitespace separating columns, use " " or ""
-user_delim = ""
+user_delim = ","
 
 #DEFINE ENERGY BINS associated with user file and columns specified above as:
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
-user_energy_bins = [[750,-1],[500,-1],[300,-1],[100,-1],\
-                    [60,-1],[50,-1],[30,-1],[10,-1]]
+user_energy_bins = [[10,-1],[60,-1]]
 #SEPEM_H_GOES13 P3 - P7 [[4,9],[12,23],[26,38],[40,73],[100,142],[160,242]]
 #EPREM [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
 #SEPMOD [[750,-1],[500,-1],[300,-1],[100,-1],\
 #                    [60,-1],[50,-1],[30,-1],[10,-1]]
+#SPARX [[10,-1],[60,-1]]
 ############################
 
 #FILENAME(s) containing user input fluxes - WILL BE SET THROUGH ARGUMENT
@@ -1337,6 +1337,11 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
        minimum energy defined by the set energy thresholds.
        If the user selected integral fluxes, then the channels corresponding to
        the desired energy thresholds will be identified.
+       If an energy channel with a specified is not present, will return a
+       None value for the integral fluxes, and remove that threshold in
+       run_all. (e.g. if >100 MeV fluxes were not in the data or model
+       fluxes, return a None value for integral fluxes and remove the
+       >100 MeV, 1 pfu threshold.)
     """
     nthresh = len(flux_thresholds)
     nenergy = len(energy_bins)
@@ -1354,19 +1359,31 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
                                         [np.array(integral_flux)]))
     if flux_type == "integral":
         for i in range(nthresh):
+            found_thresh = False
             for j in range(nenergy):
                 if energy_bins[j][0] == energy_thresholds[i]:
+                    found_thresh = True
                     if len(integral_fluxes) == 0:
                         integral_fluxes = [np.array(fluxes[j,:])]
                     else:
                         integral_fluxes = np.concatenate((integral_fluxes,
                                                 [np.array(fluxes[j,:])]))
+            #if the energy channel is not present in the input fluxes
+            if not found_thresh:
+                print("Didn't find energy threshold for " \
+                + str(energy_thresholds[i]) + ", " + str(flux_thresholds[i]))
+                if len(integral_fluxes) == 0:
+                    integral_fluxes = [None]*len(fluxes[0,:])
+                else:
+                    integral_fluxes = np.concatenate((integral_fluxes,
+                                        [np.array([0]*len(fluxes[0,:]))]))
+
         if len(integral_fluxes) == 0:
-            sys.exit("There were no integral fluxes with the energy "
-                    "thresholds specified by the user. Exiting.")
+            sys.exit("There were no integral fluxes with the requested energy "
+                    "thresholds. Exiting.")
         if len(integral_fluxes) != len(energy_thresholds):
-            sys.exit("Integral fluxes did not exist for some of the energy "
-                    "thresholds specified by the user. Exiting.")
+            sys.exit("Integral fluxes do not exist for some of the energy "
+                    "thresholds. Exiting.")
 
     return integral_fluxes
 
@@ -2248,6 +2265,18 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Estimate or select integral fluxes corresponding the energy_thresholds
     integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
                     flux_thresholds, energy_thresholds, energy_bins)
+
+    # print(integral_fluxes)
+    # #Check if all needed flux channels are present, otherwise remove threshold
+    # for i in range(len(integral_fluxes)-1,-1,-1): #backwards iteration
+    #     if integral_fluxes[i][0] < 0:
+    #         rem_flux = flux_thresholds.pop(i)
+    #         rem_en = energy_thresholds.pop(i)
+    #         np.delete(integral_fluxes,i,0)
+    #         print("Input file does not contain >" + str(rem_en) + " MeV fluxes. "
+    #                 "Not applying threshold " + str(rem_en) + ' MeV, ' \
+    #                 + str(rem_flux) + 'pfu.')
+    #         print(integral_fluxes)
 
     #Calculate SEP event quantities for energy and flux threshold combinations
     #integral fluxes are used to define event start and stop
