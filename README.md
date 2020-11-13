@@ -273,12 +273,12 @@ V2.0
     library/global_vars.py:
         user_col - identify columns in your file containing fluxes to analyze;
                 even if your delimeter is white space, consider the date-time
-                column as one single column. SET AT TOP OF CODE.
+                column as one single column. SET IN library/global_vars.py.
         user_delim - delimeter between columns, e.g. " " or ","   Use " " for
-                any amount of whitespace. SET AT TOP OF CODE.
+                any amount of whitespace. SET IN library/global_vars.py.
         user_energy_bins - define your energy bins at the top of the code in the
                 variable user_energy_bins. Follow the format in the subroutine
-                define_energy_bins. SET AT TOP OF CODE.
+                define_energy_bins. SET IN library/global_vars.py.
         user_fname - specify the name of the file containing the fluxes
                 through an argument in the command line. --UserFile  The
                 user_fname variable will be updated with that filename. ARGUMENT
