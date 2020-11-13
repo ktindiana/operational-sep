@@ -1,3 +1,6 @@
+from library import read_datasets as datasets
+from library import global_vars as vars
+import derive_background as bgsub
 import matplotlib.pyplot as plt
 import math
 import numpy as np
@@ -21,7 +24,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "1.1"
+__version__ = "2.0"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -80,31 +83,37 @@ __email__ = "kathryn.whitman@nasa.gov"
 #Changes in 1.1: Added ability for users to input multiple thresholds. If
 #   user uses differential fluxes, then may request a combination of thresholds
 #   based off of differential flux bins and estimated integral fluxes.
+#Changes in 1.2: Adding options to:
+#       Choose corrected or uncorrected GOES fluxes.
+#       Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
+#       energies to GOES uncorrected data.
+#Changes in 2.0: Complete restructuring of code. A library directory has
+#   been created and some of the subroutines originally in
+#   operational_sep_quantities is now in read_datasets.py. Global variables,
+#   such as directory names and the information users must input to run their
+#   data sets, is not in global_vars.py.
+#   A code has been written to perform a background subtraction of the SEP
+#   flux using a time period specified by the user - presumably spanning a day
+#   or more prior to the SEP event. The separation of SEP flux and background,
+#   followed by a background subtraction of the SEP flux is in
+#   derive_background.py.
+#
 
 
 #See full program description in all_program_info() below
-datapath = 'data'
-outpath = 'output'
-badval = -1 #bad data points will be set to this value; must be negative
+datapath = vars.datapath
+outpath = vars.outpath
+plotpath = vars.plotpath
+badval = vars.badval #bad data points will be set to this value; must be negative
 
 ######FOR USER DATA SETS######
 #(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
-user_col = arr.array('i',[1,2])
-
+user_col = vars.user_col
 #DELIMETER between columns; for whitespace separating columns, use " " or ""
-user_delim = ","
-
+user_delim = vars.user_delim
 #DEFINE ENERGY BINS associated with user file and columns specified above as:
-#   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
-#Use -1 in the second edge of the bin to specify integral channel (infinity):
-#   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
-user_energy_bins = [[10,-1],[60,-1]]
-#SEPEM_H_GOES13 P3 - P7 [[4,9],[12,23],[26,38],[40,73],[100,142],[160,242]]
-#EPREM [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
-#SEPMOD [[750,-1],[500,-1],[300,-1],[100,-1],\
-#                    [60,-1],[50,-1],[30,-1],[10,-1]]
-#SPARX [[10,-1],[60,-1]]
+user_energy_bins = vars.user_energy_bins
 ############################
 
 #FILENAME(s) containing user input fluxes - WILL BE SET THROUGH ARGUMENT
@@ -151,6 +160,23 @@ def all_program_info(): #only for documentation purposes
     labels everywhere if you choose other units. Currently no features to change
     units automatically.
 
+    User may specify various options, that currently only apply to GOES data:
+        Choose corrected or uncorrected GOES fluxes.
+        Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
+        energies to GOES uncorrected data.
+    --options uncorrected
+    --options uncorrected,S14,Bruno2017 (recommend using background subtraction)
+
+    Users may choose to perform a background subtraction by specifying:
+    --SubtractBG --BGStartDate YYYY-MM-DD --BGEndDate YYYY-MM-DD
+    The user should look at the data and select an appropriate time frame
+    prior to the event when the background is calm and well-defined. If
+    performing background subtraction, the mean background will be subtracted
+    from the fluxes in the SEP time frame (StartDate to EndDate). Plots
+    showing the mean background level, the background flux only, and the
+    background-subtracted SEP fluxes will be created by derive_background to
+    verify the quality of the background estimation and subtraction.
+
     If a previous event is ongoing and the specified time period starts with a
     threshold already crossed, you may try to set the --DetectPreviousEvent
     flag. If the flux drops below threshold before the next event starts, the
@@ -186,6 +212,14 @@ def all_program_info(): #only for documentation purposes
         --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel
         --UserFile MyFluxes.txt --FluxType integral --showplot
 
+    RUN CODE FROM COMMAND LINE AND PERFORM BACKGROUND SUBTRACTION AND APPLY
+    Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins.
+    (note: cannot bg-subtract GOES integral fluxes), e.g.:
+    python3 operational_sep_quantities.py --StartDate 2012-05-17
+        --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
+        --FluxType differential  --showplot --options uncorrected,S14,Bruno2017
+        --SubtractBG --BGStartDate 2012-05-10 --BGEndDate --2012-05-17
+
     RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
     import operational_sep_quantities as sep
     start_date = '2012-05-17'
@@ -196,14 +230,19 @@ def all_program_info(): #only for documentation purposes
     user_file = '' #if experiment is user, specify filename containing fluxes
     showplot = True  #Turn to False if don't want to see plots
     saveplot = False #turn to true if you want to save plots to file
+    doBGSub = False #Set true if want to perform background subtraction
+    bgstart_date = "2012-05-10" #Dates used to estimate mean background if
+    bgend_date = "2012-05-17"   #doBGSub is set to True
     detect_prev_event = True  #Helps if previous event causes high intensities
     two_peaks = False  #Helps if two increases above threshold in one event
     umasep = False #Set to true if want UMASEP values (see explanation above)
     threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
+
     FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
     sep_day = sep.run_all(start_date, end_date, experiment, flux_type, \
         model_name, user_file, showplot, saveplot, detect_prev_event,  \
-        two_peaks, umasep, threshold)
+        two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
+        bgend_date)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -222,7 +261,7 @@ def all_program_info(): #only for documentation purposes
     A file named as e.g. sep_values_GOES-13_differential_2012_3_7.csv contains
     start time, peak flux, etc, for each of the defined thresholds.
 
-    Added functionality to ouput the >10 MeV and >100 MeV time series for the
+    The program write to file the >10 MeV and >100 MeV time series for the
     date range input by the user. If the original data were integral fluxes,
     then the output files simply contain the >10 and >100 MeV time series from
     the input files. If the original data were differential fluxes, then the
@@ -249,8 +288,8 @@ def all_program_info(): #only for documentation purposes
     HEPAD works and the code has been written to include that HEPAD >700 MeV
     bin along with lower differential channels.
 
-    USER VARIABLES: The user must modify the following variables at the very
-    top of the code (around line 30):
+    USER VARIABLES: The user must modify the following variables in
+    library/global_vars.py:
         user_col - identify columns in your file containing fluxes to analyze;
                 even if your delimeter is white space, consider the date-time
                 column as one single column. SET AT TOP OF CODE.
@@ -268,951 +307,8 @@ def all_program_info(): #only for documentation purposes
     """
 
 
-def check_paths():
-    """Check that the paths that hold the data and output exist. If not, create.
-    """
-    print('Checking that paths exist: ' + datapath + ' and ' + outpath)
-    if not os.path.isdir(datapath):
-        print('check_paths: Directory containing fluxes, ' + datapath +
-        ', does not exist. Creating.')
-        os.mkdir(datapath);
-    if not os.path.isdir(datapath + '/GOES'):
-        print('check_paths: Directory containing fluxes, ' + datapath +
-        '/GOES, does not exist. Creating.')
-        os.mkdir(datapath + '/GOES');
-    if not os.path.isdir(datapath + '/SEPEM'):
-        print('check_paths: Directory containing fluxes, ' + datapath +
-        '/SEPEM, does not exist. Creating.')
-        os.mkdir(datapath + '/SEPEM');
-    if not os.path.isdir(datapath + '/EPHIN'):
-        print('check_paths: Directory containing fluxes, ' + datapath +
-        '/EPHIN, does not exist. Creating.')
-        os.mkdir(datapath + '/EPHIN');
-    if not os.path.isdir(outpath):
-        print('check_paths: Directory to store output information, ' + outpath
-            + ', does not exist. Creating.')
-        os.mkdir(outpath);
-    if not os.path.isdir('plots'):
-        print('check_paths: Directory to store plots does not exist. Creating.')
-        os.mkdir('plots');
-
-
-def make_yearly_files(filename):
-    """Convert a large data set into yearly files."""
-    print('Breaking up the SEPEM data into yearly data files. (This could '
-            + 'take a while, but you will not have to do it again.)')
-    fnamebase = filename.replace('.csv','')  #if csv file
-    fnamebase = fnamebase.replace('.txt','')  #if txt file
-
-    with open(datapath + '/SEPEM/' + filename) as csvfile:
-        readCSV = csv.reader(csvfile, delimiter=',')
-        has_header = csv.Sniffer().has_header(csvfile.readline())
-        if has_header:
-            next(readCSV)  # Skip single header row.
-        ncol = len(next(readCSV))
-        csvfile.seek(0) #back to beginning of file
-        if has_header:
-            header = csvfile.readline()  # save header row.
-
-        check_year = 0
-        for row in readCSV:
-            date = datetime.datetime.strptime(row[0][0:18],
-                                            "%Y-%m-%d %H:%M:%S")
-            year = date.year
-            if check_year != year:
-                if check_year != 0:
-                    outfile.close()
-                    outfname = fnamebase + '_' + str(year) + '.csv'
-                    outfile = open(datapath + '/SEPEM/' + outfname,'w+')
-                    check_year = year
-
-                if check_year == 0:
-                    outfname = fnamebase + '_' + str(year) + '.csv'
-                    outfile = open(datapath + '/SEPEM/' + outfname,'w+')
-                    if has_header:
-                        outfile.write(header)
-                    check_year = year
-
-            outfile.write(','.join(row))
-            outfile.write('\n')
-
-    outfile.close()
-    csvfile.close()
-    return
-
-
-def check_sepem_data(startdate, enddate, experiment, flux_type):
-    """Check if SEPEM data is present on the computer. Break into yearly
-        files if needed. Return SEPEM filenames for analysis.
-    """
-    styear = startdate.year
-    stmonth = startdate.month
-    stday = startdate.day
-    endyear = enddate.year
-    endmonth = enddate.month
-    endday = enddate.day
-
-    filenames1 = []  #SEPEM, eps, or epead
-
-    year = styear
-    while (year <= endyear):
-        fname = 'SEPEM_H_reference_' + str(year) + '.csv'
-        exists = os.path.isfile(datapath + '/SEPEM/' + fname)
-        if exists:
-            filenames1.append('SEPEM/' + fname)
-            year = year + 1
-        if not exists:
-            full_exists = os.path.isfile(datapath + '/SEPEM/' + \
-                                 '/SEPEM_H_reference.txt')
-            if not full_exists:
-                sys.exit("Please download and unzip the RSDv2 data set."
-                    " You may download the file at"
-                    " http://sepem.eu/help/SEPEM_RDS_v2-00.zip for full "
-                    "fluxes or http://sepem.eu/help/SEPEM_RDS_v2-00.zip "
-                    "for ESA background-subtracted fluxes.")
-            if full_exists:
-                #Break up SEPEM data set into yearly files
-                print('The SEPEM (RSDv2) is more tractable when breaking'
-                    + ' into yearly data files. Producing yearly files.')
-                make_yearly_files('SEPEM_H_reference.txt')
-                year = styear
-
-    return filenames1
-
-
-def check_goes_data(startdate, enddate, experiment, flux_type):
-    """Check that GOES data is on your computer or download it from the NOAA
-        website. Return the filenames associated with the correct GOES data.
-    """
-    styear = startdate.year
-    stmonth = startdate.month
-    stday = startdate.day
-    endyear = enddate.year
-    endmonth = enddate.month
-    endday = enddate.day
-
-    #Array of filenames that contain the data requested by the User
-    filenames1 = []  #SEPEM, eps, or epead
-    filenames2 = []  #hepad
-    filenames_orien = []  #orientation flag for GOES-13+
-
-    #GOES data is stored in monthly data files
-    get_years = []
-    get_months = []
-    test_year = styear
-    test_month = stmonth
-    test_date = datetime.datetime(year=test_year, month=test_month, day=1)
-    while (test_date <= enddate):
-        get_years.append(test_year)
-        get_months.append(test_month)
-        test_month = test_month + 1
-        if (test_month > 12):
-            test_month = 1
-            test_year = test_year + 1
-        test_date = datetime.datetime(year=test_year, month=test_month, day=1)
-
-    NFILES = len(get_months)  #number of data files to download
-
-    #Set correct file prefix for data files
-    if experiment == "GOES-08":
-        prefix1 = 'g08_eps_5m_'
-        prefix2 = 'g08_hepad_5m_'
-        satellite = 'goes08'
-
-    if experiment == "GOES-10":
-        prefix1 = 'g10_eps_5m_'
-        prefix2 = 'g10_hepad_5m_'
-        satellite = 'goes10'
-
-    if experiment == "GOES-11":
-        prefix1 = 'g11_eps_5m_'
-        prefix2 = 'g11_hepad_5m_'
-        satellite = 'goes11'
-
-    if experiment == "GOES-12":
-        prefix1 = 'g12_eps_5m_'
-        prefix2 = 'g12_hepad_5m_'
-        satellite = 'goes12'
-
-    if experiment == "GOES-13":
-        prefix2 = 'g13_hepad_ap_5m_'
-        prefix_orien = 'g13_epead_orientation_flag_1m_'
-        satellite = 'goes13'
-        if flux_type == "differential":
-            prefix1 = 'g13_epead_p17ew_5m_'
-        if flux_type == "integral":
-            prefix1 = 'g13_epead_cpflux_5m_'
-
-    if experiment == "GOES-14":
-        prefix2 = 'g14_hepad_ap_5m_'
-        prefix_orien = 'g14_epead_orientation_flag_1m_'
-        satellite = 'goes14'
-        if flux_type == "differential":
-            prefix1 = 'g14_epead_p17ew_5m_'
-        if flux_type == "integral":
-            prefix1 = 'g14_epead_cpflux_5m_'
-
-    if experiment == "GOES-15":
-        prefix2 = 'g15_hepad_ap_5m_'
-        prefix_orien = 'g15_epead_orientation_flag_1m_'
-        satellite = 'goes15'
-        if flux_type == "differential":
-            prefix1 = 'g15_epead_p17ew_5m_'
-        if flux_type == "integral":
-            prefix1 = 'g15_epead_cpflux_5m_'
-
-    #for every month that data is required, check if file is present or
-    #needs to be downloaded.
-    for i in range(NFILES):
-        year = get_years[i]
-        month = get_months[i]
-        last_day = calendar.monthrange(year,month)[1]
-        date_suffix = '%i%02i01_%i%02i%02i' % (year,month,year,month,
-                        last_day)
-        fname1 = prefix1 + date_suffix + '.csv'
-        exists1 = os.path.isfile(datapath + '/GOES/' + fname1)
-        fname2 = prefix2 + date_suffix + '.csv'
-        exists2 = os.path.isfile(datapath + '/GOES/' + fname2)
-        if (experiment == "GOES-13" or experiment == "GOES-14"
-            or experiment == "GOES-15"):
-            fname_orien = prefix_orien + date_suffix + '_v1.0.0.csv'
-            exists_orien = os.path.isfile(datapath + '/GOES/' + fname_orien)
-            filenames_orien.append('GOES/' + fname_orien)
-
-        filenames1.append('GOES/' + fname1)
-        filenames2.append('GOES/' + fname2)
-
-        if not exists1: #download file if not found on your computer
-            url = ('https://satdat.ngdc.noaa.gov/sem/goes/data/avg/' +
-                '%i/%02i/%s/csv/%s' % (year,month,satellite,fname1))
-            print('Downloading GOES data: ' + url)
-            try:
-                urllib.request.urlopen(url)
-                wget.download(url, datapath + '/GOES/' + fname1)
-            except urllib.request.HTTPError:
-                sys.exit("Cannot access file at " + url +
-                ". Please check that selected spacecraft covers date range.")
-
-
-        if not exists2: #download file if not found on your computer
-            url = ('https://satdat.ngdc.noaa.gov/sem/goes/data/avg/' +
-               '%i/%02i/%s/csv/%s' % (year,month,satellite,fname2))
-            print('Downloading GOES data: ' + url)
-            try:
-                urllib.request.urlopen(url)
-                wget.download(url, datapath + '/GOES/' + fname2)
-            except urllib.request.HTTPError:
-                sys.exit("Cannot access file at " + url +
-               ". Please check that selected spacecraft covers date range.")
-
-        if (experiment == "GOES-13" or experiment == "GOES-14"
-            or experiment == "GOES-15"):
-            if not exists_orien: #download file if not found on your computer
-                url = ('https://satdat.ngdc.noaa.gov/sem/goes/data/avg/' +
-                   '%i/%02i/%s/csv/%s' % (year,month,satellite,fname_orien))
-                print('Downloading GOES data: ' + url)
-                try:
-                    urllib.request.urlopen(url)
-                    wget.download(url, datapath + '/GOES/' + fname_orien)
-                except urllib.request.HTTPError:
-                    sys.exit("Cannot access orientation file at " + url +
-                   ". Please check that selected spacecraft covers date range.")
-
-    return filenames1, filenames2, filenames_orien
-
-
-def check_ephin_data(startdate, enddate, experiment, flux_type):
-    """Check for SOHO/COSTEP/EPHIN data on your computer. If not there,
-        download from http://ulysses.physik.uni-kiel.de/costep/level3/l3i/
-        30 minute data will be downloaded. Intensities are in units of
-        (cm^2 s sr mev/nuc)^-1
-        First available date is 1995 12 8 (DOY = 342).
-        The files are available in daily or yearly format.
-    """
-    styear = startdate.year
-    stmonth = startdate.month
-    stday = startdate.day
-    endyear = enddate.year
-    endmonth = enddate.month
-    endday = enddate.day
-
-    #Array of filenames that contain the data requested by the User
-    filenames1 = []  #SEPEM, EPHIN, eps, or epead
-
-    Nyr = endyear - styear + 1
-    for year in range(styear, endyear+1):
-        fname = str(year) + '.l3i'
-        filenames1.append('EPHIN/' + fname)
-
-        exists = os.path.isfile(datapath + '/EPHIN/' + fname)
-        if not exists: #download file if not found on your computer
-            url = ('http://ulysses.physik.uni-kiel.de/costep/level3/l3i/30min/%s'
-                    % (fname))
-            print('Downloading EPHIN data: ' + url)
-            try:
-                urllib.request.urlopen(url)
-                wget.download(url, datapath + '/EPHIN/' + fname)
-            except urllib.request.HTTPError:
-                sys.exit("Cannot access EPHIN file at " + url +
-               ". Please check that selected spacecraft covers date range.")
-
-    return filenames1
-
-
-
-
-def check_data(startdate, enddate, experiment, flux_type):
-    """Check that the files containing the data are in the data directory. If
-        the files for the requested dates aren't present, they will be
-        downloaded from the NOAA website. For SEPEM (RSDv2) data, if missing,
-        the program prints the URL from which the data can be downloaded and
-        unzipped manually.
-        The RSDv2 data set is very large and takes a long time to read as a
-        single file. This program will generate files containing fluxes for
-        each year for faster reading.
-    """
-    print('Checking that the requested data is present on your computer.')
-    styear = startdate.year
-    stmonth = startdate.month
-    stday = startdate.day
-    endyear = enddate.year
-    endmonth = enddate.month
-    endday = enddate.day
-
-    #Array of filenames that contain the data requested by the User
-    filenames1 = []  #SEPEM, eps, or epead
-    filenames2 = []  #hepad
-    filenames_orien = []  #orientation flag for GOES-13+
-
-    #If user wants to use own input file (filename defined at top of code)
-    if experiment == "user":
-        nuser = len(user_fname)
-        for i in range(nuser):
-            exists = os.path.isfile(datapath + '/' + user_fname[i])
-            if exists:
-                filenames1.append(user_fname[i])
-            if not exists:
-                sys.exit("You have selected to read a user-input input file "
-                "with filename " + datapath + '/' + user_fname[i]
-                + ". This file is not found! Exiting.")
-
-        return filenames1, filenames2, filenames_orien
-
-    #SEPEM data set is continuous, but too long; prefer yearly files
-    #Check if user has yearly files; if not:
-        #check if user has original SEPEM, then create yearly files
-        #Otherwise alert user to download data set and try again
-    if (experiment == "SEPEM"):
-        filenames1 = check_sepem_data(startdate, enddate, experiment, flux_type)
-        return filenames1, filenames2, filenames_orien
-
-    if experiment[0:4] == "GOES":
-        filenames1, filenames2, filenames_orien = check_goes_data(startdate, \
-                                        enddate, experiment, flux_type)
-        return filenames1, filenames2, filenames_orien
-
-    if experiment == "EPHIN":
-        filenames1 = check_ephin_data(startdate, enddate, experiment, flux_type)
-        return filenames1, filenames2, filenames_orien
-
-    return filenames1, filenames2, filenames_orien
-
-
-def find_goes_data_dimensions(filename):
-    """Input open csv file of GOES data. Identifies the start of the data by
-       searching for the string 'data:', then returns the number of header
-       rows and data rows present in the file.
-    """
-    with open(datapath + '/' + filename) as csvfile:
-        #GOES data has very large headers; figure out where the data
-        #starts inside the file and skip the required number of lines
-        nhead = 0
-        for line in csvfile:
-            nhead = nhead + 1
-            if 'data:' in line: #location of line before column headers
-                break
-        nhead = nhead + 1 #account for column header line
-        csvfile.readline() #proceed to column header line
-        readCSV = csv.reader(csvfile, delimiter=',')
-        nrow = len(csvfile.readlines()) #count lines of data
-        #print('\nThere are ' + str(nhead) + ' header lines and '
-        #    + str(nrow) + ' rows of data in ' + filename)
-
-    csvfile.close()
-    return nhead, nrow
-
-
-def get_west_detector(filename, dates):
-    """For GOES-13+, identify which detector is facing west from the
-       orientation flag files. Get an orientation for each data point.
-       EPEAD orientation flag. 0: A/W faces East and B/E faces West.
-       1: A/W faces West and B/E faces East. 2: yaw-flip in progress.
-    """
-    nhead, nrow = find_goes_data_dimensions(filename)
-    orien_dates = []
-    orientation = []
-
-    with open(datapath + '/' + filename) as orienfile:
-        #GOES data has very large headers; figure out where the data
-        #starts inside the file and skip the required number of lines
-        readCSV = csv.reader(orienfile, delimiter=',')
-        for k in range(nhead):
-            next(readCSV)  #to line with column headers
-
-        for row in readCSV:
-            date = datetime.datetime.strptime(row[0][0:18],
-                                            "%Y-%m-%d %H:%M:%S")
-            orien_dates.append(date)
-            orientation.append(float(row[1]))
-
-    orienfile.close()
-
-    #orientation data is in 1 minute intervals while flux data is in 5
-    #minute intervals. Identify W facing detector for flux times.
-    #Assume that time stamps match every 5 minutes.
-    date_index = 0
-    west_detector = []
-    for i in range(nrow):
-        if orien_dates[i] == dates[date_index]:
-            if orientation[i] == 0:
-                west_detector.append("B")
-            if orientation[i] == 1:
-                west_detector.append("A")
-            if orientation[i] == 2:
-                west_detector.append("Flip")
-            date_index = date_index + 1
-            if date_index == len(dates):
-                break
-
-    #print('There were ' + str(len(dates)) + ' input dates and there are ' +
-    #        str(len(west_detector)) + ' detector orientations.')
-    return west_detector
-
-
-def read_in_sepem(experiment, flux_type, filenames1):
-    """Read in SEPEM data files from the computer."""
-    NFILES = len(filenames1)
-    for i in range(NFILES):
-        print('Reading in file ' + datapath + '/' + filenames1[i])
-        with open(datapath + '/' + filenames1[i]) as csvfile:
-            readCSV = csv.reader(csvfile, delimiter=',')
-            has_header = csv.Sniffer().has_header(csvfile.readline())
-            if has_header:
-                next(readCSV)  # Skip single header row.
-            ncol = len(next(readCSV))
-            csvfile.seek(0) #back to beginning of file
-            if has_header:
-                next(readCSV)  # Skip header row.
-            nrow = len(csvfile.readlines())
-            #print('There are ' + str(ncol) + ' columns and ' + str(nrow) +
-            #    ' rows of data in ' + filenames1[i])
-
-            #Define arrays that hold dates and fluxes
-            dates = []
-            fluxes = np.zeros(shape=(ncol-1,nrow))
-
-            csvfile.seek(0) #back to beginning of file
-            if has_header:
-                next(readCSV)  # Skip header row.
-
-            count = 0
-            for row in readCSV:
-                date = datetime.datetime.strptime(row[0][0:18],
-                                                "%Y-%m-%d %H:%M:%S")
-                dates.append(date)
-                for j in range(1,ncol):
-                    flux = float(row[j])
-                    if flux < 0:
-                        flux = badval
-                    fluxes[j-1][count] = flux
-                count = count + 1
-        #If reading in multiple files, then combine all data into one array
-        #SEPEM currently only has one file, but making generalized
-        if i==0:
-            all_fluxes = fluxes
-            all_dates = dates
-        else:
-            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
-            all_dates = all_dates + dates
-
-    return all_dates, all_fluxes
-
-
-def read_in_goes(experiment, flux_type, filenames1, filenames2,
-                filenames_orien):
-    """Read in GOES data from your computer."""
-    NFILES = len(filenames1)
-
-    if (experiment == "GOES-08" or experiment == "GOES-10" or
-        experiment == "GOES-11" or experiment == "GOES-12"):
-        if flux_type == "differential":
-            #CORRECTED CHANNELS
-            columns = [18,19,20,21,22,23] #eps
-            hepad_columns = [1,2,3,4]
-            #UNCORRECTED channels
-            #columns = [5,6,7,8,9,10] #eps
-            #hepad_columns = [1,2,3,4]
-        if flux_type == "integral":
-            columns = [25,26,27,28,29,30] #eps
-            hepad_columns = [4]
-    if (experiment == "GOES-13" or experiment == "GOES-14" or
-        experiment == "GOES-15"):
-        if flux_type == "differential":
-            #CORRECTED CHANNELS
-            columns = [16,24,32,40,48,56] #epead, default A detector
-            columnsB = [12,20,28,36,44,52] #epead, B detector
-            hepad_columns = [9,12,15,18]
-            #UNCORRECTED CHANNELS
-            #columns = [15,23,31,39,47,55] #epead, default A detector
-            #columnsB = [11,19,27,35,43,51] #epead, B detector
-        if flux_type == "integral":
-            #ONLY CORRECTED CHANNELS AVAILABLE
-            columns = [18,20,22,24,26,28] #epead, default A detector
-            columnsB = [4,6,8,10,12,14] #epead, B detector
-            hepad_columns = [18]
-
-    ncol = len(columns)
-    nhcol = len(hepad_columns)
-    totcol = ncol + nhcol
-
-    #Read in fluxes from files
-    for i in range(NFILES):
-        #FIRST set of files for lower energy eps or epead
-        nhead, nrow = find_goes_data_dimensions(filenames1[i])
-        dates = []
-        fluxes = np.zeros(shape=(totcol,nrow))
-        print('Reading in file ' + datapath + '/' + filenames1[i])
-        with open(datapath + '/' + filenames1[i]) as csvfile:
-            #GOES data has very large headers; figure out where the data
-            #starts inside the file and skip the required number of lines
-            readCSV = csv.reader(csvfile, delimiter=',')
-            for k in range(nhead):
-                next(readCSV)  #to start of data
-
-            #Get dates first; need dates to identify spacecraft orientation
-            #for GOES-13+
-            for row in readCSV:
-                date = datetime.datetime.strptime(row[0][0:18],
-                                                "%Y-%m-%d %H:%M:%S")
-                dates.append(date)
-
-            if (experiment == "GOES-13" or experiment == "GOES-14"
-                or experiment == "GOES-15"):
-                west_detector = get_west_detector(filenames_orien[i], dates)
-
-
-            #Go back and get fluxes
-            count = 0
-            csvfile.seek(0)
-            for k in range(nhead):
-                next(readCSV)  #to start of data
-            for row in readCSV:
-                for j in range(ncol):
-                    flux = float(row[columns[j]])
-                    #Account for orientation
-                    if (experiment == "GOES-13" or experiment == "GOES-14"
-                        or experiment == "GOES-15"):
-                        if west_detector[count] == "B":
-                            flux = float(row[columnsB[j]])
-                        if west_detector[count] == "Flip":
-                            flux = badval
-                    if flux < 0:
-                        flux = badval
-                    fluxes[j][count] = flux
-                count = count + 1
-        csvfile.close()
-
-
-        #SECOND set of files for higher energy hepad
-        nhead, nrow = find_goes_data_dimensions(filenames2[i])
-        with open(datapath + '/' + filenames2[i]) as csvfile:
-            readCSV = csv.reader(csvfile, delimiter=',')
-            for k in range(nhead):
-                next(readCSV)  #to start of data
-
-            count = 0
-            for row in readCSV:
-                for j in range(nhcol):
-                    flux = float(row[hepad_columns[j]])
-                    if flux < 0:
-                        flux = badval
-                    fluxes[ncol+j][count] = flux
-                count = count + 1
-        csvfile.close()
-
-        #If reading in multiple files, then combine all data into one array
-        if i==0:
-            all_fluxes = fluxes
-            all_dates = dates
-        else:
-            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
-            all_dates = all_dates + dates
-
-    return all_dates, all_fluxes
-
-
-def read_in_ephin(experiment, flux_type, filenames1):
-    """Read in EPHIN files from your computer."""
-    NFILES = len(filenames1)
-
-    datecols = [0,1,2,4,5] #yr, mth, dy, hr, min
-    fluxcols = [8,9,10,11]
-    ncol= len(fluxcols)
-
-    for i in range(NFILES):
-        print('Reading in file ' + datapath + '/' + filenames1[i])
-        with open(datapath + '/' + filenames1[i]) as csvfile:
-            #Count header lines indicated by hash #
-            nhead = 0
-            for line in csvfile:
-                line = line.lstrip()
-                if line[0] == "#":
-                    nhead = nhead + 1
-                else:
-                    break
-            #number of lines containing data
-            nrow = len(csvfile.readlines())+1
-
-            #Define arrays that hold dates and fluxes
-            dates = []
-            fluxes = np.zeros(shape=(ncol,nrow))
-
-            csvfile.seek(0) #back to beginning of file
-            for k in range(nhead):
-                csvfile.readline()  # Skip header rows.
-
-            count = 0
-            for line in csvfile:
-                if line == '': continue
-                if line[0] == "#": continue
-
-                row = line.split()
-                yr = int(row[datecols[0]])
-                mnth = int(row[datecols[1]])
-                dy = int(row[datecols[2]])
-                hr = int(row[datecols[3]])
-                min = int(row[datecols[4]])
-                date = datetime.datetime(yr,mnth,dy,hr,min,0,0)
-                dates.append(date)
-                for j in range(ncol):
-                    flux = float(row[fluxcols[j]])
-                    if flux < 0:
-                        flux = badval
-                    fluxes[j][count] = flux
-                count = count + 1
-        #If reading in multiple files, then combine all data into one array
-        #SEPEM currently only has one file, but making generalized
-        if i==0:
-            all_fluxes = fluxes
-            all_dates = dates
-        else:
-            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
-            all_dates = all_dates + dates
-
-    return all_dates, all_fluxes
-
-
-def read_in_files(experiment, flux_type, filenames1, filenames2,
-                filenames_orien):
-    """Read in the appropriate data files with the correct format. Return an
-       array with dates and fluxes. Bad flux values (any negative flux) are set
-       to -1. Format is defined to work with the files downloaded directly from
-       NOAA or the RSDv2 (SEPEM) website as is.
-       The fluxes output for the GOES-13+ satellites are always from the
-       westward-facing detector (A or B) by referring to the orientation flags
-       provided in the associated orientation file. Data taken during a yaw
-       flip (orientation flag = 2) are excluded and fluxes are set to -1.
-       Note that the EPS detectors on GOES-08 and -12 face westward. The
-       EPS detector on GOES-10 faces eastward. GOES-11 is a spinning satellite.
-    """
-    print('Reading in data files for ' + experiment + '.')
-    all_dates = []
-    all_fluxes = []
-
-    if experiment == "SEPEM":
-        all_dates, all_fluxes = read_in_sepem(experiment, flux_type, filenames1)
-        return all_dates, all_fluxes
-
-    #All GOES data
-    if experiment[0:4] == "GOES":
-        all_dates, all_fluxes = read_in_goes(experiment, flux_type, filenames1,\
-                            filenames2, filenames_orien)
-        return all_dates, all_fluxes
-
-    if experiment == "EPHIN":
-        all_dates, all_fluxes = read_in_ephin(experiment, flux_type, filenames1)
-        return all_dates, all_fluxes
-
-    return all_dates, all_fluxes
-
-
-def read_in_user_files(filenames1):
-    """Read in file containing flux time profile information that was
-       specified by the user.
-       The first column MUST contain the date in YYYY-MM-DD HH:MM:SS
-       format. The remaining flux columns to be read in are specified by the
-       user in the variable user_col at the very beginning of this program.
-       The date column should always be considered column 0, even if you used
-       whitespace as your delimeter. The code will consider the date format
-       YYYY-MM-DD HH:MM:SS as one column even though it contains whitespace.
-       Any number of header lines are allowed, but they must be indicated by #
-       at the very beginning, including empty lines.
-       Be sure to add the energy bins associated with your flux columns in the
-       subroutine define_energy_bins under the "user" is statement.
-    """
-    print('Reading in user-specified files.')
-    NFILES = len(filenames1)
-    ncol = len(user_col) #include column for date
-    for i in range(NFILES):
-        print('Reading in ' + datapath + '/' + filenames1[i])
-        with open(datapath + '/' + filenames1[i]) as csvfile:
-            #Count header lines indicated by hash #
-            nhead = 0
-            for line in csvfile:
-                line = line.lstrip()
-                if line[0] == "#":
-                    nhead = nhead + 1
-                else:
-                    break
-            #number of lines containing data
-            nrow = len(csvfile.readlines())+1
-
-            #Define arrays that hold dates and fluxes
-            dates = []
-            fluxes = np.zeros(shape=(ncol,nrow))
-
-            csvfile.seek(0) #back to beginning of file
-            for k in range(nhead):
-                csvfile.readline()  # Skip header rows.
-
-            if user_delim == " " or user_delim == "":
-                for j in range(len(user_col)):
-                    #date takes two columns if separated by whitespace
-                    #adjust the user input columns to account for this
-                    user_col[j] = user_col[j] + 1
-
-            count = 0
-            for line in csvfile:
-                if line == " " or line == "":
-                    continue
-                if user_delim == " " or user_delim == "":
-                    row = line.split()
-                    str_date = row[0][0:10] + ' ' + row[1][0:8]
-                if user_delim != " " and user_delim != "":
-                    row = line.split(user_delim)
-                    str_date = row[0][0:18]
-
-                date = datetime.datetime.strptime(str_date,
-                                                "%Y-%m-%d %H:%M:%S")
-                dates.append(date)
-                for j in range(len(user_col)):
-                   # print("Read in flux for column " + str(user_col[j]) + ': '
-                   #     + str(date) + ' ' + row[user_col[j]])
-                    flux = float(row[user_col[j]])
-                    if flux < 0:
-                        flux = badval
-                    fluxes[j][count] = flux
-                count = count + 1
-        #If reading in multiple files, then combine all data into one array
-        #SEPEM currently only has one file, but making generalized
-        if i==0:
-            all_fluxes = fluxes
-            all_dates = dates
-        else:
-            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
-            all_dates = all_dates + dates
-
-    return all_dates, all_fluxes
-
-
-def define_energy_bins(experiment,flux_type):
-    """Define the energy bins for the selected spacecraft or data set.
-       If the user inputs their own file, they must set the user_energy_bins
-       variable at the top of the code.
-    """
-    #use corrected proton flux for GOES eps or epead; include hepad
-    #-1 indicates infinity ([700, -1] means all particles above 700 MeV)
-    if experiment == "SEPEM":
-        energy_bins = [[5.00,7.23],[7.23,10.46],[10.46,15.12],[15.12,21.87],
-                       [21.87,31.62],[31.62,45.73],[45.73,66.13],
-                       [66.13,95.64],[95.64,138.3],[138.3,200.0],
-                       [200.0,289.2]]
-
-    if experiment == "ERNEf10":
-        #The top 3 channels tend to saturate and show incorrect values during
-        #high intensity SEP events. For this reason, only the >10 MeV
-        #integral fluxes should be derived from ERNE data.
-        #f10 format, from 2 December 1996
-        energy_bins = [[10.0,13.0],[14.0,17.0],[17.0,22.0],[21.0,28.0],
-                       [26.0,32.0],[32.0,40.0],[41.0,51.0],
-                       [51.0,67.0],[54.0,79.0],[79.0,114.0],[111.0,140.]]
-
-    if experiment == "ERNEf40":
-        #f40 format, from 19 May 2000
-        energy_bins = [[10.0,13.0],[14.0,17.0],[17.0, 22.0],[21.0,28.0],
-                       [26.0,32.0],[32.0,40.0],[40.0,51.0],[51.0,67.0],
-                       [64.0,80.0],[80.0,101.0],[101.0,131.0]]
-
-    if experiment == "EPHIN":
-        #http://ulysses.physik.uni-kiel.de/costep/level3/l3i/
-        #DOCUMENTATION-COSTEP-EPHIN-L3-20181002.pdf
-        energy_bins = [[4.3,7.8],[7.8,25],[25,40.9],[40.9,53]]
-
-    if (flux_type == "integral" and experiment[0:4] == "GOES"):
-         energy_bins = [[5.0,-1],[10.0,-1],[30.0,-1],
-                        [50.0,-1],[60.0,-1],[100.0,-1],[700.0,-1]]
-
-    if (experiment == "GOES-08" or experiment == "GOES-10" or
-        experiment == "GOES-11" or experiment == "GOES-12"):
-        if (flux_type == "differential"):
-            #files named e.g. g08_eps_5m_yyyymmdd_yyyymmdd.csv
-            energy_bins = [[4.0,9.0],[9.0,15.0],[15.0,44.0],
-                           [40.0,80.0],[80.0,165.0],[165.0,500.0],
-                           [350.0,420.0],[420.0,510.0],[510.0,700.0],
-                           [700.0,-1]]
-
-    if (experiment == "GOES-13" or experiment == "GOES-14" or
-        experiment == "GOES-15"):
-        if (flux_type == "differential"):
-            energy_bins = [[4.2,8.7],[8.7,14.5],[15.0,40.0],
-                            [38.0,82.0],[84.0,200.0],[110.0,900.0],
-                            [330.0,420.0],[420.0,510.0],[510.0,700.0],
-                            [700.0,-1]]
-
-    if experiment == "user":
-        #modify to match your energy bins or integral channels
-        #use -1 in the second edge of the bin for integral channel (infinity)
-        energy_bins = user_energy_bins
-
-    return energy_bins
-
-
-def extract_date_range(startdate,enddate,all_dates,all_fluxes):
-    """Extract fluxes only for the dates in the range specified by the user."""
-    #print('Extracting fluxes for dates: ' + str(startdate) + ' to '
-    #    + str(enddate))
-    ndates = len(all_dates)
-    nst = 0
-    nend = 0
-    for i in range(ndates):
-        if all_dates[i] <= startdate:
-            nst = i
-        if all_dates[i] <= enddate:
-            nend = i
-    nend = min(nend+1, ndates)  #adjust to include nend in date range
-    dates = all_dates[nst:nend]
-    fluxes = all_fluxes[:,nst:nend]
-
-    return dates, fluxes
-
-
-def do_interpolation(i,dates,flux):
-    """If bad fluxes (flux < 0) are found in the data, find the first prior
-       data point and the first following data point that have good flux values.
-       Perform linear interpolation in time:
-            F(t) = F1 + (t - t1)*(F2 - F1)/(t2 - t1)
-       This subroutine does the calculation for a single instance of bad data
-       that corresponds to array index i.
-    """
-    ndates = len(dates)
-
-    #If first point is bad point, use the next good point to fill gap
-    if i == 0:
-        for j in range(i,ndates-1):
-            if flux[j] != badval:
-                postflux = flux[j]
-                postdate = dates[j]
-                print('First point in array is bad. The first good value after '
-                    'the gap is on '+ str(dates[j]) + ' with value '
-                    + str(flux[j]))
-                break
-        preflux = postflux
-
-    #If last point is bad point, use the first prior good point to fill gap
-    if i == ndates - 1:
-        for j in range(i,-1,-1):
-            if flux[j] != badval:
-                preflux = flux[j]
-                predate = dates[j]
-                print('Last point in the array is bad. The first good value '
-                    'previous to gap is on '+ str(dates[j]) + ' with value '
-                    + str(flux[j]))
-                break
-        postflux = preflux
-
-    #Within the flux array
-    if i != 0 and i != ndates-1:
-        #search for first previous good value prior to the gap
-        for j in range(i,-1,-1):
-            if flux[j] != badval:
-                preflux = flux[j]
-                predate = dates[j]
-                print('The first good value previous to gap is on '
-                    + str(dates[j]) + ' with value ' + str(flux[j]))
-                break
-            if j == 0:
-                sys.exit('There is a data gap at the beginning of the '
-                        'selected time period. Program cannot estimate '
-                        'flux in data gap.')
-
-        #search for first previous good value after to the gap
-        for j in range(i,ndates-1):
-            if flux[j] != badval:
-                postflux = flux[j]
-                postdate = dates[j]
-                print('The first good value after to gap is on '
-                    + str(dates[j]) + ' with value ' + str(flux[j]))
-                break
-            if j == ndates-2 and flux[j] == badval:
-                if flux[ndates-1] != badval:
-                    postflux = flux[ndates-1]
-                    postdate = dates[ndates-1]
-                else:
-                    postflux = preflux
-                    postdate = predate
-                    print(' Bad values continue to the end of the data set. '
-                        'Using the first good value previous to gap on '
-                        + str(postdate) + ' with value ' + str(postflux))
-
-    if preflux == postflux:
-        interp_flux = preflux
-    if preflux != postflux:
-        interp_flux = preflux + (dates[i] - predate).total_seconds()\
-             *(postflux - preflux)/(postdate - predate).total_seconds()
-    print('Filling gap at time ' + str(dates[i])
-            + ' with interpolated flux ' + str(interp_flux))
-    return interp_flux
-
-
-def check_for_bad_data(dates,fluxes,energy_bins):
-    """Search the data for bad values (flux < 0) and fill the missing data with
-       an estimate flux found by performing a linear interpolation with time,
-       using the good flux values immediately surrounding the data gap.
-    """
-    print('Checking for bad data values and filling with linear interpolation '
-            + 'with time.')
-    ndates = len(dates)
-    nbins = len(energy_bins)
-
-    for j in range(ndates):  #flux at each time
-        for i in range(nbins):
-            if fluxes[i,j] < 0: #bad data
-                #estimate flux with interpolation in time
-                print()
-                print('There is a data gap for time ' + str(dates[j])
-                        + ' and energy ' + str(energy_bins[i][0]) + ' - '
-                        + str(energy_bins[i][1]) + ' MeV.'
-                        + ' Filling in missing value with linear '
-                        + 'interpolation in time.')
-                interp_flux = do_interpolation(j,dates,fluxes[i,:])
-                fluxes[i,j] = interp_flux
-    print('Finished checking for bad data.')
-    print()
-    return fluxes
-
-
 def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
-                fluxes):
+                fluxes, options):
     """If user selected differential fluxes, convert to integral fluxes to
        caluculate operational threshold crossings (>10 MeV protons exceed 10
        pfu, >100 MeV protons exceed 1 pfu).
@@ -1249,7 +345,7 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
     #For this reason, excluding the highest energy EPEAD bin in
     #integral flux estimation, 110 - 900 MeV
     if (experiment == "GOES-13" or experiment == "GOES-14" or
-        experiment == "GOES-15"):
+        experiment == "GOES-15") and "Bruno2017" not in options:
         remove_bin = -1
         for i in range(nbins):
             if energy_bins[i][0] == 110 and energy_bins[i][1] == 900:
@@ -1351,7 +447,7 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
     if flux_type == "differential":
         for i in range(nthresh):
             integral_flux = from_differential_to_integral_flux(experiment, \
-                            energy_thresholds[i], energy_bins, fluxes)
+                            energy_thresholds[i], energy_bins, fluxes, options)
             if i == 0:
                 integral_fluxes = [np.array(integral_flux)]
             else:
@@ -1637,8 +733,8 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                 "Recalculating event info for remaining time period in data "
                 "set.")
             last_date = dates[len(dates)-1]
-            tmp_dates, tmp_fluxes = extract_date_range(eet,last_date,dates,
-                                integral_fluxes)
+            tmp_dates, tmp_fluxes = datasets.extract_date_range(eet,last_date,
+                                dates,integral_fluxes)
             ct,pf,pt,rt,eet,dur = integral_threshold_crossing(\
                             energy_thresholds[i],flux_thresholds[i],
                             tmp_dates,tmp_fluxes[i])
@@ -1648,8 +744,8 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                 print("User specified that event has two peaks. Extending "
                     "event to second decrease below threshold.")
                 last_date = dates[len(dates)-1]
-                tmp_dates, tmp_fluxes = extract_date_range(eet,last_date,dates,
-                                    integral_fluxes)
+                tmp_dates, tmp_fluxes = datasets.extract_date_range(eet,
+                                    last_date,dates,integral_fluxes)
                 ct2,pf2,pt2,rt2,eet2,dur2 = integral_threshold_crossing(\
                                 energy_thresholds[i],flux_thresholds[i],
                                 tmp_dates,tmp_fluxes[i])
@@ -1840,7 +936,7 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                 continue
 
             fig, ax = plt.subplots(figsize=(9, 4))
-            plt.title("Onset Peak for " + str(energy_thresholds[i]) \
+            plt.title("Onset Peak Derivation for " + str(energy_thresholds[i]) \
                     + " MeV")
             ax.plot_date(dates,integral_fluxes[i],'-',label=experiment)
             ax.plot_date(dates,smooth_flux[i],'-',color="red",label="Smoothed")
@@ -2140,7 +1236,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
 ######## MAIN PROGRAM #########
 def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         user_file, showplot, saveplot, detect_prev_event, two_peaks, umasep,
-        str_thresh):
+        str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate):
     """"Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
@@ -2164,6 +1260,41 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     LastEnd = False #event ends on last data point instead of threshold
     ShortEvent = False #Start to end less than 12 hours, perhaps 2 peak issue
     LateHundred = False #>100 MeV threshold crossed >24 hours after >10 MeV
+
+    #CHECK AND VALIDATE OPTIONS
+    options = options.split(",")
+    if "S14" in options and experiment[0:4] != "GOES":
+        sys.exit("Sanberg et al. (2014) effective energies (S14) may only "
+            "be applied to GOES data.")
+    if "S14" in options and "uncorrected" not in options:
+        print("Sandberg et al. (2014) effective energies (S14) may only be "
+            "applied to GOES uncorrected fluxes. Changing flux type to "
+            "\"uncorrected\" and continuing.")
+        options.append("uncorrected")
+    if "uncorrected" in options and flux_type == "integral":
+        sys.exit("The uncorrected option cannot be used with integral fluxes. "
+                "Please remove this option and run again. Exiting.")
+    if "uncorrected" in options and experiment[0:4] != "GOES":
+        sys.exit("The uncorrected option may only be specified for GOES "
+                "differential fluxes. Exiting.")
+    if "Bruno2017" in options and (experiment != "GOES-13" and \
+        experiment != "GOES-15"):
+        sys.exit("Bruno2017 effective energies may only be appied to GOES-13 "
+                "or GOES-15 fluxes. Exiting.")
+    if "S14" in options and (experiment == "GOES-13" or \
+        experiment == "GOES-15"):
+        print("Sandberg et al. (2014) effective energies found for GOES-11 "
+            "will be applied to channels P2-P7. Continuing.")
+    if "S14" in options and "Bruno2017" in options:
+        print("Sandberg et al. (2014) effective energies from GOES-11 will be "
+            "applied to P2-P5. Bruno (2017) effective energies will be applied "
+            "to P6-P11.")
+    if doBGSub and experiment[0:4] == "GOES" and flux_type == "integral":
+        sys.exit("Do not perform background subtraction on GOES integral "
+                "fluxes. Integral fluxes have already been derived by "
+                "applying corrections for cross-contamination and removing "
+                "the instrument background levels.")
+
 
     str_thresh = str_thresh.strip().split(";")
     nin_thresh = len(str_thresh)
@@ -2205,8 +1336,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
     for diff_thresh in is_diff_thresh:
         if diff_thresh and flux_type == "integral":
-            sys.exit('The input flux type is specified as integral, but you have '
-                    'requested a threshold in a differential energy bin. '
+            sys.exit('The input flux type is specified as integral, but you '
+                    'have requested a threshold in a differential energy bin. '
                     'Flux must be differential to impelement a threshold on a '
                     'differential energy bin. Exiting.')
 
@@ -2217,27 +1348,60 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                   + str(sepem_end_date) +
             '. Please change your requested dates. Exiting.')
 
+    if ("uncorrected" in options or "S14" in options or "Bruno2017" in options)\
+                and experiment[0:4] != "GOES":
+        sys.exit("The options you have selected are only applicable to GOES "
+                "data. Please remove these options and run again: "
+                "uncorrected, S14, or Bruno2017.")
+
+    if experiment[0:4] == "GOES" and flux_type == "integral" and doBGSub:
+        sys.exit("Do not perform background subtraction on GOES integral "
+                "fluxes. Integral fluxes have already been derived by "
+                "applying corrections for cross-contamination and removing "
+                "the instrument background levels.")
+
+    if experiment[0:4] == "GOES" and "uncorrected" not in options:
+        print("Warning: GOES corrected fluxes have already been derived by "
+                "applying corrections for cross-contamination and removing "
+                "the instrument and GCR background levels. Please be sure it "
+                "makes sense to perform a background subtraction of this data. "
+                "Otherwise, please add --options uncorrected to perform "
+                "background subtracion on GOES uncorrected fluxes. Continuing.")
 
     user_fname[0] = user_file #input as argument, default is 'tmp.txt'
 
     #create data and output paths if don't exist
-    check_paths()
+    datasets.check_paths()
 
     #Check and prepare the data
-    filenames1, filenames2, filenames_orien = check_data(startdate,enddate,
-                                                experiment,flux_type)
+    filenames1, filenames2, filenames_orien = datasets.check_data(startdate,
+                                                enddate, experiment, flux_type)
     #read in flux files
     if experiment != "user":
-        all_dates, all_fluxes = read_in_files(experiment, flux_type, filenames1,
-                                filenames2, filenames_orien)
+        all_dates, all_fluxes, west_detector =datasets.read_in_files(experiment,
+                    flux_type, filenames1, filenames2, filenames_orien, options)
     if experiment == "user":
-        all_dates, all_fluxes = read_in_user_files(filenames1)
+        all_dates, all_fluxes = datasets.read_in_user_files(filenames1)
+        west_detector = []
     #Define energy bins
-    energy_bins = define_energy_bins(experiment,flux_type)
-    #Extract the date range specified by the user
-    dates, fluxes = extract_date_range(startdate,enddate,all_dates,all_fluxes)
-    #Remove bad data points (negative fluxes) with linear interpolation in time
-    fluxes = check_for_bad_data(dates,fluxes,energy_bins)
+    energy_bins = datasets.define_energy_bins(experiment, flux_type, \
+                                west_detector, options)
+    #IF REQUESTED BACKGROUND SUBTRACTION
+    if doBGSub:
+        bgfluxes, sepfluxes, bgdates = bgsub.derive_background(str_startdate, \
+                    str_enddate, str_bgstartdate, str_bgenddate, experiment, \
+                    flux_type, model_name,user_file, showplot, saveplot,options)
+        #Extract the date range specified by the user
+        dates, fluxes = datasets.extract_date_range(startdate, enddate,
+                                    bgdates, sepfluxes)
+    #NO BACKGROUND SUBTRACTION
+    if not doBGSub:
+        #Extract the date range specified by the user
+        dates, fluxes = datasets.extract_date_range(startdate, enddate,
+                                all_dates, all_fluxes)
+        #Remove bad data points (negative fluxes) with linear interp in time
+        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
+
 
     if len(dates) <= 1:
         sys.exit("The specified start and end dates were not present in the "
@@ -2266,17 +1430,6 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
                     flux_thresholds, energy_thresholds, energy_bins)
 
-    # print(integral_fluxes)
-    # #Check if all needed flux channels are present, otherwise remove threshold
-    # for i in range(len(integral_fluxes)-1,-1,-1): #backwards iteration
-    #     if integral_fluxes[i][0] < 0:
-    #         rem_flux = flux_thresholds.pop(i)
-    #         rem_en = energy_thresholds.pop(i)
-    #         np.delete(integral_fluxes,i,0)
-    #         print("Input file does not contain >" + str(rem_en) + " MeV fluxes. "
-    #                 "Not applying threshold " + str(rem_en) + ' MeV, ' \
-    #                 + str(rem_flux) + 'pfu.')
-    #         print(integral_fluxes)
 
     #Calculate SEP event quantities for energy and flux threshold combinations
     #integral fluxes are used to define event start and stop
@@ -2329,7 +1482,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             continue
 
         #Extract the original fluxes for the SEP start and stop times
-        sep_dates, sep_fluxes = extract_date_range(crossing_time[i],
+        sep_dates, sep_fluxes = datasets.extract_date_range(crossing_time[i],
                              event_end_time[i],dates,fluxes)
 
         #Calculate fluence spectrum for the SEP event; either differential or
@@ -2357,7 +1510,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                         sep_fluxes)
         if flux_type == "differential":
             #Extract the estimated integral fluxes in the SEP event date range
-            sep_integral_dates, sep_integral_fluxes = extract_date_range(\
+            sep_integral_dates, sep_integral_fluxes = \
+                            datasets.extract_date_range(\
                              crossing_time[i],event_end_time[i],
                              dates, integral_fluxes)
 
@@ -2411,7 +1565,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                          "range. No SEP event. Continuing.")
             else:
                 #Extract the original fluxes for the SEP start and stop times
-                sep_d, sep_f = extract_date_range(ct[0],eet[0],dates,fluxes)
+                sep_d, sep_f = datasets.extract_date_range(ct[0],eet[0],dates,
+                                fluxes)
                 fl, en = get_fluence_spectrum(experiment, flux_type,
                                  model_name, input_threshold[i][0],
                                  input_threshold[i][1], sep_d, sep_f,
@@ -2469,13 +1624,32 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                    "crossings.")
         if flux_type == "integral":
             print("Generating figure of integral fluxes with threshold crossings.")
+
+        #Additions to titles and filenames according to user-selected options
+        modifier = ''
+        title_mod = ''
+        if "uncorrected" in options:
+            modifier = modifier + '_uncorrected'
+            title_mod = title_mod + 'uncorrected '
+        if doBGSub:
+            modifier = modifier + '_bgsub'
+            title_mod = title_mod + 'BG-subtracted '
+        if "S14" in options:
+            modifier = modifier + '_S14'
+            title_mod = title_mod + 'S14 '
+        if "Bruno2017" in options:
+            modifier = modifier + '_Bruno2017'
+            title_mod = title_mod + 'Bruno2017 '
+
         #plot integral fluxes (either input or estimated)
         nthresh = len(flux_thresholds)
         figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
-                + '_' + experiment + '_' + flux_type + '_' + 'Event_Def'
+                + '_' + experiment + '_' + flux_type + modifier \
+                + '_' + 'Event_Def'
         if experiment == 'user' and model_name != '':
             figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
-                    + '_' + model_name + '_' + flux_type + '_' + 'Event_Def'
+                    + '_' + model_name + '_' + flux_type + modifier \
+                    + '_' + 'Event_Def'
         if umasep or nthresh > 4:
             fig = plt.figure(figname,figsize=(9,9))
         else:
@@ -2483,25 +1657,30 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         for i in range(nthresh):
             if crossing_time[i] == 0:
                 continue
-            if flux_type == "integral":
-                data_label = (experiment + ' >'+ plt_energy[i]
-                           + ' MeV')
-                if experiment == 'user' and model_name != '':
-                    data_label = (model_name + ' >'
-                        + plt_energy[i] + ' MeV')
+            data_label = (experiment + ' >'+ plt_energy[i] + ' MeV')
+            plot_title = 'Threshold crossings for ' + experiment + '\n ' \
+                            + title_mod + ' ' + flux_type + ' Fluxes '
+            if experiment == 'user' and model_name != '':
+                data_label = (model_name + ' >' + plt_energy[i] + ' MeV')
+                plot_title = 'Threshold crossings for ' + model_name + '\n ' \
+                                + title_mod + ' ' + flux_type + ' Fluxes '
 
-            if flux_type == "differential":
-                data_label = (experiment + ' Estimated >'
-                           + plt_energy[i] + ' MeV')
+            if flux_type == 'differential':
+                data_label = (experiment + ' Estimated >' + plt_energy[i] \
+                                + ' MeV')
                 if experiment == 'user' and model_name != '':
-                    data_label = (model_name + ' Estimated >'
-                               + plt_energy[i] + ' MeV')
-                if plot_diff_thresh[i]: #tacked on to end
-                    data_label = (experiment + ' '+ plt_energy[i] + ' MeV')
-                    if experiment == 'user' and model_name != '':
-                        data_label = (model_name +' '+ plt_energy[i] +' MeV')
+                    data_label = (model_name + ' Estimated >' + plt_energy[i] \
+                                + ' MeV')
+
+            if plot_diff_thresh[i]: #differential threshold tacked on to end
+                data_label = (experiment + ' ' + plt_energy[i] + ' MeV')
+                if experiment == 'user' and model_name != '':
+                    data_label = (model_name + ' ' + plt_energy[i] + ' MeV')
             ax = plt.subplot(nthresh, 1, i+1)
-            plt.plot_date(dates,integral_fluxes[i],'-',label=data_label)
+            #Don't want to plot zero values, particularly in background-subtracted plots
+            maskfluxes = np.ma.masked_where(integral_fluxes[i] <10e-10, \
+                                integral_fluxes[i])
+            plt.plot_date(dates,maskfluxes,'-',label=data_label)
             plt.axvline(crossing_time[i],color='black',linestyle=':')
             plt.axvline(event_end_time[i],color='black',linestyle=':',
                         label="Start, End")
@@ -2517,14 +1696,15 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
             plt.xlabel('Date')
             plt.ylabel('Integral Flux\n 1/[cm^2 s sr]')
+            plt.title(plot_title)
             if plot_diff_thresh[i]:
                 plt.ylabel('Differential Flux\n 1/[MeV cm^2 s sr]')
             plt.yscale("log")
-            ymin = max(1e-4, min(integral_fluxes[i]))
+            #ymin = max(1e-6, min(integral_fluxes[i]))
             # plt.ylim(ymin, peak_flux[i]+peak_flux[i]*.2)
             ax.legend(loc='upper right')
         if saveplot:
-            fig.savefig('plots/' + figname + '.png')
+            fig.savefig(plotpath + '/' + figname + '.png')
         if not showplot:
             plt.close(fig)
 
@@ -2535,10 +1715,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
               "thresholds.")
         #Plot all channels of user specified data
         figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
-                + '_' + experiment + '_' + flux_type + '_' + 'All_Bins'
+                + '_' + experiment + '_' + flux_type + modifier \
+                + '_' + 'All_Bins'
         if experiment == 'user' and model_name != '':
             figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
-                    + '_' + model_name + '_' + flux_type + '_' + 'All_Bins'
+                    + '_' + model_name + '_' + flux_type + modifier \
+                    + '_' + 'All_Bins'
         fig = plt.figure(figname,figsize=(9,4))
         ax = plt.subplot(111)
         nbins = len(energy_bins)
@@ -2549,7 +1731,10 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                                + str(energy_bins[i][1]) + ' MeV'
             else:
                 legend_label = '>'+ str(energy_bins[i][0]) + ' MeV'
+
+            maskfluxes = np.ma.masked_where(fluxes[i] <10e-10, fluxes[i])
             ax.plot_date(dates,fluxes[i],'-',label=legend_label)
+
         colors = ['black','red','blue','green','cyan','magenta']
         for j in range(len(energy_thresholds)):
             if crossing_time[j] == 0:
@@ -2564,18 +1749,18 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             ax.axvline(event_end_time[j],color=colors[j],linestyle=':')
         if flux_type == "integral":
             plt.ylabel('Integral Flux 1/[cm^2 s sr]')
-            plt.title(experiment + " Integral Energy Bins with Threshold "
-                            "Crossings")
+            plt.title(experiment + ' '+ title_mod + '\n'\
+                        + "Integral Energy Bins with Threshold Crossings")
             if experiment == 'user' and model_name != '':
-                plt.title(model_name + " Integral Energy Bins with Threshold "
-                                "Crossings")
+                plt.title(model_name + ' '+ title_mod + '\n'\
+                        + "Integral Energy Bins with Threshold Crossings")
         if flux_type == "differential":
             plt.ylabel('Flux 1/[MeV cm^2 s sr]')
-            plt.title(experiment + " Differential Energy Bins with Threshold "
-                            "Crossings")
+            plt.title(experiment + ' ' + title_mod + '\n'\
+                        + "Differential Energy Bins with Threshold Crossings")
             if experiment == 'user' and model_name != '':
-                plt.title(model_name + " Differential Energy Bins with Threshold "
-                                "Crossings")
+                plt.title(model_name + ' ' + title_mod + '\n' \
+                        + "Differential Energy Bins with Threshold Crossings")
         plt.xlabel('Date')
         plt.yscale("log")
         chartBox = ax.get_position()
@@ -2583,7 +1768,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                          chartBox.height])
         ax.legend(loc='upper center', bbox_to_anchor=(1.17, 1.05))
         if saveplot:
-            fig.savefig('plots/' +figname + '.png')
+            fig.savefig(plotpath + '/' +figname + '.png')
         if not showplot:
             plt.close(fig)
 
@@ -2592,10 +1777,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         print("Generating figure of event-integrated fluence spectrum.")
         #Plot fluence spectrum summed between SEP start and end dates
         figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
-                + '_' + experiment + '_' + flux_type + '_' + 'Fluence'
+                + '_' + experiment + '_' + flux_type + modifier \
+                + '_' + 'Fluence'
         if experiment == 'user' and model_name != '':
             figname = str(sep_year) + '_' + str(sep_month)+ '_' + str(sep_day) \
-                    + '_' + model_name + '_' + flux_type + '_' + 'Fluence'
+                    + '_' + model_name + '_' + flux_type + modifier \
+                    + '_' + 'Fluence'
         fig = plt.figure(figname,figsize=(6,5))
         ax = plt.subplot(111)
         markers = ['bo','P','D','v','^']
@@ -2610,11 +1797,11 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             ax.plot(all_energies[j,:],all_fluence[j,:],markers[j],
                     color=colors[j],mfc='none',label=legend_label)
         plt.grid(which="both", axis="both")
-        plt.title(experiment + ' Event-Integrated Fluences for All Event '
-                    'Definitions')
+        plt.title(experiment + ' ' + title_mod + '\n Event-Integrated Fluences '
+                    'for All Event Definitions')
         if experiment == 'user' and model_name != '':
-            plt.title(model_name + ' Event-Integrated Fluences for All Event '
-                        'Definitions')
+            plt.title(model_name + ' ' + title_mod + '\n Event-Integrated '
+                    'Fluences for All Event Definitions')
         plt.xlabel('Energy [MeV]')
         if flux_type == "integral":
             plt.ylabel('Integral Fluxes 1/[cm^2 sr]')
@@ -2624,7 +1811,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         plt.yscale("log")
         ax.legend(loc='upper right')
         if saveplot:
-            fig.savefig('plots/' + figname + '.png')
+            fig.savefig(plotpath + '/' + figname + '.png')
         if not showplot:
             plt.close(fig)
 
@@ -2678,6 +1865,31 @@ if __name__ == "__main__":
                     "semi-colon with no spaces and surrounded by quotes, "
                     "e.g. \"30,1;50,1;25-40.9,0.001\""
                     "Default = '100,1'"))
+    parser.add_argument("--options", type=str, default='', help=("You "
+            "may specify a series of options as a comma separated list "
+            "surrounded by quotations.\n"
+            "\"uncorrected\" for GOES uncorrected differential fluxes with "
+            "nominal GOES energy bins,\n "
+            "\"S14\" to apply Sandberg et al. (2014) "
+            "effective energies to GOES uncorrected fluxes for P2-P6,\n "
+            "\"Bruno2017\" to apply Bruno (2017) effective energies to GOES-13 "
+            "or GOES-15 P6-P11 channels for either corrected or uncorrected "
+            "GOES fluxes. \n"
+            "If both S14 and Bruno2017 are "
+            "specified for GOES-13 or GOES-15, S14 bins will be applied to "
+            "P2-P5 and Bruno2017 bins will be applied to P6-P11 for uncorrected "
+            "fluxes.\n"
+            "e.g. \"uncorrected,S14,Bruno2017\""))
+    parser.add_argument("--SubtractBG",
+            help="Set to calculate the background and subtract from the "\
+                "SEP flux. Must define start and end dates for the background.",
+                action="store_true")
+    parser.add_argument("--BGStartDate", type=str, default='',
+            help=("Start date in YYYY-MM-DD or \"YYYY-MM-DD HH:MM:SS\""
+                   " with quotes to define the background time period."))
+    parser.add_argument("--BGEndDate", type=str, default='',
+            help=("End date in YYYY-MM-DD or \"YYYY-MM-DD HH:MM:SS\""
+                    " with quotes to define the background time period."))
     parser.add_argument("--showplot",
             help="Flag to display plots", action="store_true")
     parser.add_argument("--saveplot",
@@ -2706,15 +1918,21 @@ if __name__ == "__main__":
     model_name = args.ModelName
     user_file = args.UserFile
     str_thresh = args.Threshold
+    doBGSub = args.SubtractBG
+    str_bgstartdate = args.BGStartDate
+    str_bgenddate = args.BGEndDate
     showplot = args.showplot
     saveplot = args.saveplot
     detect_prev_event = args.DetectPreviousEvent
     two_peaks = args.TwoPeaks
     umasep = args.UMASEP
+    options = args.options
+
+
 
     FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
     sep_day = run_all(str_startdate, str_enddate, experiment, flux_type,
         model_name,user_file, showplot, saveplot, detect_prev_event, two_peaks,
-        umasep, str_thresh)
+        umasep, str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate)
 
     if showplot: plt.show()
