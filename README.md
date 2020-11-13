@@ -1,4 +1,10 @@
 # operational-sep
+**All files needed to run operational_sep_quantities.py:**
+operational_sep_quantities.py
+derive_background.py
+library/read_datasets.py
+library/global_vars.py
+
 Calculate solar energetic particle (SEP) proton flux quantities relevant to space radiation operations. The goal is for this code to be a robust, user-friendly code written in python3. Works for only one SEP event at a time.  Check back for updates, as this code will be modified as it is tested for a variety of SEP events. Please send bug reports and feedback to kathryn.whitman@nasa.gov.
 
 This code was originally developed in support of the SHINE 2019 SEP modeling challenge session to assist SEP modelers in calculating and reporting the quantities in this code. The code continues to be developed and expanded for the purpose of SEP event analysis and SEP model validation.
