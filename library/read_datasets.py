@@ -11,6 +11,7 @@ import urllib.request
 import csv
 from dateutil.parser import parse
 import numpy as np
+import sys
 
 __version__ = "0.1"
 __author__ = "Katie Whitman"
@@ -500,6 +501,7 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
         corrected or uncorrected GOES fluxes.
     """
     NFILES = len(filenames1)
+    west_detector = [] #place holder, will be filled if needed
 
     if (experiment == "GOES-08" or experiment == "GOES-10" or
         experiment == "GOES-11" or experiment == "GOES-12"):

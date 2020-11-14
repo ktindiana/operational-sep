@@ -292,12 +292,12 @@ def all_program_info(): #only for documentation purposes
     library/global_vars.py:
         user_col - identify columns in your file containing fluxes to analyze;
                 even if your delimeter is white space, consider the date-time
-                column as one single column. SET AT TOP OF CODE.
+                column as one single column. SET IN library/global_vars.py.
         user_delim - delimeter between columns, e.g. " " or ","   Use " " for
-                any amount of whitespace. SET AT TOP OF CODE.
+                any amount of whitespace. SET IN library/global_vars.py.
         user_energy_bins - define your energy bins at the top of the code in the
                 variable user_energy_bins. Follow the format in the subroutine
-                define_energy_bins. SET AT TOP OF CODE.
+                define_energy_bins. SET IN library/global_vars.py.
         user_fname - specify the name of the file containing the fluxes
                 through an argument in the command line. --UserFile  The
                 user_fname variable will be updated with that filename. ARGUMENT
@@ -1354,19 +1354,6 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 "data. Please remove these options and run again: "
                 "uncorrected, S14, or Bruno2017.")
 
-    if experiment[0:4] == "GOES" and flux_type == "integral" and doBGSub:
-        sys.exit("Do not perform background subtraction on GOES integral "
-                "fluxes. Integral fluxes have already been derived by "
-                "applying corrections for cross-contamination and removing "
-                "the instrument background levels.")
-
-    if experiment[0:4] == "GOES" and "uncorrected" not in options:
-        print("Warning: GOES corrected fluxes have already been derived by "
-                "applying corrections for cross-contamination and removing "
-                "the instrument and GCR background levels. Please be sure it "
-                "makes sense to perform a background subtraction of this data. "
-                "Otherwise, please add --options uncorrected to perform "
-                "background subtracion on GOES uncorrected fluxes. Continuing.")
 
     user_fname[0] = user_file #input as argument, default is 'tmp.txt'
 

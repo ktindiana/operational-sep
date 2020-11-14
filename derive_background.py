@@ -366,6 +366,23 @@ def derive_background(str_startdate, str_enddate, str_bgstartdate, \
                 "applying corrections for cross-contamination and removing "
                 "the instrument background levels.")
 
+    if experiment[0:4] == "GOES" and "uncorrected" not in options:
+        print("Warning: GOES corrected fluxes have already been derived by "
+                "applying corrections for cross-contamination and removing "
+                "the instrument and GCR background levels up to channel P6. "
+                "Please be sure it makes sense to perform a background "
+                "subtraction of this data (e.g. for HEPAD energies). "
+                "Otherwise, please add --options uncorrected to perform "
+                "background subtracion on GOES uncorrected fluxes. Continuing.")
+
+    if experiment[0:4] == "GOES" and "uncorrected" in options:
+        print("Note: Background-subtraction of uncorrected GOES fluxes "
+                "does not remove the effects of spurious increases in the low "
+                "energy channels due to cross-talk from the high energy "
+                "channels, particularly at the onset of well-connected, "
+                "intense SEP events. It also does not remove any contamination "
+                "due to particles entering the GOES detectors from the sides.")
+
     #create paths if don't exist
     datasets.check_paths()
 
