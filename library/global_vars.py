@@ -8,6 +8,8 @@ outpath = 'output'
 plotpath = 'plots'
 badval = -1 #bad data points will be set to this value; must be negative
 
+email = "kathryn.whitman@nasa.gov"  #Your email for output JSON files
+
 ###FOR BACKGROUND SUBTRACTION###
 #derive_background.py calculates the mean background plus an expected level
 #of variation (sigma).
@@ -19,6 +21,8 @@ nsigma = 1.5
 
 
 ########FOR USER DATA SETS#######
+version = "v00" #Enter the version number of your model or data set
+
 #(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
 user_col = arr.array('i',[1,2])

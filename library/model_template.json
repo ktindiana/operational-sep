@@ -1,0 +1,59 @@
+{
+   "sep_forecast_submission": {
+       "contacts": [ { "name": "", "email": "" } ],
+       "model": { "short_name": "", "spase_id": "" },
+       "options": "",
+       "issue_time": "",
+       "mode": "forecast",
+       "triggers": [
+           {
+               "cme": {
+                   "start_time": "",
+                   "lat": -999,
+                   "lon": -999,
+                   "pa": -999,
+                   "half_width": -999,
+                   "speed": -999,
+                   "height": -999,
+                   "time_at_height": { "time":"", "height": -999 },
+                   "coordinates": "",
+  		   "catalog": "",
+                   "urls": [ "" ]
+               }
+           },
+           {
+               "cme_simulation": {
+                   "model": "",
+                   "simulation_completion_time": "",
+                   "urls": [ "" ]
+               }
+           }
+       ],
+       "forecasts": [
+           {
+               "energy_channel": { "min": 10, "max": -1, "units": "MeV"},
+               "species": "proton",
+               "location": "earth",
+               "prediction_window": { "start_time": "", "end_time": "" },
+               "peak_intensity": { "intensity": -999, "units": "pfu", "time": ""},
+               "peak_intensity_esp": { "intensity": -999, "units": "pfu", "time": "" },
+               "event_length": { "start_time": "",  "end_time": "", "threshold": 10.0, "threshold_units": "pfu"  },
+               "threshold_crossings": [ { "crossing_time": "", "threshold": 10.0, "threshold_units": "pfu" } ],
+               "all_clear": { "all_clear_boolean": true, "threshold": 10.0, "threshold_units": "pfu"},
+               "sep_profile": ""
+           },
+           {
+               "energy_channel": { "min": 100, "max": -1, "units": "MeV"},
+               "species": "proton",
+               "location": "earth",
+               "prediction_window": { "start_time": "", "end_time": "" },
+               "peak_intensity": { "intensity": -999, "units": "pfu", "time": ""},
+               "peak_intensity_esp": { "intensity": -999, "units": "pfu", "time": "" },
+               "event_length": { "start_time": "",  "end_time": "", "threshold": 1.0, "threshold_units": "pfu"  },
+               "threshold_crossings": [ { "crossing_time": "", "threshold": 1.0, "threshold_units": "pfu" } ],
+               "all_clear": { "all_clear_boolean": true, "threshold": 1.0, "threshold_units": "pfu"},
+               "sep_profile": ""
+           }
+       ]
+   }
+}

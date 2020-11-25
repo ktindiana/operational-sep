@@ -1,5 +1,6 @@
 from library import read_datasets as datasets
 from library import global_vars as vars
+from library import ccmc_json_handler as ccmc_json
 import derive_background as bgsub
 import matplotlib.pyplot as plt
 import math
@@ -24,7 +25,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "2.0"
+__version__ = "2.1"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -97,6 +98,13 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   or more prior to the SEP event. The separation of SEP flux and background,
 #   followed by a background subtraction of the SEP flux is in
 #   derive_background.py.
+#Changes in 2.1: Added ability to write out json file in CCMC SEP Scoreboard
+#   format. More information about those files can be found at
+#   https://ccmc.gsfc.nasa.gov/challenges/sep.php#format
+#   If a threshold isn't crossed, the code now calculates the maximum flux
+#   during the full time period (start date to end date) and the time and saves
+#   it in the onset peak and onset date. This info won't be reported in the
+#   csv files, but will be reported in the json.
 #
 
 
@@ -802,8 +810,6 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
     smooth_flux = [[]]*nthresh
     smooth_win = 9   #9 seems to work with order 7
     for i in range(nthresh):
-        if crossing_time[i] == 0:
-            continue
         #if (dates[1] - dates[0]) > datetime.timedelta(minutes=5):
         smooth_flux[i] = integral_fluxes[i]
         #else:
@@ -843,6 +849,11 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
     onset_peak = [[]]*nthresh
     for i in range(nthresh):
         if crossing_time[i] == 0:
+            #threshold not crossed
+            #Find the max flux in the time period and time
+            onset_peak[i] = np.max(smooth_flux[i])
+            peak_index = np.where(smooth_flux[i] == np.amax(smooth_flux[i]))
+            onset_date[i] = dates[peak_index[0][0]]
             continue
 
         #Get value of maximum positive derivative in first 24 hours
@@ -1159,8 +1170,12 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
             month = crossing_time[i].month
             day = crossing_time[i].day
     if year == 0:
-        sys.exit("No thresholds were crossed during this time period. "
-                "SEP values not written to file. Exiting.")
+        year = startdate.year
+        month = startdate.month
+        day = startdate.day
+        print("No thresholds were crossed during this time period. "
+            "Using starting date of time period for json file.")
+        return year, month, day, False
 
     foutname = outpath + '/sep_values_' + experiment + '_' \
                 + flux_type + '_' + str(year) + '_' + str(month) + '_' \
@@ -1229,7 +1244,7 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
         fout.write('\n')
 
     fout.close()
-    return year, month, day
+    return year, month, day, True
 
 
 
@@ -1595,13 +1610,47 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                                         axis=0)
 
 
-    #Save all calculated values for all threshold definitions to file
-    sep_year, sep_month, sep_day = print_values_to_file(experiment, flux_type,
-                    model_name, energy_thresholds, flux_thresholds,
+    #####################################################################
+    #Save all calculated values for all threshold definitions to csv file
+    sep_year, sep_month, sep_day, IsCrossed = print_values_to_file(experiment,
+                    flux_type, model_name, energy_thresholds, flux_thresholds,
                     crossing_time, onset_peak, onset_date, peak_flux, peak_time,
                     rise_time, event_end_time, duration, all_integral_fluences,
                     plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
 
+
+    #####################################################################
+    #Write information to json file
+    type = "observations"
+    if experiment == "user":
+        type = "model"
+    template = ccmc_json.read_in_json_template(type)
+    filled_json = ccmc_json.fill_json(template, experiment, flux_type,
+                    energy_bins, model_name, startdate, enddate, options,
+                    energy_thresholds, flux_thresholds, crossing_time,
+                    onset_peak, onset_date, peak_flux, peak_time, rise_time,
+                    event_end_time, duration, all_integral_fluences,
+                    plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
+
+    jsonfname = outpath + '/sep_values_' + experiment + '_' \
+                + flux_type + '_' + str(sep_year) + '_' + str(sep_month) + '_' \
+                + str(sep_day) +'.json'
+    if experiment == 'user' and model_name != '':
+        jsonfname = outpath + '/sep_values_' + model_name + '_' \
+                    + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
+                    + '_' + str(sep_day) +'.json'
+    isgood = ccmc_json.write_json(filled_json, jsonfname)
+    if not isgood:
+        print("WARNING: ccmc_json_handler: write_json could not write your " \
+                "file "+ str(jsonfname))
+
+
+    if not IsCrossed:
+        sys.exit("No thresholds were crossed during this time period. "
+                "Max flux has been written to json file in onset peak in file "
+                + jsonfname + ". Exiting. ")
+
+    #####################################################################
     #===============PLOTS==================
     if saveplot or showplot:
         #Plot selected results

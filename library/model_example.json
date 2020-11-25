@@ -1,0 +1,57 @@
+{
+   "sep_forecast_submission": {
+       "contacts": [ { "name": "Model Developer Name", "email": "developer@email.com" } ],
+       "model": { "short_name": "MODEL ACRONYM", "spase_id": "spase://CCMC/SimulationModel/MODEL_NAME/VERSION" },
+       "issue_time": "2017-09-10T20:00Z",       
+       "mode": "forecast",
+       "triggers": [
+           {
+               "cme": {
+                   "start_time": "2017-09-10T16:06Z",
+                   "lat": -9,
+                   "lon": 108,
+                   "pa": 261,		   
+                   "half_width": 70,
+                   "speed": 2500,
+                   "height": 21.5,
+                   "time_at_height": { "time":"2017-09-10T17:15Z", "height": 21.5 },
+                   "coordinates": "HEEQ",
+  		   "catalog": "DONKI",
+                   "urls": [ "https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/CME/13107/4" ]
+               }
+           },
+           {
+               "cme_simulation": {
+                   "model": "WSA-ENLIL+Cone",
+                   "simulation_completion_time": "2017-09-11T09:42Z",
+                   "urls": [ "https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/WSA-ENLIL/13114/1" ]
+               }
+           }
+       ],
+       "forecasts": [
+           {
+               "energy_channel": { "min": 10, "max": -1, "units": "MeV"},
+               "species": "proton",
+               "location": "earth",
+               "prediction_window": { "start_time": "2017-09-10T17:15Z", "end_time": "2017-09-17T00:00Z" },
+               "peak_intensity": { "intensity": 1000.0, "units": "pfu", "time": "2017-09-11T00:00Z"},
+               "peak_intensity_esp": { "intensity": 100, "units": "pfu", "time": "2017-09-13T00:00Z" },
+               "event_length": { "start_time": "2017-09-10T22:00Z",  "end_time": "2017-09-13T00:00Z", "threshold": 1.0, "threshold_units": "pfu"  },
+               "threshold_crossings": [ { "crossing_time": "2017-09-10T22:00Z", "threshold": 10.0, "threshold_units": "pfu" } ],
+               "all_clear": { "all_clear_boolean": false, "threshold": 10.0, "threshold_units": "pfu"},
+               "sep_profile": "samplesepprofile10MeV.txt"
+           },
+           {
+               "energy_channel": { "min": 100, "max": -1, "units": "MeV"},
+               "species": "proton",
+               "location": "earth",
+               "prediction_window": { "start_time": "2017-09-10T17:15Z", "end_time": "2017-09-17T00:00Z" },
+               "peak_intensity": { "intensity": 10.0, "units": "pfu", "time": "2017-09-11T01:00Z"},
+               "event_length": { "start_time": "2017-09-10T22:00Z",  "end_time": "2017-09-12T00:00Z", "threshold": 0.3, "threshold_units": "pfu"  },
+               "threshold_crossings": [ { "crossing_time": "2017-09-10T22:00Z", "threshold": 1.0, "threshold_units": "pfu" } ],
+               "all_clear": { "all_clear_boolean": false, "threshold": 1.0, "threshold_units": "pfu"},
+               "sep_profile": "samplesepprofile100MeV.txt"
+           }
+       ]
+   }
+}
