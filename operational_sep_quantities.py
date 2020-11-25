@@ -88,7 +88,7 @@ __email__ = "kathryn.whitman@nasa.gov"
 #       Choose corrected or uncorrected GOES fluxes.
 #       Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
 #       energies to GOES uncorrected data.
-#Changes in 2.0: Complete restructuring of code. A library directory has
+#2020-11-13, Changes in 2.0: Complete restructuring of code. A library directory has
 #   been created and some of the subroutines originally in
 #   operational_sep_quantities is now in read_datasets.py. Global variables,
 #   such as directory names and the information users must input to run their
@@ -98,7 +98,7 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   or more prior to the SEP event. The separation of SEP flux and background,
 #   followed by a background subtraction of the SEP flux is in
 #   derive_background.py.
-#Changes in 2.1: Added ability to write out json file in CCMC SEP Scoreboard
+#2020-11-24, Changes in 2.1: Added ability to write out json file in CCMC SEP Scoreboard
 #   format. More information about those files can be found at
 #   https://ccmc.gsfc.nasa.gov/challenges/sep.php#format
 #   If a threshold isn't crossed, the code now calculates the maximum flux
@@ -1625,20 +1625,27 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     if experiment == "user":
         type = "model"
     template = ccmc_json.read_in_json_template(type)
+
+    jsonfname = outpath + '/sep_values_' + experiment + '_' \
+                + flux_type + '_' + str(sep_year) + '_' + str(sep_month) + '_' \
+                + str(sep_day) +'.json'
+    proffname = outpath + '/integral_fluxes_' + experiment + '_' \
+                 + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
+                 + '_' + str(sep_day) + '.csv'
+    if experiment == 'user' and model_name != '':
+        jsonfname = outpath + '/sep_values_' + model_name + '_' \
+                    + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
+                    + '_' + str(sep_day) +'.json'
+        proffname = outpath + '/integral_fluxes_' + model_name + '_' \
+                     + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
+                     + '_' + str(sep_day) + '.csv'
     filled_json = ccmc_json.fill_json(template, experiment, flux_type,
                     energy_bins, model_name, startdate, enddate, options,
                     energy_thresholds, flux_thresholds, crossing_time,
                     onset_peak, onset_date, peak_flux, peak_time, rise_time,
                     event_end_time, duration, all_integral_fluences,
-                    plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
-
-    jsonfname = outpath + '/sep_values_' + experiment + '_' \
-                + flux_type + '_' + str(sep_year) + '_' + str(sep_month) + '_' \
-                + str(sep_day) +'.json'
-    if experiment == 'user' and model_name != '':
-        jsonfname = outpath + '/sep_values_' + model_name + '_' \
-                    + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
-                    + '_' + str(sep_day) +'.json'
+                    plot_diff_thresh, umasep, umasep_times, umasep_fluxes,
+                    proffname)
     isgood = ccmc_json.write_json(filled_json, jsonfname)
     if not isgood:
         print("WARNING: ccmc_json_handler: write_json could not write your " \
@@ -1714,9 +1721,13 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     data_label = (model_name + ' ' + plt_energy[i] + ' MeV')
             ax = plt.subplot(nthresh, 1, i+1)
             #Don't want to plot zero values, particularly in background-subtracted plots
-            maskfluxes = np.ma.masked_where(integral_fluxes[i] <10e-10, \
+            if doBGSub:
+                maskfluxes = np.ma.masked_where(integral_fluxes[i] <10e-10, \
                                 integral_fluxes[i])
-            plt.plot_date(dates,maskfluxes,'-',label=data_label)
+                plt.plot_date(dates,maskfluxes,'-',label=data_label)
+            else:
+                plt.plot_date(dates,integral_fluxes[i],'-',label=data_label)
+
             plt.axvline(crossing_time[i],color='black',linestyle=':')
             plt.axvline(event_end_time[i],color='black',linestyle=':',
                         label="Start, End")
@@ -1768,8 +1779,11 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             else:
                 legend_label = '>'+ str(energy_bins[i][0]) + ' MeV'
 
-            maskfluxes = np.ma.masked_where(fluxes[i] <10e-10, fluxes[i])
-            ax.plot_date(dates,fluxes[i],'-',label=legend_label)
+            if doBGSub:
+                maskfluxes = np.ma.masked_where(fluxes[i] <10e-10, fluxes[i])
+                ax.plot_date(dates,maskfluxes,'-',label=legend_label)
+            else:
+                ax.plot_date(dates,fluxes[i],'-',label=legend_label)
 
         colors = ['black','red','blue','green','cyan','magenta']
         for j in range(len(energy_thresholds)):

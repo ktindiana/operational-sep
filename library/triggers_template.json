@@ -5,6 +5,30 @@
        "options": "",
        "issue_time": "",
        "mode": "forecast",
+       "triggers": [
+           {
+               "cme": {
+                   "start_time": "",
+                   "lat": -999,
+                   "lon": -999,
+                   "pa": -999,
+                   "half_width": -999,
+                   "speed": -999,
+                   "height": -999,
+                   "time_at_height": { "time":"", "height": -999 },
+                   "coordinates": "",
+  		   "catalog": "",
+                   "urls": [ "" ]
+               }
+           },
+           {
+               "cme_simulation": {
+                   "model": "",
+                   "simulation_completion_time": "",
+                   "urls": [ "" ]
+               }
+           }
+       ],
        "forecasts": [
            {
                "energy_channel": { "min": 10, "max": -1, "units": "MeV"},

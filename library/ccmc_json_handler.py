@@ -63,7 +63,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
                 flux_thresholds, crossing_time, onset_peak, onset_date,
                 peak_flux, peak_time, rise_time, event_end_time, duration,
                 all_integral_fluences, diff_thresh, umasep, umasep_times,
-                umasep_fluxes):
+                umasep_fluxes, profile_filename):
     """Add all the appropriate values to the json template for model or
         observations.
     """
@@ -146,7 +146,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
             zpdate = make_ccmc_zulu_time(peak_time[i])
             zct = make_ccmc_zulu_time(crossing_time[i])
             zeet = make_ccmc_zulu_time(event_end_time[i])
-            all_clear = "false"
+            all_clear = False
 
             template[key][type_key][i]['peak_intensity']['intensity'] \
                                 = onset_peak[i]
@@ -168,15 +168,28 @@ def fill_json(template, experiment, flux_type, energy_bins,
                                 = all_clear
             template[key][type_key][i]['all_clear']['threshold'] \
                                 = flux_thresholds[i]
+            template[key][type_key][i]['sep_profile'] = profile_filename
 
 
-        #Threshold was NOT crossed
+        #Threshold was NOT crossed OR doesn't exist in data set
         if crossing_time[i] == 0:
-            zodate = make_ccmc_zulu_time(onset_date[i])
-            zpdate = ""
-            zct = ""
-            zeet = ""
-            all_clear = "true"
+            #Check if channel exists in data; if not, output None values
+            bin = find_energy_bin(energy_thresholds[i], energy_bins)
+            if not bin: #bin doesn't exist and no prediction can be made
+                zodate = None
+                zpdate = None
+                zct = None
+                zeet = None
+                all_clear = None
+                template[key][type_key][i]['sep_profile'] = None
+            else:  #bin does exist and equivalent to all clear for channel
+                zodate = make_ccmc_zulu_time(onset_date[i])
+                zpdate = ""
+                zct = ""
+                zeet = ""
+                all_clear = True
+                template[key][type_key][i]['sep_profile'] = profile_filename
+
 
             template[key][type_key][i]['peak_intensity']['intensity'] \
                                 = onset_peak[i]
