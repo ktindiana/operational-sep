@@ -71,13 +71,15 @@ def fill_json(template, experiment, flux_type, energy_bins,
     #This is not generic and should be modified in the future
     if experiment == "user":
         key = 'sep_forecast_submission'
-        type_key = "forecasts"
+        type_key = 'forecasts'
+        win_key = 'prediction_window'
         template[key]['model']['short_name'] = model_name
         template[key]['model']['spase_id'] = 'spase://CCMC/SimulationModel/' \
                                             + model_name + "/" + version
     else:
         key = 'sep_observation_submission'
         type_key = 'observations'
+        win_key = 'observation_window'
         template[key]['observatory']['short_name'] = experiment
 
 
@@ -135,10 +137,8 @@ def fill_json(template, experiment, flux_type, energy_bins,
         template[key][type_key][i]['energy_channel']['units'] = "MeV"
         template[key][type_key][i]['species'] = "proton"
         template[key][type_key][i]['location'] = "earth"
-        template[key][type_key][i]['observation_window']['start_time'] \
-                            = zst
-        template[key][type_key][i]['observation_window']['end_time'] \
-                            = zend
+        template[key][type_key][i][win_key]['start_time'] = zst
+        template[key][type_key][i][win_key]['end_time'] = zend
 
         #Threshold WAS crossed
         if crossing_time[i] != 0:

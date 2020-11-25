@@ -21,7 +21,7 @@ nsigma = 1.5
 
 
 ########FOR USER DATA SETS#######
-version = "v00" #Enter the version number of your model or data set
+version = "vSHINE2020" #Enter the version number of your model or data set
 
 #(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze

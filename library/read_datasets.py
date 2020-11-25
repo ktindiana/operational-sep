@@ -22,7 +22,9 @@ datapath = vars.datapath
 outpath = vars.outpath
 plotpath = vars.plotpath
 badval = vars.badval #bad data points will be set to this value; must be negative
-
+user_col = vars.user_col
+user_delim = vars.user_delim
+user_energy_bins = vars.user_energy_bins
 
 
 def check_paths():
@@ -318,7 +320,7 @@ def check_ephin_data(startdate, enddate, experiment, flux_type):
 
 
 
-def check_data(startdate, enddate, experiment, flux_type):
+def check_data(startdate, enddate, experiment, flux_type, user_file):
     """Check that the files containing the data are in the data directory. If
         the files for the requested dates aren't present, they will be
         downloaded from the NOAA website. For SEPEM (RSDv2) data, if missing,
@@ -336,12 +338,14 @@ def check_data(startdate, enddate, experiment, flux_type):
     endmonth = enddate.month
     endday = enddate.day
 
+    user_fname = [user_file]
+
     #Array of filenames that contain the data requested by the User
     filenames1 = []  #SEPEM, eps, or epead
     filenames2 = []  #hepad
     filenames_orien = []  #orientation flag for GOES-13+
 
-    #If user wants to use own input file (filename defined at top of code)
+    #If user wants to use own input file (filename defined as input)
     if experiment == "user":
         nuser = len(user_fname)
         for i in range(nuser):

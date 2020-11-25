@@ -1377,7 +1377,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
     #Check and prepare the data
     filenames1, filenames2, filenames_orien = datasets.check_data(startdate,
-                                                enddate, experiment, flux_type)
+                                    enddate, experiment, flux_type, user_file)
     #read in flux files
     if experiment != "user":
         all_dates, all_fluxes, west_detector =datasets.read_in_files(experiment,
