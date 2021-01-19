@@ -25,7 +25,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "2.3"
+__version__ = "2.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -108,6 +108,8 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2021-01-06, Changes in 2.2: DHConsultancy (Daniel Heynderickx) sent out a beta
 #   version of the SEPEM RSDv3 data sets. Added here as a native data set.
 #2021-01-12, Changes in 2.3: Added functionality to read in REleASE data.
+#2021-01-19, Changes in 2.4: If time resolution of data set is >15 minutes,
+#   relax three point requirement to exceed or fall below a threshold.
 
 
 #See full program description in all_program_info() below
@@ -574,23 +576,30 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     rise_time = 0 #define in case threshold not crossed
     event_end_time = 0
     duration = 0
-    end_counter = 0
+    npoints = 3 #require 3 points above threshold
+    tdiff = (dates[1] - dates[0]).seconds/(60) #time resolution of data set
+    if tdiff > 15:
+        npoints = 1 #time resolution >15 mins, require one point above threshold
+
     for i in range(ndates):
         if not threshold_crossed:
             if(fluxes[i] > flux_threshold):
-                if i+2 < ndates:
-                    if fluxes[i+1] > flux_threshold and fluxes[i+2] > \
-                    flux_threshold:
-                        crossing_time = dates[i]
-                        threshold_crossed = True
+                start_counter = 0
+                if i+(npoints-1) < ndates:
+                    for ii in range(npoints):
+                        if fluxes[i+ii] > flux_threshold:
+                            start_counter = start_counter + 1
+                if start_counter == npoints:
+                    crossing_time = dates[i]
+                    threshold_crossed = True
         if threshold_crossed and not event_ended:
             if (fluxes[i] > end_threshold):
                 end_counter = 0  #reset if go back above threshold
             if (fluxes[i] <= end_threshold): #flux drops below 85% threshold
                 end_counter = end_counter + 1
-                if end_counter == 3: #three consecutive points triggers end
+                if end_counter == npoints: #N consecutive points triggers end
                     event_ended = True
-                    event_end_time = dates[i-2] #correct back two time steps
+                    event_end_time = dates[i-(npoints-1)] #correct back time steps
 
     #In case that date range ended before fell before threshold,
     #use the last time in the file
