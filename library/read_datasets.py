@@ -11,12 +11,17 @@ import urllib.request
 import csv
 from dateutil.parser import parse
 import numpy as np
+import matplotlib.pyplot as plt
 import sys
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
+
+#2021-01-06, Changes in 0.2: Added SEPEMv3 data set and made changes to
+#   necessary subroutines to accomodate the new data set.
+
 
 datapath = vars.datapath
 outpath = vars.outpath
@@ -43,6 +48,10 @@ def check_paths():
         print('check_paths: Directory containing fluxes, ' + datapath +
         '/SEPEM, does not exist. Creating.')
         os.mkdir(datapath + '/SEPEM');
+    if not os.path.isdir(datapath + '/SEPEMv3'):
+        print('check_paths: Directory containing fluxes, ' + datapath +
+        '/SEPEMv3, does not exist. Creating.')
+        os.mkdir(datapath + '/SEPEMv3');
     if not os.path.isdir(datapath + '/EPHIN'):
         print('check_paths: Directory containing fluxes, ' + datapath +
         '/EPHIN, does not exist. Creating.')
@@ -63,7 +72,7 @@ def make_yearly_files(filename):
     fnamebase = filename.replace('.csv','')  #if csv file
     fnamebase = fnamebase.replace('.txt','')  #if txt file
 
-    with open(datapath + '/SEPEM/' + filename) as csvfile:
+    with open(datapath + '/' + filename) as csvfile:
         readCSV = csv.reader(csvfile, delimiter=',')
         has_header = csv.Sniffer().has_header(csvfile.readline())
         if has_header:
@@ -75,19 +84,19 @@ def make_yearly_files(filename):
 
         check_year = 0
         for row in readCSV:
-            date = datetime.datetime.strptime(row[0][0:18],
+            date = datetime.datetime.strptime(row[0][0:19],
                                             "%Y-%m-%d %H:%M:%S")
             year = date.year
             if check_year != year:
                 if check_year != 0:
                     outfile.close()
                     outfname = fnamebase + '_' + str(year) + '.csv'
-                    outfile = open(datapath + '/SEPEM/' + outfname,'w+')
+                    outfile = open(datapath + '/' + outfname,'w+')
                     check_year = year
 
                 if check_year == 0:
                     outfname = fnamebase + '_' + str(year) + '.csv'
-                    outfile = open(datapath + '/SEPEM/' + outfname,'w+')
+                    outfile = open(datapath + '/' + outfname,'w+')
                     if has_header:
                         outfile.write(header)
                     check_year = year
@@ -114,26 +123,41 @@ def check_sepem_data(startdate, enddate, experiment, flux_type):
     filenames1 = []  #SEPEM, eps, or epead
 
     year = styear
+
+    if experiment == 'SEPEM':
+        basenm = 'SEPEM_H_reference'
+        dir = experiment
+
+    if experiment == 'SEPEMv3':
+        basenm = 'SEPEM_RDS_v3_H'
+        dir = experiment
+
     while (year <= endyear):
-        fname = 'SEPEM_H_reference_' + str(year) + '.csv'
-        exists = os.path.isfile(datapath + '/SEPEM/' + fname)
+        fname = basenm + '_' + str(year) + '.csv'
+        exists = os.path.isfile(datapath + '/' + dir + '/' + fname)
         if exists:
-            filenames1.append('SEPEM/' + fname)
+            filenames1.append(dir + '/' + fname)
             year = year + 1
         if not exists:
-            full_exists = os.path.isfile(datapath + '/SEPEM/' + \
-                                 '/SEPEM_H_reference.txt')
+            full_exists = os.path.isfile(datapath + '/' + dir + '/' + \
+                                 '/' + basenm + '.txt')
             if not full_exists:
-                sys.exit("Please download and unzip the RSDv2 data set."
-                    " You may download the file at"
-                    " http://sepem.eu/help/SEPEM_RDS_v2-00.zip for full "
-                    "fluxes or http://sepem.eu/help/SEPEM_RDS_v2-00.zip "
-                    "for ESA background-subtracted fluxes.")
+                if experiment == 'SEPEM':
+                    sys.exit("Please download and unzip the RSDv2 data set."
+                        " You may download the file at"
+                        " http://sepem.eu/help/SEPEM_RDS_v2-00.zip for full "
+                        "fluxes or http://sepem.eu/help/SEPEM_RDS_v2-00.zip "
+                        "for ESA background-subtracted fluxes.")
+                if experiment == 'SEPEMv3':
+                    sys.exit('Please contact DH Consultancy for the SEPEM '
+                            'RDSv3 data set. Unzip and put SEPEM_RDS_V3_H.txt '
+                            'in the data/SEPEMv3 folder.')
             if full_exists:
                 #Break up SEPEM data set into yearly files
-                print('The SEPEM (RSDv2) is more tractable when breaking'
-                    + ' into yearly data files. Producing yearly files.')
-                make_yearly_files('SEPEM_H_reference.txt')
+                print('The SEPEM (RSDv2 and RDSv3) is more tractable when '
+                        'breaking into yearly data files. '
+                        'Producing yearly files.')
+                make_yearly_files(dir + '/' + basenm + '.txt')
                 year = styear
 
     return filenames1
@@ -318,6 +342,42 @@ def check_ephin_data(startdate, enddate, experiment, flux_type):
     return filenames1
 
 
+def check_ephin_release_data(startdate, enddate, experiment, flux_type):
+    """Check for SOHO/COSTEP/EPHIN data on your computer provided by the
+        HESPERIA collaboration on the website
+        https://www.hesperia.astro.noa.gr/index.php/results/
+        real-time-prediction-tools/data-retrieval-tool
+        (one long URL). Monthly files of this data set are provided in the
+        public git containing these codes. Otherwise, users may go to the URL
+        above, download the data sets, and use the file naming convention
+        adopted here:
+            data/EPHIN_REleASE/HESPERIA_SOHO_PROTON_YYYY.txt
+        Intensities are in units of (cm^2 s sr mev/nuc)^-1
+        First available date is 1995 12 8 (DOY = 342).
+        The files are saved in yearly format.
+    """
+    styear = startdate.year
+    stmonth = startdate.month
+    stday = startdate.day
+    endyear = enddate.year
+    endmonth = enddate.month
+    endday = enddate.day
+
+    #Array of filenames that contain the data requested by the User
+    filenames1 = []  #SEPEM, EPHIN, eps, or epead
+
+    Nyr = endyear - styear + 1
+    for year in range(styear, endyear+1):
+        fname = 'HESPERIA_SOHO_PROTON_' + str(year) + '.txt'
+        filenames1.append('EPHIN_REleASE/' + fname)
+
+        exists = os.path.isfile(datapath + '/EPHIN_REleASE/' + fname)
+        if not exists: #download file if not found on your computer
+                sys.exit("Cannot access EPHIN file " + fname +
+               ". Please check that selected spacecraft covers date range.")
+
+    return filenames1
+
 
 
 def check_data(startdate, enddate, experiment, flux_type, user_file):
@@ -363,7 +423,7 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
     #Check if user has yearly files; if not:
         #check if user has original SEPEM, then create yearly files
         #Otherwise alert user to download data set and try again
-    if (experiment == "SEPEM"):
+    if (experiment == "SEPEM" or experiment == "SEPEMv3"):
         filenames1 = check_sepem_data(startdate, enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
 
@@ -374,6 +434,11 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
 
     if experiment == "EPHIN":
         filenames1 = check_ephin_data(startdate, enddate, experiment, flux_type)
+        return filenames1, filenames2, filenames_orien
+
+    if experiment == "EPHIN_REleASE":
+        filenames1 = check_ephin_release_data(startdate, enddate, experiment,
+                                        flux_type)
         return filenames1, filenames2, filenames_orien
 
     return filenames1, filenames2, filenames_orien
@@ -421,7 +486,7 @@ def get_west_detector(filename, dates):
             next(readCSV)  #to line with column headers
 
         for row in readCSV:
-            date = datetime.datetime.strptime(row[0][0:18],
+            date = datetime.datetime.strptime(row[0][0:19],
                                             "%Y-%m-%d %H:%M:%S")
             orien_dates.append(date)
             orientation.append(float(row[1]))
@@ -478,7 +543,7 @@ def read_in_sepem(experiment, flux_type, filenames1):
 
             count = 0
             for row in readCSV:
-                date = datetime.datetime.strptime(row[0][0:18],
+                date = datetime.datetime.strptime(row[0][0:19],
                                                 "%Y-%m-%d %H:%M:%S")
                 dates.append(date)
                 for j in range(1,ncol):
@@ -562,7 +627,7 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
             #Get dates first; need dates to identify spacecraft orientation
             #for GOES-13+
             for row in readCSV:
-                date = datetime.datetime.strptime(row[0][0:18],
+                date = datetime.datetime.strptime(row[0][0:19],
                                                 "%Y-%m-%d %H:%M:%S")
                 dates.append(date)
 
@@ -682,6 +747,66 @@ def read_in_ephin(experiment, flux_type, filenames1):
     return all_dates, all_fluxes
 
 
+def read_in_ephin_release(experiment, flux_type, filenames1):
+    """Read in EPHIN files from your computer."""
+    NFILES = len(filenames1)
+
+    datecols = [0] #yr, mth, dy, hr, min
+    fluxcols = [1,2,3,4]
+    ncol= len(fluxcols)
+
+    for i in range(NFILES):
+        print('Reading in file ' + datapath + '/' + filenames1[i])
+        with open(datapath + '/' + filenames1[i]) as csvfile:
+            #Count header lines indicated by hash #
+            nhead = 0
+            for line in csvfile:
+                line = line.lstrip()
+                if line == '':
+                    nhead = nhead + 1
+                elif line[0] == "#":
+                    nhead = nhead + 1
+                else:
+                    break
+            #number of lines containing data
+            nrow = len(csvfile.readlines())+1
+
+            #Define arrays that hold dates and fluxes
+            dates = []
+            fluxes = np.zeros(shape=(ncol,nrow))
+
+            csvfile.seek(0) #back to beginning of file
+            for k in range(nhead):
+                csvfile.readline()  # Skip header rows.
+
+            count = 0
+            for line in csvfile:
+                if line == '': continue
+                if line[0] == "#": continue
+
+                row = line.split(';')
+                date = datetime.datetime.strptime(row[0][0:19],
+                                                "%Y-%m-%d %H:%M:%S")
+                dates.append(date)
+                for j in range(ncol):
+                    flux = float(row[fluxcols[j]])
+                    if flux < 0:
+                        flux = badval
+                    fluxes[j][count] = flux
+                count = count + 1
+        #If reading in multiple files, then combine all data into one array
+        #SEPEM currently only has one file, but making generalized
+        if i==0:
+            all_fluxes = fluxes
+            all_dates = dates
+        else:
+            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
+            all_dates = all_dates + dates
+
+    print(all_fluxes)
+    return all_dates, all_fluxes
+
+
 def read_in_files(experiment, flux_type, filenames1, filenames2,
                 filenames_orien, options):
     """Read in the appropriate data files with the correct format. Return an
@@ -700,7 +825,7 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
     all_fluxes = []
     west_detector = []
 
-    if experiment == "SEPEM":
+    if experiment == "SEPEM" or experiment == "SEPEMv3":
         all_dates, all_fluxes = read_in_sepem(experiment, flux_type, filenames1)
         return all_dates, all_fluxes, west_detector
 
@@ -712,6 +837,11 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
 
     if experiment == "EPHIN":
         all_dates, all_fluxes = read_in_ephin(experiment, flux_type, filenames1)
+        return all_dates, all_fluxes, west_detector
+
+    if experiment == "EPHIN_REleASE":
+        all_dates, all_fluxes = read_in_ephin_release(experiment, flux_type,
+                    filenames1)
         return all_dates, all_fluxes, west_detector
 
     return all_dates, all_fluxes, west_detector
@@ -741,7 +871,9 @@ def read_in_user_files(filenames1):
             nhead = 0
             for line in csvfile:
                 line = line.lstrip()
-                if line[0] == "#":
+                if line == '' or line == '\n':
+                    nhead = nhead + 1
+                elif line[0] == "#" or line[0] == '\"':
                     nhead = nhead + 1
                 else:
                     break
@@ -771,7 +903,7 @@ def read_in_user_files(filenames1):
                     str_date = row[0][0:10] + ' ' + row[1][0:8]
                 if user_delim != " " and user_delim != "":
                     row = line.split(user_delim)
-                    str_date = row[0][0:18]
+                    str_date = row[0][0:19]
 
                 date = datetime.datetime.strptime(str_date,
                                                 "%Y-%m-%d %H:%M:%S")
@@ -779,11 +911,21 @@ def read_in_user_files(filenames1):
                 for j in range(len(user_col)):
                    # print("Read in flux for column " + str(user_col[j]) + ': '
                    #     + str(date) + ' ' + row[user_col[j]])
-                    flux = float(row[user_col[j]])
-                    if flux < 0:
-                        flux = badval
+                    if row[user_col[j]] == 'n/a': #REleASE
+                        flux = None
+                    else:
+                        flux = float(row[user_col[j]])
+                        if flux < 0:
+                            flux = badval
                     fluxes[j][count] = flux
                 count = count + 1
+
+        #Remove dates that have None values (because they were n/a in REleASE)
+        for k in range(len(dates)-1,-1,-1):
+            if None in fluxes[:,k] or np.isnan(np.sum(fluxes[:,k])):
+                del dates[k]
+                fluxes = np.delete(fluxes, k, 1)
+
         #If reading in multiple files, then combine all data into one array
         #SEPEM currently only has one file, but making generalized
         if i==0:
@@ -828,7 +970,7 @@ def do_interpolation(i,dates,flux):
     #If first point is bad point, use the next good point to fill gap
     if i == 0:
         for j in range(i,ndates-1):
-            if flux[j] != badval:
+            if flux[j] != badval and flux[j] != None:
                 postflux = flux[j]
                 postdate = dates[j]
                 print('First point in array is bad. The first good value after '
@@ -840,7 +982,7 @@ def do_interpolation(i,dates,flux):
     #If last point is bad point, use the first prior good point to fill gap
     if i == ndates - 1:
         for j in range(i,-1,-1):
-            if flux[j] != badval:
+            if flux[j] != badval and flux[j] != None:
                 preflux = flux[j]
                 predate = dates[j]
                 print('Last point in the array is bad. The first good value '
@@ -853,7 +995,7 @@ def do_interpolation(i,dates,flux):
     if i != 0 and i != ndates-1:
         #search for first previous good value prior to the gap
         for j in range(i,-1,-1):
-            if flux[j] != badval:
+            if flux[j] != badval and flux[j] != None:
                 preflux = flux[j]
                 predate = dates[j]
                 print('The first good value previous to gap is on '
@@ -866,14 +1008,14 @@ def do_interpolation(i,dates,flux):
 
         #search for first previous good value after to the gap
         for j in range(i,ndates-1):
-            if flux[j] != badval:
+            if flux[j] != badval and flux[j] != None:
                 postflux = flux[j]
                 postdate = dates[j]
                 print('The first good value after to gap is on '
                     + str(dates[j]) + ' with value ' + str(flux[j]))
                 break
             if j == ndates-2 and flux[j] == badval:
-                if flux[ndates-1] != badval:
+                if flux[ndates-1] != badval and flux[ndates-1] != None:
                     postflux = flux[ndates-1]
                     postdate = dates[ndates-1]
                 else:
@@ -909,7 +1051,7 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
 
     for j in range(ndates):  #flux at each time
         for i in range(nbins):
-            if fluxes[i,j] < 0: #bad data
+            if fluxes[i,j] == None: #bad data
                 #estimate flux with interpolation in time
                 if dointerp:
                     print()
@@ -927,6 +1069,28 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
                             + str(energy_bins[i][1]) + ' MeV.'
                             + ' Filling in missing value with None ')
                     fluxes[i,j] = None
+
+            elif fluxes[i,j] < 0:
+                #estimate flux with interpolation in time
+                if dointerp:
+                    print()
+                    print('There is a data gap for time ' + str(dates[j])
+                            + ' and energy ' + str(energy_bins[i][0]) + ' - '
+                            + str(energy_bins[i][1]) + ' MeV.'
+                            + ' Filling in missing value with linear '
+                            + 'interpolation in time.')
+                    interp_flux = do_interpolation(j,dates,fluxes[i,:])
+                    fluxes[i,j] = interp_flux
+                else:
+                    print()
+                    print('There is a data gap for time ' + str(dates[j])
+                            + ' and energy ' + str(energy_bins[i][0]) + ' - '
+                            + str(energy_bins[i][1]) + ' MeV.'
+                            + ' Filling in missing value with None ')
+                    fluxes[i,j] = None
+
+
+
     print('Finished checking for bad data.')
     print()
     return fluxes
@@ -950,6 +1114,13 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
                        [66.13,95.64],[95.64,138.3],[138.3,200.0],
                        [200.0,289.2]]
 
+    if experiment == "SEPEMv3":
+        energy_bins = [[5.00,7.23],[7.23,10.46],[10.46,15.12],[15.12,21.87],
+                       [21.87,31.62],[31.62,45.73],[45.73,66.13],
+                       [66.13,95.64],[95.64,138.3],[138.3,200.0],
+                       [200.0,289.2],[289.2,418.3],[418.3,604.9],
+                       [604.9,874.7]]
+
     if experiment == "ERNEf10":
         #The top 3 channels tend to saturate and show incorrect values during
         #high intensity SEP events. For this reason, only the >10 MeV
@@ -969,6 +1140,11 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
         #http://ulysses.physik.uni-kiel.de/costep/level3/l3i/
         #DOCUMENTATION-COSTEP-EPHIN-L3-20181002.pdf
         energy_bins = [[4.3,7.8],[7.8,25],[25,40.9],[40.9,53]]
+
+    if experiment == "EPHIN_REleASE":
+        #This data may be downloaded by hand through a web interface at:
+        #https://www.hesperia.astro.noa.gr/index.php/results/real-time-prediction-tools/data-retrieval-tool
+        energy_bins = [[4.0,9.0],[9.0,15.8],[15.8,39.6],[20.0,35.5]]
 
     if (flux_type == "integral" and experiment[0:4] == "GOES"):
          energy_bins = [[5.0,-1],[10.0,-1],[30.0,-1],

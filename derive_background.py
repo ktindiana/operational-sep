@@ -104,8 +104,8 @@ def separate_sep_and_background(fluxes, dates, means, sigmas):
                 if bgsubflux < 0: bgsubflux = 0
                 sepflux.append(bgsubflux)
             if np.isnan(fluxes[i][j]):
-                bgflux.append(0)
-                sepflux.append(0)
+                bgflux.append(None)
+                sepflux.append(None)
 
         bgflux.pop(0)
         sepflux.pop(0)
@@ -244,8 +244,8 @@ def iterate_background(fluxes, energy_bins):
 
 
 
-def plot_fluxes(experiment, flux_type, options, fluxes, dates, energy_bins,
-                means, sigmas, saveplot):
+def plot_fluxes(experiment, flux_type, options, fluxes, dates,
+                energy_bins, means, sigmas, saveplot):
     """Plot fluxes with time for all of the energy bins on the same plot. The
         estimated mean background levels are plotted as dashed lines.
         Zero values are masked, which is useful when make plots of the
@@ -253,16 +253,22 @@ def plot_fluxes(experiment, flux_type, options, fluxes, dates, energy_bins,
     """
     #All energy channels in specified date range with event start and stop
     #Plot all channels of user specified data
-    figname = 'Fluxes_' \
-            + '_' + experiment + '_' + flux_type + '_' + 'All_Bins'
+    modifier = ''
+    if options[0] != '':
+        for opt in options:
+            modifier = modifier + '_' + opt
 
-    if "uncorrected" in options:
-        figname = 'Fluxes_' \
-                + '_' + experiment + '_uncorrected_' + flux_type \
-                + '_' + 'All_Bins'
+    year = dates[0].year
+    month = dates[0].month
+    day = dates[0].day
+    strdate = str(year) + '_' + str(month) + '_' + str(day)
+
+    figname = strdate + '_Fluxes_' \
+             + experiment + modifier + '_' + flux_type + '_' + 'All_Bins'
+
     if experiment == 'user' and model_name != '':
-        figname = 'Fluxes_' \
-                + '_' + model_name + '_' + flux_type + '_' + 'All_Bins'
+        figname = strdate + '_Fluxes_' \
+             + model_name + modifier + '_' + flux_type + '_' + 'All_Bins'
     fig = plt.figure(figname,figsize=(9,4))
     ax = plt.subplot(111)
     nbins = len(energy_bins)
@@ -388,7 +394,7 @@ def derive_background(str_startdate, str_enddate, str_bgstartdate, \
 
     #Check and prepare the data
     filenames1, filenames2, filenames_orien = datasets.check_data(bgstartdate,
-                                                enddate, experiment, flux_type)
+                                    enddate, experiment, flux_type, user_file)
     #read in flux files
     if experiment != "user":
         all_dates, all_fluxes, west_detector =datasets.read_in_files(experiment,
@@ -427,12 +433,12 @@ def derive_background(str_startdate, str_enddate, str_bgstartdate, \
     sepfluxes = np.array(sepfluxes)
 
     if showplot or saveplot:
-        plot_fluxes(experiment, flux_type, options, fluxes, dates, energy_bins,
+        plot_fluxes('Total_'+experiment, flux_type, options, fluxes, dates, energy_bins,
                     means, sigmas, saveplot)
-        plot_fluxes(experiment+'_BackgroundFlux', flux_type, options, bgfluxes, dates,
-                    energy_bins, means, sigmas, saveplot)
-        plot_fluxes(experiment+'_BGSubSEPFlux', flux_type, options, sepfluxes, dates,
-                    energy_bins, means, sigmas, saveplot)
+        plot_fluxes('BackgroundFlux_'+experiment, flux_type, options, bgfluxes,
+                    dates, energy_bins, means, sigmas, saveplot)
+        plot_fluxes('BGSubSEPFlux_'+experiment, flux_type, options, sepfluxes,
+                    dates, energy_bins, means, sigmas, saveplot)
 
     return bgfluxes, sepfluxes, dates
 

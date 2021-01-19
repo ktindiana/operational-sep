@@ -8,11 +8,13 @@ import zulu
 from library import global_vars as vars
 import os
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
+#2021-01-12 changes in v0.2: Added fluence to json file. Added threshold
+#   crossing entry for end of event.
 
 email = vars.email
 version = vars.version
@@ -62,8 +64,8 @@ def fill_json(template, experiment, flux_type, energy_bins,
                 model_name, startdate, enddate, options, energy_thresholds,
                 flux_thresholds, crossing_time, onset_peak, onset_date,
                 peak_flux, peak_time, rise_time, event_end_time, duration,
-                all_integral_fluences, diff_thresh, umasep, umasep_times,
-                umasep_fluxes, profile_filename):
+                all_integral_fluences, diff_thresh, all_energies, all_fluence,
+                umasep, umasep_times, umasep_fluxes, profile_filename):
     """Add all the appropriate values to the json template for model or
         observations.
     """
@@ -81,6 +83,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
         type_key = 'observations'
         win_key = 'observation_window'
         template[key]['observatory']['short_name'] = experiment
+        template[key]['observatory']['flux_type'] = flux_type
 
 
     template[key]['contacts'][0]['name'] = "operational_sep_quantities"
@@ -112,6 +115,8 @@ def fill_json(template, experiment, flux_type, energy_bins,
             template[key][type_key][i]['event_length']['units'] = "pfu"
             template[key][type_key][i]['threshold_crossings'][0]['threshold_units']\
                             = "pfu"
+            template[key][type_key][i]['threshold_crossings'][1]['threshold_units']\
+                            = "pfu"
             template[key][type_key][i]['all_clear']['threshold_units'] \
                             = "pfu"
 
@@ -127,6 +132,8 @@ def fill_json(template, experiment, flux_type, energy_bins,
             template[key][type_key][i]['event_length']['units'] \
                             = "[MeV/n cm^2 s sr]^(-1)"
             template[key][type_key][i]['threshold_crossings'][0]['threshold_units']\
+                            = "[MeV/n cm^2 s sr]^(-1)"
+            template[key][type_key][i]['threshold_crossings'][1]['threshold_units']\
                             = "[MeV/n cm^2 s sr]^(-1)"
             template[key][type_key][i]['all_clear']['threshold_units'] \
                             = "[MeV/n cm^2 s sr]^(-1)"
@@ -160,10 +167,28 @@ def fill_json(template, experiment, flux_type, energy_bins,
             template[key][type_key][i]['event_length']['end_time'] = zeet
             template[key][type_key][i]['event_length']['threshold'] \
                                 = flux_thresholds[i]
+            template[key][type_key][i]['fluence']['fluence_value'] \
+                                = all_integral_fluences[i][i]
+            template[key][type_key][i]['fluence']['units'] = 'cm^-2*sr^-1'
+            template[key][type_key][i]['fluence_spectrum']['start_time'] = zct
+            template[key][type_key][i]['fluence_spectrum']['end_time'] = zeet
+            template[key][type_key][i]['fluence_spectrum']['energy_bins'] \
+                                = all_energies[i].tolist()
+            template[key][type_key][i]['fluence_spectrum']['fluences'] \
+                                = all_fluence[i].tolist()
+            flunits = 'cm^-2*sr-1'
+            if diff_thresh[i]:
+                flunits = 'MeV^-1*cm^-2*sr-1'
+            template[key][type_key][i]['fluence_spectrum']['units'] = flunits
+
             template[key][type_key][i]['threshold_crossings'][0]['crossing_time']\
                                 = zct
             template[key][type_key][i]['threshold_crossings'][0]['threshold']\
                                 = flux_thresholds[i]
+            template[key][type_key][i]['threshold_crossings'][1]['crossing_time']\
+                                = zeet
+            template[key][type_key][i]['threshold_crossings'][1]['threshold']\
+                                = flux_thresholds[i]*0.85
             template[key][type_key][i]['all_clear']['all_clear_boolean'] \
                                 = all_clear
             template[key][type_key][i]['all_clear']['threshold'] \
@@ -207,6 +232,10 @@ def fill_json(template, experiment, flux_type, energy_bins,
                                 = zct
             template[key][type_key][i]['threshold_crossings'][0]['threshold']\
                                 = flux_thresholds[i]
+            template[key][type_key][i]['threshold_crossings'][1]['crossing_time']\
+                                = zeet
+            template[key][type_key][i]['threshold_crossings'][1]['threshold']\
+                                = flux_thresholds[i]*0.85
             template[key][type_key][i]['all_clear']['all_clear_boolean'] \
                                 = all_clear
             template[key][type_key][i]['all_clear']['threshold'] \

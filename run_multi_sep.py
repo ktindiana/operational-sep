@@ -8,14 +8,18 @@ import sys
 import os
 import asciitable
 
-__version__ = "0.2"
+__version__ = "0.3"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
 #Changes in 0.2: Modified so that output list files will indicate when an
-#observation or flux did not exceed a certain threshold for a given SEP event.
-#Added a column specifying SEP date to sep_list
+#   observation or flux did not exceed a certain threshold for a given SEP
+#   event. Added a column specifying SEP date to sep_list
+#2021-01-14, Changes in 0.3: Made consistent with operational_sep_quantities.py
+#   v2.3 which includes background subtraction and various energy bin options.
+#   Added more fields to list file to allow better specification of each data
+#   set.
 
 """This and supporting codes are found in the respository:
         https://github.com/ktindiana/operational-sep
@@ -54,7 +58,6 @@ logger = logging.getLogger('sep')
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 ############## SET INPUTS ##################
-flux_type = 'integral'
 showplot = False
 saveplot = True
 detect_prev_event_default = False #Set to true if get FirstStart flag
@@ -65,50 +68,88 @@ two_peaks_default = False #Set to true if get ShortEvent flag
 #ALSO READ IN ASSOCIATED EXPERIMENT FOR EACH DATE
 def read_sep_dates(sep_filename):
     ''' Reads in a csv list file of SEP events. List must have the format:
-        Datetime, Experiment, Number of days, Flags
+        StartDate, Enddate, Experiment, FluxType, Flags,,,options,bgstartdate,
+            bgenddate
         If the experiment is 'user', indicating a user-input flux file, then
         the file must have the format:
-        Datetime, Experiment, Number of days, Flags, Model Name, User Filename
+        StartDate, Enddate, Experiment, FluxType, Flags, Model Name,
+            User Filename, options, bgstartdate, bgenddate
+
+        Flags may be: TwoPeak, DetectPreviousEvent, SubtractBG
+        options may be: "S14,Bruno2017,uncorrected"
     '''
     print('Reading in file ' + sep_filename)
-    start_dates = []
+    start_dates = [] #row 0
     end_dates = []
-    experiments = [] #e.g. GOES-11, GOES-13, GOES-15, SEPEM
-    flags = []
-    model_names = []
-    user_files = []
+    experiments = [] #row 1, e.g. GOES-11, GOES-13, GOES-15, SEPEM, user
+    flux_types = [] #row 3
+    flags = [] #row 4
+    model_names = [] #row 5
+    user_files = [] #row 6
+    options = [] #row 7
+    bgstartdate = [] #row 8
+    bgenddate = [] #row 9
 
     with open(sep_filename) as csvfile:
         readCSV = csv.reader(csvfile, delimiter=',')
         #Define arrays that hold dates
         for row in readCSV:
-            N = len(row[0])
-            if N > 10:
-                date = datetime.datetime.strptime(row[0][0:18],
+            if len(row[0]) > 10:
+                stdate = datetime.datetime.strptime(row[0][0:19],
                                             "%Y-%m-%d %H:%M:%S")
-            if N == 10:
-                date = datetime.datetime.strptime(row[0][0:10],
+            if len(row[0]) == 10:
+                stdate = datetime.datetime.strptime(row[0][0:10],
                                             "%Y-%m-%d")
-            start_dates.append(str(date))
-            experiments.append(row[1])
-            Ndays = float(row[2])
-            end_dates.append(str(date + datetime.timedelta(days=Ndays)))
-            if len(row) > 3:
-                flags.append(row[3])
+            if len(row[1]) > 10:
+                enddate = datetime.datetime.strptime(row[1][0:19],
+                                            "%Y-%m-%d %H:%M:%S")
+            if len(row[1]) == 10:
+                enddate = datetime.datetime.strptime(row[1][0:10],
+                                            "%Y-%m-%d")
+            start_dates.append(str(stdate))
+            end_dates.append(str(enddate))
+            experiments.append(row[2])
+            flux_types.append(row[3])
+
+            if len(row) > 4:
+                flags.append(row[4])
             else:
                 flags.append('')
 
-            if row[1] == 'user':
-                if len(row) < 6:
-                    sys.exit("For a user file, you must specify model name and "
-                            "input filename in the list.")
-                model_names.append(row[4])
-                user_files.append(row[5])
+            if len(row) > 5:
+                model_names.append(row[5])
             else:
                 model_names.append('')
+
+            if len(row) > 6:
+                user_files.append(row[6])
+            else:
                 user_files.append('')
 
-    return start_dates, end_dates, experiments, flags, model_names, user_files
+            if len(row) > 7:
+                options.append(row[7])
+            else:
+                options.append('')
+
+            if len(row) > 8:
+                bgstartdate.append(row[8])
+            else:
+                bgstartdate.append('')
+
+            if len(row) > 9:
+                bgenddate.append(row[9])
+            else:
+                bgenddate.append('')
+
+
+            if row[1] == 'user':
+                if len(row) < 7:
+                    sys.exit("For a user file, you must specify model name and "
+                            "input filename in the list.")
+
+
+    return start_dates, end_dates, experiments, flux_types, flags, model_names,\
+        user_files, options, bgstartdate, bgenddate
 
 
 def write_sep_lists(sep_year, sep_month, sep_day, experiment, flux_type,
@@ -126,8 +167,10 @@ def write_sep_lists(sep_year, sep_month, sep_day, experiment, flux_type,
     #Put together thresholds that might be found inside sep_values files
     op_thresh = [['10','10'],['100','1']]
     if threshold != '100,1':
-        thresh = threshold.split(",")
-        op_thresh.append([str(float(thresh[0])),str(float(thresh[1]))])
+        thresh = threshold.split(';')
+        for th in thresh:
+            th = th.split(",")
+            op_thresh.append([str(float(th[0])),str(float(th[1]))])
     is_thresh = [False]*len(op_thresh)
 
     infile = outpath + '/' + 'sep_values_' + experiment + '_' + flux_type \
@@ -250,13 +293,15 @@ if __name__ == "__main__":
         open(listpath + '/' 'sep_list_50MeV_1pfu.csv','w+').close()
     #Additional threshold
     if threshold != '100,1':
-        thresh = threshold.split(",")
-        open(listpath + '/' 'sep_list_' + str(float(thresh[0])) + 'MeV_' \
-            + str(float(thresh[1])) + 'pfu.csv','w+').close()
+        thresh = threshold.split(';')
+        for th in thresh:
+            th = th.split(",")
+            open(listpath + '/' 'sep_list_' + str(float(th[0])) + 'MeV_' \
+                + str(float(th[1])) + 'pfu.csv','w+').close()
 
     #READ IN SEP DATES AND experiments
-    start_dates, end_dates, experiments, flags, model_names, user_files \
-        = read_sep_dates(sep_filename)
+    start_dates, end_dates, experiments, flux_types, flags, model_names, \
+        user_files, options, bgstart, bgend = read_sep_dates(sep_filename)
 
     #Prepare output file listing events and flags
     fout = open(outfname,"w+")
@@ -270,23 +315,33 @@ if __name__ == "__main__":
         start_date = start_dates[i]
         end_date = end_dates[i]
         experiment = experiments[i]
+        flux_type = flux_types[i]
         flag = flags[i]
         model_name = model_names[i]
         user_file = user_files[i]
-        if flag == "DetectPreviousEvent":
+        option = options[i]
+        bgstartdate = bgstart[i]
+        bgenddate = bgend[i]
+
+        flag = flag.split(';')
+        detect_prev_event = detect_prev_event_default
+        two_peaks = two_peaks_default
+        doBGSub = False
+        if "DetectPreviousEvent" in flag:
             detect_prev_event = True
-        elif flag == "TwoPeak":
+        if "TwoPeak" in flag:
             two_peaks = True
-        else:
-            detect_prev_event = detect_prev_event_default
-            two_peaks = two_peaks_default
+        if "SubtractBG" in flag:
+            doBGSub = True
+
         print('\n-------RUNNING SEP ' + start_date + '---------')
         #CALCULATE SEP INFO AND OUTPUT RESULTS TO FILE
         try:
             FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-            sep_day = sep.run_all(start_date, end_date, experiment, flux_type, \
-                model_name, user_file, showplot, saveplot, detect_prev_event,  \
-                two_peaks, umasep, threshold)
+            sep_day = sep.run_all(start_date, end_date, experiment, flux_type,
+                model_name, user_file, showplot, saveplot, detect_prev_event,
+                two_peaks, umasep, threshold, option, doBGSub, bgstartdate,
+                bgenddate)
 
             sep_date = datetime.datetime(year=sep_year, month=sep_month,
                             day=sep_day)

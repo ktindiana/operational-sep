@@ -25,7 +25,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "2.1"
+__version__ = "2.3"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -105,7 +105,9 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   during the full time period (start date to end date) and the time and saves
 #   it in the onset peak and onset date. This info won't be reported in the
 #   csv files, but will be reported in the json.
-#
+#2021-01-06, Changes in 2.2: DHConsultancy (Daniel Heynderickx) sent out a beta
+#   version of the SEPEM RSDv3 data sets. Added here as a native data set.
+#2021-01-12, Changes in 2.3: Added functionality to read in REleASE data.
 
 
 #See full program description in all_program_info() below
@@ -133,7 +135,7 @@ user_fname = ['tmp.txt']
 def all_program_info(): #only for documentation purposes
     """This program will calculate various useful pieces of operational
     information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
-    data and the SEPEM (RSDv2) dataset.
+    data and the SEPEM (RSDv2 and RSDv3) dataset.
 
     SEP event values are always calculated for threshold definitions:
         >10 MeV exceeds 10 pfu
@@ -142,10 +144,10 @@ def all_program_info(): #only for documentation purposes
     The user may add multiple additional thresholds through the command line.
     This program will check if data is already present in a 'data' directory. If
     not, GOES or EPHIN data will be automatically downloaded from the web. SEPEM
-    (RSDv2) data must be downloaded by the user and unzipped inside the 'data'
-    directory. Because the SEPEM data set is so large (every 5 minutes from 1974
-    to 2015), the program will break up the data into yearly files for faster
-    reading.
+    (RSDv2 and RSDv3) data must be downloaded by the user and unzipped inside
+    the 'data' directory. Because the SEPEM data set is so large (every 5
+    minutes from 1974 to 2015 for RSDv2 and to 2017 for RSDv3), the program will
+    break up the data into yearly files for faster reading.
 
     The values calculated here are important for space radiation operations:
        Onset time, i.e. time to cross thresholds
@@ -390,19 +392,41 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                     #bin is already an integral flux, e.g. last HEPAD bin
                     continue
                 if fluxes[i,j] < 0 or fluxes[i+1,j] < 0: #bad data
-                    sys.exit('Bad flux data value found for bin ' + str(i) + ','
+                    sys.exit('Bad flux data value of ' + str(fluxes[i,j])
+                            + ' and ' + str(fluxes[i+1,j]) +
+                            ' found for bin ' + str(i) + ','
                             + str(j) + '. This should not happen. '
                             + 'Did you call check_for_bad_data() first?')
 
-                if fluxes[i,j] == 0 and fluxes[i+1,j] == 0: #add 0 flux
+                #if fluxes[i,j] == 0 and fluxes[i+1,j] == 0: #add 0 flux
+                #    ninc = ninc + 1
+                #    continue
+
+                if fluxes[i,j] == 0: #add 0 flux
                     ninc = ninc + 1
+                    continue
+
+                if fluxes[i+1,j] == 0:
+                    #Don't do interpolation; just add integral flux in bin
+                    bin_flux = fluxes[i,j]\
+                                * (energy_bins[i][1] - energy_bins[i][0])
+                    if math.isnan(bin_flux):
+                        print("Found bin flux of NaN for for bin " + str(i) + ','
+                        + str(j) + ' from ' + str(energy_bins[i][1]) + '-' + str(energy_bins[i][0]))
+                    sum_flux = sum_flux + bin_flux
                     continue
 
                 F1 = fluxes[i,j]
                 F2 = fluxes[i+1,j]
-                if fluxes[i,j] == 0: #sub very small value for interpolation
+                if fluxes[i,j] == 0 or fluxes[i,j] == None: #sub very small value for interpolation
+                    sys.exit('from_differential_to_integral_flux: found bin '
+                            'flux of zero. Should not happen here, bin [i,j] ['
+                            + str(i) + ',' + str(j) + '].' )
                     F1 = 1e-15
-                if fluxes[i+1,j] == 0:
+                if fluxes[i+1,j] == 0 or fluxes[i+1,j] == None:
+                    sys.exit('from_differential_to_integral_flux: found bin '
+                            'flux of zero. Should not happen here, bin [i+1,j] '
+                            '['+ str(i+1) + ',' + str(j) + '].' )
                     F2 = 1e-15
                 logF1 = np.log(F1)
                 logF2 = np.log(F2)
@@ -416,6 +440,11 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                             + (np.log(x)-logE1)*(logF2-logF1)/(logE2-logE1))
                 startE = max(bin_center[i],min_energy)
                 fint = scipy.integrate.quad(f,startE,endE)
+                if math.isnan(fint[0]):
+                    print("from_differential_to_integral_flux: flux integral"
+                        "across bins is NaN. Setting to zero. Bin values are "
+                        + str(F1) + ' and ' + str(F2))
+                    fint = [0]
                 sum_flux = sum_flux + fint[0]
                 ninc = ninc + 1
 
@@ -433,7 +462,7 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
 
 
 def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
-            energy_thresholds, energy_bins):
+            energy_thresholds, energy_bins, options):
     """Select or create the integral fluxes that correspond to the desired
        energy thresholds.
        If the user selected differential fluxes, then the
@@ -533,7 +562,9 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     print('Calculating threshold crossings and SEP event characteristics.')
 
     ndates = len(dates)
-    end_threshold = 0.85*flux_threshold #used by SRAG operators
+    end_threshold = 0.85*flux_threshold #used by SRAG operators; if this ever
+                    #changes, must update threshold crossing entry in
+                    #ccmc_json_handler.py: fill_json
 
     threshold_crossed = False
     event_ended = False
@@ -630,13 +661,15 @@ def calculate_fluence(dates, flux):
         if flux[i] >= 0:  #0 flux ok for models
             sum_flux = sum_flux + flux[i]*time_resolution
         else:
-            sys.exit('Bad flux data value found for bin ' + str(i) + ', '
+            sys.exit('Bad flux data value of ' + str(flux[i]) +
+                    ' found for bin ' + str(i) + ', '
                     + str(dates[i]) + '. This should not happen. '
                     + 'Did you call check_for_bad_data() first?')
     return sum_flux
 
 
-def get_fluence_spectrum(experiment, flux_type, model_name, energy_threshold,
+def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
+                model_name, energy_threshold,
                 flux_threshold, sep_dates, sep_fluxes, energy_bins,
                 is_diff_thresh, save_file):
     """Calculate the fluence spectrum for each of the energy channels in the
@@ -669,11 +702,17 @@ def get_fluence_spectrum(experiment, flux_type, model_name, energy_threshold,
             mod1 = ''
             mod2 = 'differential energy bin with low edge '
             unit = '1/[MeV cm^2 s sr]'
-        foutname = outpath + '/fluence_' + str(experiment) + '_' \
+        modifier = ''
+        if options[0] != '':
+            for opt in options:
+                modifier = modifier + '_' + opt
+        if doBGSub:
+            modifier = modifier + '_bgsub'
+        foutname = outpath + '/fluence_' + str(experiment) + modifier + '_' \
                     + str(flux_type) + '_' + mod1 + str(energy_threshold) \
                     + '_' +str(year) + '_' + str(month) + '_' + str(day) +'.csv'
         if experiment == 'user' and model_name != '':
-            foutname = outpath + '/fluence_' + model_name + '_' \
+            foutname = outpath + '/fluence_' + model_name + modifier + '_' \
                         + str(flux_type) + '_' + mod1 + str(energy_threshold) \
                         + '_' +str(year) + '_' + str(month) + '_' + str(day) \
                         +'.csv'
@@ -1073,6 +1112,7 @@ def report_threshold_fluences(experiment, flux_type, model_name,
                     sep_integral_fluxes[i,:] = sep_fluxes[j,:]
 
     integral_fluence, integral_energies = get_fluence_spectrum(experiment,
+                    '', False, #Filler values for filename b/c file not saved
                     "integral",model_name, 0, 0,sep_dates, sep_integral_fluxes,
                     tmp_energy_bins, False, False) #always integral; don't save file
 
@@ -1084,8 +1124,8 @@ def report_threshold_fluences(experiment, flux_type, model_name,
     return integral_fluence
 
 
-def save_integral_fluxes_to_file(experiment, flux_type, model_name,
-        energy_thresholds, crossing_time, dates, integral_fluxes):
+def save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
+        model_name, energy_thresholds, crossing_time, dates, integral_fluxes):
     """Output the time series of integral fluxes to a file. If the input
         data set was in integral channels, then this file will contain exactly
         the same values in the time series.
@@ -1103,15 +1143,23 @@ def save_integral_fluxes_to_file(experiment, flux_type, model_name,
             month = crossing_time[i].month
             day = crossing_time[i].day
     if year == 0:
-        sys.exit("No thresholds were crossed during this time period. "
+        print("No thresholds were crossed during this time period. "
                 "Integral flux time profiles not written to file. Exiting.")
+        return
 
     #e.g. integral_fluxes_GOES-13_differential_2012_3_7.csv
-    foutname = outpath + '/integral_fluxes_' + experiment + '_' \
+    modifier = ''
+    if options[0] != '':
+        for opt in options:
+            modifier = modifier + '_' + opt
+    if doBGSub:
+        modifier = modifier + '_bgsub'
+
+    foutname = outpath + '/integral_fluxes_' + experiment + modifier + '_' \
                  + flux_type + '_' + str(year) + '_' + str(month) \
                  + '_' + str(day) + '.csv'
     if experiment == 'user' and model_name != '':
-        foutname = outpath + '/integral_fluxes_' + model_name + '_' \
+        foutname = outpath + '/integral_fluxes_' + model_name + modifier + '_' \
                      + flux_type + '_' + str(year) + '_' + str(month) \
                      + '_' + str(day) + '.csv'
     print('Writing integral flux time series to file --> ' + foutname)
@@ -1137,7 +1185,8 @@ def save_integral_fluxes_to_file(experiment, flux_type, model_name,
 
 
 
-def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
+def print_values_to_file(experiment, flux_type, options, doBGSub,
+                model_name, energy_thresholds,
                 flux_thresholds, crossing_time, onset_peak, onset_date,
                 peak_flux, peak_time, rise_time, event_end_time, duration,
                 integral_fluences, is_diff_thresh, umasep, umasep_times,
@@ -1174,14 +1223,22 @@ def print_values_to_file(experiment, flux_type, model_name, energy_thresholds,
         month = startdate.month
         day = startdate.day
         print("No thresholds were crossed during this time period. "
-            "Using starting date of time period for json file.")
+            "Using starting date of time period for json file and not "
+            "writing out a csv file.")
         return year, month, day, False
 
-    foutname = outpath + '/sep_values_' + experiment + '_' \
+    modifier = ''
+    if options[0] != '':
+        for opt in options:
+            modifier = modifier + '_' + opt
+    if doBGSub:
+        modifier = modifier + '_bgsub'
+
+    foutname = outpath + '/sep_values_' + experiment + modifier + '_' \
                 + flux_type + '_' + str(year) + '_' + str(month) + '_' \
                 + str(day) +'.csv'
     if experiment == 'user' and model_name != '':
-        foutname = outpath + '/sep_values_' + model_name + '_' \
+        foutname = outpath + '/sep_values_' + model_name + modifier + '_' \
                     + flux_type + '_' + str(year) + '_' + str(month) + '_' \
                     + str(day) +'.csv'
     print('Writing SEP values to file --> ' + foutname)
@@ -1277,15 +1334,14 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     LateHundred = False #>100 MeV threshold crossed >24 hours after >10 MeV
 
     #CHECK AND VALIDATE OPTIONS
-    options = options.split(",")
+    options = options.split(";")
     if "S14" in options and experiment[0:4] != "GOES":
-        sys.exit("Sanberg et al. (2014) effective energies (S14) may only "
+        sys.exit("Sandberg et al. (2014) effective energies (S14) may only "
             "be applied to GOES data.")
     if "S14" in options and "uncorrected" not in options:
-        print("Sandberg et al. (2014) effective energies (S14) may only be "
-            "applied to GOES uncorrected fluxes. Changing flux type to "
-            "\"uncorrected\" and continuing.")
-        options.append("uncorrected")
+        sys.exit("Sandberg et al. (2014) effective energies (S14) may only be "
+            "applied to GOES uncorrected fluxes. Please add "
+            "\"uncorrected\" to options.")
     if "uncorrected" in options and flux_type == "integral":
         sys.exit("The uncorrected option cannot be used with integral fluxes. "
                 "Please remove this option and run again. Exiting.")
@@ -1345,7 +1401,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         sys.exit('The SEPEM (RSDv2) data set only provides differential fluxes.'
             ' Please change your FluxType to differential. Exiting.')
 
-    if (experiment == "EPHIN" and flux_type == "integral"):
+    if (experiment == "SEPEMv3" and flux_type == "integral"):
+        sys.exit('The SEPEM (RSDv3) data set only provides differential fluxes.'
+            ' Please change your FluxType to differential. Exiting.')
+
+    if ((experiment == "EPHIN" or experiment == "EPHIN_REleASE") \
+        and flux_type == "integral"):
         sys.exit('The SOHO/EPHIN data set only provides differential fluxes.'
             ' Please change your FluxType to differential. Exiting.')
 
@@ -1361,6 +1422,13 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                    enddate > sepem_end_date)):
         sys.exit('The SEPEM (RSDv2) data set only extends to '
                   + str(sepem_end_date) +
+            '. Please change your requested dates. Exiting.')
+
+    sepemv3_end_date = datetime.datetime(2017,12,31,23,55,00)
+    if(experiment == "SEPEMv3" and (startdate > sepemv3_end_date or
+                   enddate > sepemv3_end_date)):
+        sys.exit('The SEPEM (RSDv3) data set only extends to '
+                  + str(sepemv3_end_date) +
             '. Please change your requested dates. Exiting.')
 
     if ("uncorrected" in options or "S14" in options or "Bruno2017" in options)\
@@ -1396,6 +1464,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         #Extract the date range specified by the user
         dates, fluxes = datasets.extract_date_range(startdate, enddate,
                                     bgdates, sepfluxes)
+        #Remove bad data points (negative flux or None) w/ linear interp in time
+        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
+
     #NO BACKGROUND SUBTRACTION
     if not doBGSub:
         #Extract the date range specified by the user
@@ -1430,8 +1501,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
     #Estimate or select integral fluxes corresponding the energy_thresholds
     integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
-                    flux_thresholds, energy_thresholds, energy_bins)
-
+                    flux_thresholds, energy_thresholds, energy_bins, options)
 
     #Calculate SEP event quantities for energy and flux threshold combinations
     #integral fluxes are used to define event start and stop
@@ -1497,6 +1567,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             "--DetectPreviousEvent? May not work in this case). Exiting.")
 
         fluence, energies = get_fluence_spectrum(experiment, flux_type,
+                         options, doBGSub,
                          model_name, energy_thresholds[i], flux_thresholds[i],
                          sep_dates, sep_fluxes, energy_bins, False, True)
                          #is_diff_thresh False, always integral flux; savefile
@@ -1508,8 +1579,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         #any user input threshold fluences
         if flux_type == "integral":
             integral_fluence = report_threshold_fluences(experiment, flux_type,
-                        model_name, energy_thresholds, energy_bins, sep_dates,
-                        sep_fluxes)
+                        model_name, energy_thresholds, energy_bins,
+                        sep_dates, sep_fluxes)
         if flux_type == "differential":
             #Extract the estimated integral fluxes in the SEP event date range
             sep_integral_dates, sep_integral_fluxes = \
@@ -1525,8 +1596,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
     #Integral fluxes will be saved to file; fluxes associated with a
     #differential threshold (energy bin) will not be saved to file
-    save_integral_fluxes_to_file(experiment, flux_type, model_name,
-                energy_thresholds, crossing_time, dates, integral_fluxes)
+    save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
+                model_name, energy_thresholds, crossing_time, dates,
+                integral_fluxes)
 
 
     #For plotting, we need to expand the is_diff_thresh list to include
@@ -1537,6 +1609,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     for i in range(nthresh):
         plt_energy.append(str(energy_thresholds[i]))
         plt_flux.append(str(flux_thresholds[i]))
+
 
     #If a differential threshold was specified, calculate everything with
     #correct differential channel
@@ -1570,6 +1643,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 sep_d, sep_f = datasets.extract_date_range(ct[0],eet[0],dates,
                                 fluxes)
                 fl, en = get_fluence_spectrum(experiment, flux_type,
+                                 options, doBGSub,
                                  model_name, input_threshold[i][0],
                                  input_threshold[i][1], sep_d, sep_f,
                                  energy_bins, is_diff_thresh, True) #savefile
@@ -1613,7 +1687,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #####################################################################
     #Save all calculated values for all threshold definitions to csv file
     sep_year, sep_month, sep_day, IsCrossed = print_values_to_file(experiment,
-                    flux_type, model_name, energy_thresholds, flux_thresholds,
+                    flux_type, options, doBGSub,
+                    model_name, energy_thresholds, flux_thresholds,
                     crossing_time, onset_peak, onset_date, peak_flux, peak_time,
                     rise_time, event_end_time, duration, all_integral_fluences,
                     plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
@@ -1626,17 +1701,24 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         type = "model"
     template = ccmc_json.read_in_json_template(type)
 
-    jsonfname = outpath + '/sep_values_' + experiment + '_' \
+    modifier = ''
+    if options[0] != '':
+        for opt in options:
+            modifier = modifier + '_' + opt
+    if doBGSub:
+        modifier = modifier + '_bgsub'
+
+    jsonfname = outpath + '/sep_values_' + experiment + modifier + '_' \
                 + flux_type + '_' + str(sep_year) + '_' + str(sep_month) + '_' \
                 + str(sep_day) +'.json'
-    proffname = outpath + '/integral_fluxes_' + experiment + '_' \
+    proffname = 'integral_fluxes_' + experiment + modifier + '_' \
                  + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
                  + '_' + str(sep_day) + '.csv'
     if experiment == 'user' and model_name != '':
-        jsonfname = outpath + '/sep_values_' + model_name + '_' \
+        jsonfname = outpath + '/sep_values_' + model_name + modifier + '_' \
                     + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
                     + '_' + str(sep_day) +'.json'
-        proffname = outpath + '/integral_fluxes_' + model_name + '_' \
+        proffname = 'integral_fluxes_' + model_name + modifier + '_' \
                      + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
                      + '_' + str(sep_day) + '.csv'
     filled_json = ccmc_json.fill_json(template, experiment, flux_type,
@@ -1644,13 +1726,12 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     energy_thresholds, flux_thresholds, crossing_time,
                     onset_peak, onset_date, peak_flux, peak_time, rise_time,
                     event_end_time, duration, all_integral_fluences,
-                    plot_diff_thresh, umasep, umasep_times, umasep_fluxes,
-                    proffname)
+                    plot_diff_thresh, all_energies, all_fluence,
+                    umasep, umasep_times, umasep_fluxes, proffname)
     isgood = ccmc_json.write_json(filled_json, jsonfname)
     if not isgood:
         print("WARNING: ccmc_json_handler: write_json could not write your " \
                 "file "+ str(jsonfname))
-
 
     if not IsCrossed:
         sys.exit("No thresholds were crossed during this time period. "
@@ -1722,7 +1803,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             ax = plt.subplot(nthresh, 1, i+1)
             #Don't want to plot zero values, particularly in background-subtracted plots
             if doBGSub:
-                maskfluxes = np.ma.masked_where(integral_fluxes[i] <10e-10, \
+                maskfluxes = np.ma.masked_where(integral_fluxes[i] <0, \
                                 integral_fluxes[i])
                 plt.plot_date(dates,maskfluxes,'-',label=data_label)
             else:
@@ -1743,7 +1824,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
             plt.xlabel('Date')
             plt.ylabel('Integral Flux\n 1/[cm^2 s sr]')
-            plt.title(plot_title)
+            plt.suptitle(plot_title)
             if plot_diff_thresh[i]:
                 plt.ylabel('Differential Flux\n 1/[MeV cm^2 s sr]')
             plt.yscale("log")
@@ -1780,7 +1861,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 legend_label = '>'+ str(energy_bins[i][0]) + ' MeV'
 
             if doBGSub:
-                maskfluxes = np.ma.masked_where(fluxes[i] <10e-10, fluxes[i])
+                maskfluxes = np.ma.masked_where(fluxes[i] <0, fluxes[i])
                 ax.plot_date(dates,maskfluxes,'-',label=legend_label)
             else:
                 ax.plot_date(dates,fluxes[i],'-',label=legend_label)
@@ -1890,7 +1971,7 @@ if __name__ == "__main__":
                     " with quotes"))
     parser.add_argument("--Experiment", type=str, choices=['GOES-08',
             'GOES-10', 'GOES-11', 'GOES-12', 'GOES-13', 'GOES-14', 'GOES-15',
-            'SEPEM', 'EPHIN', 'user'],
+            'SEPEM', 'SEPEMv3', 'EPHIN', 'EPHIN_REleASE', 'user'],
             default='', help="Enter name of spacecraft or dataset")
     parser.add_argument("--FluxType", type=str, choices=['integral',
             'differential'], default='differential',
@@ -1916,7 +1997,7 @@ if __name__ == "__main__":
                     "e.g. \"30,1;50,1;25-40.9,0.001\""
                     "Default = '100,1'"))
     parser.add_argument("--options", type=str, default='', help=("You "
-            "may specify a series of options as a comma separated list "
+            "may specify a series of options as a semi-colon separated list "
             "surrounded by quotations.\n"
             "\"uncorrected\" for GOES uncorrected differential fluxes with "
             "nominal GOES energy bins,\n "
@@ -1929,7 +2010,7 @@ if __name__ == "__main__":
             "specified for GOES-13 or GOES-15, S14 bins will be applied to "
             "P2-P5 and Bruno2017 bins will be applied to P6-P11 for uncorrected "
             "fluxes.\n"
-            "e.g. \"uncorrected,S14,Bruno2017\""))
+            "e.g. \"uncorrected;S14;Bruno2017\""))
     parser.add_argument("--SubtractBG",
             help="Set to calculate the background and subtract from the "\
                 "SEP flux. Must define start and end dates for the background.",
