@@ -110,6 +110,7 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2021-01-12, Changes in 2.3: Added functionality to read in REleASE data.
 #2021-01-19, Changes in 2.4: If time resolution of data set is >15 minutes,
 #   relax three point requirement to exceed or fall below a threshold.
+#   For finding onset time, restricted onset to fall between event start and end
 
 
 #See full program description in all_program_info() below
@@ -908,10 +909,13 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         #record where deriv first goes negative
         index_cross = 0
         index_24 = 0
+        last_date = crossing_time[i] + datetime.timedelta(hours=18)
+        if last_date > event_end_time[i]:
+            last_date = event_end_time[i]
         for j in range(len(dates)):
             if dates[j] <= crossing_time[i]:
                 index_cross = j
-            if dates[j] <= (crossing_time[i] + datetime.timedelta(hours=18)):
+            if dates[j] <= last_date:
                 index_24 = j
 
         #Max value of the normalized derivative in first 24 hours
