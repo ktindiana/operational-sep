@@ -25,7 +25,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "2.4"
+__version__ = "2.4.1"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -110,7 +110,15 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2021-01-12, Changes in 2.3: Added functionality to read in REleASE data.
 #2021-01-19, Changes in 2.4: If time resolution of data set is >15 minutes,
 #   relax three point requirement to exceed or fall below a threshold.
-#   For finding onset time, restricted onset to fall between event start and end
+#   For finding onset time, restricted onset to fall between event start and
+#   start + 18 hours or start and end time, which ever is shorter.
+#  2021-01-25, Changes in 2.4.1: Changed the logic when converting differential
+#   flux to integral flux (from_differential_to_integral). Previously,
+#   if one bin (bin[i]) had non-zero flux and the next bin (bin[i+1]) had zero
+#   flux, the bin[1+1] was set to a value of 1e-15 and then an integral was
+#   calculate from bin[i] to 1e-15 to get the flux contribution. This gave
+#   strange results. Now, if bin[i] or bin[i+1] has a flux of zero or None, no
+#   flux is added to the integral flux. 
 
 
 #See full program description in all_program_info() below
@@ -405,19 +413,10 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                 #    ninc = ninc + 1
                 #    continue
 
-                if fluxes[i,j] == 0: #add 0 flux
+                if fluxes[i,j] == 0 or fluxes[i+1,j] == 0: #add 0 flux
                     ninc = ninc + 1
                     continue
 
-                if fluxes[i+1,j] == 0:
-                    #Don't do interpolation; just add integral flux in bin
-                    bin_flux = fluxes[i,j]\
-                                * (energy_bins[i][1] - energy_bins[i][0])
-                    if math.isnan(bin_flux):
-                        print("Found bin flux of NaN for for bin " + str(i) + ','
-                        + str(j) + ' from ' + str(energy_bins[i][1]) + '-' + str(energy_bins[i][0]))
-                    sum_flux = sum_flux + bin_flux
-                    continue
 
                 F1 = fluxes[i,j]
                 F2 = fluxes[i+1,j]
@@ -425,12 +424,12 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                     sys.exit('from_differential_to_integral_flux: found bin '
                             'flux of zero. Should not happen here, bin [i,j] ['
                             + str(i) + ',' + str(j) + '].' )
-                    F1 = 1e-15
+                    #F1 = 1e-15
                 if fluxes[i+1,j] == 0 or fluxes[i+1,j] == None:
                     sys.exit('from_differential_to_integral_flux: found bin '
                             'flux of zero. Should not happen here, bin [i+1,j] '
                             '['+ str(i+1) + ',' + str(j) + '].' )
-                    F2 = 1e-15
+                    #F2 = 1e-15 #Set to very small number for interpolation
                 logF1 = np.log(F1)
                 logF2 = np.log(F2)
                 logE1 = np.log(bin_center[i])
@@ -447,6 +446,8 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                     print("from_differential_to_integral_flux: flux integral"
                         "across bins is NaN. Setting to zero. Bin values are "
                         + str(F1) + ' and ' + str(F2))
+                    fint = [0]
+                if fint[0] < 1e-10:
                     fint = [0]
                 sum_flux = sum_flux + fint[0]
                 ninc = ninc + 1
@@ -937,12 +938,12 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             if deriv_thresh > 0:
                 print("calculate_onset_peak: Could not locate onset peak for "
                     +  str(energy_thresholds[i])
-                    + " MeV. Setting onset peak to -1, date to 1970-01-01.")
-                onset_peak[i] = -1
-                onset_date[i] = datetime.datetime(year=1970, month=1, day=1)
+                    + " MeV. Setting onset peak and date to None.")#to -1, date to 1970-01-01.")
+                onset_peak[i] = None #-1
+                onset_date[i] = None #datetime.datetime(year=1970,month=1,day=1)
                 first_neg = True #exit loop
 
-        if onset_peak[i]:
+        if onset_peak[i] == None:
             continue
         #Find the maximum flux in the range where the onset peak should be
         onset_peak[i] = max(integral_fluxes[i][max_index:index_neg])
@@ -962,6 +963,8 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         stpt = index_neg - npts
         if stpt < 0: stpt = 0
         endpt = index_neg + npts
+        if endpt >= index_24: #don't check past event end time
+            continue
         if endpt >= len(dates): endpt = len(dates)-1
         deriv_ave_pre = sum(run_deriv[i][stpt:index_neg])/len(run_deriv[i][stpt:index_neg])
         deriv_ave_post = sum(run_deriv[i][index_neg:endpt])/len(run_deriv[i][index_neg:endpt])
@@ -1003,7 +1006,8 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                     + " MeV")
             ax.plot_date(dates,integral_fluxes[i],'-',label=experiment)
             ax.plot_date(dates,smooth_flux[i],'-',color="red",label="Smoothed")
-            ax.plot_date(onset_date[i],onset_peak[i],'o',color="black")
+            if onset_peak[i] != None:
+                ax.plot_date(onset_date[i],onset_peak[i],'o',color="black")
             plt.yscale("log")
             ax.set_xlabel("Date")
             ax.set_ylabel("Flux")
@@ -1827,7 +1831,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                         label="Start, End")
             plt.axhline(flux_thresholds[i],color='red',linestyle=':',
                         label="Threshold")
-            plt.plot_date(onset_date[i],onset_peak[i],'o',color="black",
+            if onset_peak[i] != None:
+                plt.plot_date(onset_date[i],onset_peak[i],'o',color="black",
                         label="Onset Peak")
             plt.plot_date(peak_time[i],peak_flux[i],'ro',mfc='none',
                         label="Max Flux")

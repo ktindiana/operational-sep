@@ -18,7 +18,7 @@ email = "kathryn.whitman@nasa.gov"  #Your email for output JSON files
 #The value of nsigma affects how the event onset is captured because it
 #determines the flux level that is considered background at the beginning of the
 #event
-nsigma = 1.5
+nsigma = 2.0
 #################################
 
 

@@ -40,6 +40,9 @@ def read_in_json_template(type):
 
 def make_ccmc_zulu_time(dt):
     """Make a datetime string in the format YYYY-MM-DDTHH:MMZ"""
+    if dt == None:
+        return None
+
     zdt = zulu.create(dt.year, dt.month, dt.day, dt.hour, dt.minute)
     stzdt = str(zdt)
     stzdt = stzdt.split(':00+00:00')
@@ -55,7 +58,8 @@ def find_energy_bin(lowedge, energy_bins):
             bin = energy_bins[i]
 
     if not bin:
-        print("find_energy_bin could not identify requested bin.")
+        print("ccmc_json_handler: find_energy_bin could not identify "
+                "requested bin.")
 
     return bin
 
@@ -197,6 +201,8 @@ def fill_json(template, experiment, flux_type, energy_bins,
 
 
         #Threshold was NOT crossed OR doesn't exist in data set
+        ######RETHINK LOGIC HERE FOR DIFFERENTIAL FLUXES THAT WERE USED
+        #####TO ESTIMATE INTEGRAL FLUXES###############################
         if crossing_time[i] == 0:
             #Check if channel exists in data; if not, output None values
             bin = find_energy_bin(energy_thresholds[i], energy_bins)

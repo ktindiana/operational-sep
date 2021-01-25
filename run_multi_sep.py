@@ -1,5 +1,6 @@
 import operational_sep_quantities as sep
 from importlib import reload
+import matplotlib.pyplot as plt
 import argparse
 import csv
 import datetime
@@ -353,12 +354,14 @@ if __name__ == "__main__":
                         +','+str(ShortEvent) + ',' + str(LateHundred) + ', ')
             fout.write('\n')
 
-            success=write_sep_lists(sep_year, sep_month, sep_day, experiment,
-                        flux_type, model_name, umasep, threshold)
-            if not success:
-                print('Could not write values to file for ' + str(sep_year) \
-                    + '/' + str(sep_month) + '/' + str(sep_day))
+            ######NEEDS TO BE UPDATED WITH LATEST FILENAMES AND FORMATS########
+            #success=write_sep_lists(sep_year, sep_month, sep_day, experiment,
+            #            flux_type, model_name, umasep, threshold)
+            #if not success:
+            #    print('Could not write values to file for ' + str(sep_year) \
+            #        + '/' + str(sep_month) + '/' + str(sep_day))
 
+            plt.close('all')
             sep = reload(sep)
 
         except SystemExit as e:
