@@ -112,13 +112,13 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   relax three point requirement to exceed or fall below a threshold.
 #   For finding onset time, restricted onset to fall between event start and
 #   start + 18 hours or start and end time, which ever is shorter.
-#  2021-01-25, Changes in 2.4.1: Changed the logic when converting differential
-#   flux to integral flux (from_differential_to_integral). Previously,
+# 2021-01-25, Changes in 2.4.1: Changed the logic when converting differential
+#   flux to integral flux (from_differential_to_integral_flux). Previously,
 #   if one bin (bin[i]) had non-zero flux and the next bin (bin[i+1]) had zero
 #   flux, the bin[1+1] was set to a value of 1e-15 and then an integral was
 #   calculate from bin[i] to 1e-15 to get the flux contribution. This gave
 #   strange results. Now, if bin[i] or bin[i+1] has a flux of zero or None, no
-#   flux is added to the integral flux. 
+#   flux is added to the integral flux.
 
 
 #See full program description in all_program_info() below

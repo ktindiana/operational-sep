@@ -8,13 +8,19 @@ import zulu
 from library import global_vars as vars
 import os
 
-__version__ = "0.2"
+__version__ = "0.3"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
 #2021-01-12 changes in v0.2: Added fluence to json file. Added threshold
 #   crossing entry for end of event.
+#2021-02-11 changes in 0.3: Changed logic so that if integral flux was
+#   derived from differential flux, and the flux did not cross the
+#   threshold applied to the integral channel, then all_clear_boolean = True.
+#   Previously, the code checked if the energy bin existed and set
+#   all_clear_boolean to None if not. This produced the wrong value in the
+#   case where differential channels were converted to integral.
 
 email = vars.email
 version = vars.version
@@ -213,6 +219,15 @@ def fill_json(template, experiment, flux_type, energy_bins,
                 zeet = None
                 all_clear = None
                 template[key][type_key][i]['sep_profile'] = None
+
+                if flux_type == "differential" and not diff_thresh[i]:
+                    zodate = ""
+                    zpdate = ""
+                    zct = ""
+                    zeet = ""
+                    all_clear = True
+                    template[key][type_key][i]['sep_profile'] = profile_filename
+
             else:  #bin does exist and equivalent to all clear for channel
                 zodate = make_ccmc_zulu_time(onset_date[i])
                 zpdate = ""
