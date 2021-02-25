@@ -25,7 +25,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "2.4.1"
+__version__ = "2.5"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -119,6 +119,18 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   calculate from bin[i] to 1e-15 to get the flux contribution. This gave
 #   strange results. Now, if bin[i] or bin[i+1] has a flux of zero or None, no
 #   flux is added to the integral flux.
+#2021-02-25, Changes in 2.5: Changing the all_integral_fluences array to
+#   all_threshold_fluences. In previous versions, all_integral_fluences
+#   contained fluences for integral energy channels only, i.e. >10, >100 MeV.
+#   If a user input a differential channel thresold, e.g. for an energy bin
+#   of 5 - 7 MeV, then this all_integral_fluxes would hold a NaN value for
+#   the fluence corresponding to the threshold array element in
+#   all_integral_fluences.
+#   Instead, we will now have all_threshold_fluences. The fluence will
+#   will correspond to the fluence in each energy channel, whether it
+#   is integral or differential. If the user specifies a differential energy
+#   channel (e.g. 5 - 7 MeV) with a threshold, then the corresponding element in
+#   all_threshold_fluences will have the fluence in the 5 - 7 MeV bin.
 
 
 #See full program description in all_program_info() below
@@ -646,6 +658,38 @@ def check_bin_exists(threshold, energy_bins):
 
 
 
+def get_energy_bin_index(energy_threshold, energy_bins):
+    """Find the index associated with the integral or differential energy bin, check
+        to see that the energy bin is in the requested data set.
+        threshold is a list of strings.
+        For integral, expect:
+            energy_threshold = lowedge
+        
+        For differential, expect:
+            energy_threshold[0] = lowedge
+            energy_threshold[1] = highedge
+    """
+    
+    is_array = isinstance(threshold, list) #number or array?
+    
+    if not is_array: #integral
+        for index in range(len(energy_bins)):
+            if energy_threshold == energy_bins[index][0]:
+                return index
+    
+    if is_array: #differential
+        lowedge = threshold[0]
+        highedge = threshold[1]
+        for index in range(len(energy_bins)):
+            if lowedge == energy_bins[index][0] \
+                and highedge == energy_bins[index][1]:
+                return index
+
+    sys.exit("get_energy_bin_index: Could not identify bin that was "
+            "requested: " + str(energy_threshold) +". Exiting.")
+    
+    
+
 def calculate_fluence(dates, flux):
     """This subroutine sums up all of the flux in the 1D array "flux". The
        "dates" and "flux" arrays input here should reflect only the intensities
@@ -1119,15 +1163,18 @@ def report_threshold_fluences(experiment, flux_type, model_name,
         tmp_energy_bins.append([energy_thresholds[i],-1])
         if flux_type == "differential":
             #integral fluxes were estimated for only the threshold energies
-            #so it's a 1:1 comparison
+            #so the indices in the fluxes match the order of the thresholds
             sep_integral_fluxes[i,:] = sep_fluxes[i,:]
         if flux_type == "integral":
-            #Pull out the integral fluxes from the correct energy channel
+            #Pull out the integral fluxes from the correct energy channels
+            #corresponding to the thresholds that were applied
             #This is selecting from all integral channels in the input flux file
             for j in range(len(energy_bins)):
                 if energy_bins[j][0] == energy_thresholds[i]:
                     sep_integral_fluxes[i,:] = sep_fluxes[j,:]
 
+    #Generate integral fluence spectrum for only the integral channels
+    #that were specified with thresholds and in the same index order
     integral_fluence, integral_energies = get_fluence_spectrum(experiment,
                     '', False, #Filler values for filename b/c file not saved
                     "integral",model_name, 0, 0,sep_dates, sep_integral_fluxes,
@@ -1206,7 +1253,7 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
                 model_name, energy_thresholds,
                 flux_thresholds, crossing_time, onset_peak, onset_date,
                 peak_flux, peak_time, rise_time, event_end_time, duration,
-                integral_fluences, is_diff_thresh, umasep, umasep_times,
+                threshold_fluences, is_diff_thresh, umasep, umasep_times,
                 umasep_fluxes):
     """Write all calculated values to file for all thresholds. Event-integrated
        fluences for >10, >100 MeV (and user-defined threshold) will also be
@@ -1280,11 +1327,11 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
         fout.write('#Energy Threshold [MeV],Flux Threshold [pfu],'
             + 'Start Time,Onset Peak Flux 1/[cm2 s sr],Onset Time,'
             'Max Flux 1/[cm2 s sr],Max Time,Rise Time,End Time,Duration')
-    for i in range(nthresh):
-        fout.write(',Fluence >' + str(energy_thresholds[i]) +' MeV [cm^-2]')
+
+    fout.write(',Bin Fluence')
     if umasep:
         for jj in range(numa):
-            fout.write(', UMASEP Delay (hr), Flux pfu')
+            fout.write(',UMASEP Delay (hr),Flux pfu')
     fout.write('\n')
     nthresh = len(energy_thresholds)
 
@@ -1309,8 +1356,7 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
         str_duration = str(duration[i]).split(',')
         for k in range(len(str_duration)):
             fout.write(str_duration[k] + ' ')
-        for j in range(nthresh):
-            fout.write(',' + str(integral_fluences[i,j]*4.*math.pi)) #[cm-2]
+        fout.write(',' + str(threshold_fluences[i])) #units of flux*time
         if umasep:
             for jj in range(numa):
                 fout.write(',' + str(umasep_times[i][jj] - crossing_time[i]) \
@@ -1506,7 +1552,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 energy_thresholds.append(input_threshold[i][0])
                 flux_thresholds.append(input_threshold[i][1])
             #Check if user entered differential threshold
-            #Don't append to thresholds
+            #Don't append to thresholds; deal with these later
             if is_diff_thresh[i]:
                 check_bin_exists(str_thresh[i],energy_bins)
 
@@ -1543,9 +1589,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
     #Calculate event-integrated fluences for all thresholds
     nthresh = len(energy_thresholds)
-    all_integral_fluences = np.zeros(shape=(nthresh,nthresh)) #fluences corresponding to >10, >100 MeV
-    all_fluence = np.zeros(shape=(nthresh,len(energy_bins)))
-    all_energies = np.zeros(shape=(nthresh,len(energy_bins)))
+    all_threshold_fluences = [0]*nthresh #fluences corresponding to >10, >100 MeV and other thresholded bins
+    all_fluence = np.zeros(shape=(nthresh,len(energy_bins))) #fluence spectrum
+    all_energies = np.zeros(shape=(nthresh,len(energy_bins))) #corresponding energy bin centers
 
     #######Quality check for >10 and >100######
     if crossing_time[0] != 0 and crossing_time[1] != 0:
@@ -1598,18 +1644,21 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             integral_fluence = report_threshold_fluences(experiment, flux_type,
                         model_name, energy_thresholds, energy_bins,
                         sep_dates, sep_fluxes)
+            
         if flux_type == "differential":
             #Extract the estimated integral fluxes in the SEP event date range
             sep_integral_dates, sep_integral_fluxes = \
                             datasets.extract_date_range(\
-                             crossing_time[i],event_end_time[i],
-                             dates, integral_fluxes)
+                            crossing_time[i],event_end_time[i],
+                            dates, integral_fluxes)
 
             integral_fluence = report_threshold_fluences(experiment, flux_type,
                          model_name, energy_thresholds, energy_bins,
                          sep_integral_dates, sep_integral_fluxes)
 
-        all_integral_fluences[i] = integral_fluence
+        #integral_fluence produced by report_threshold_fluences has fluences in the
+        #same index order as the energies specified in energy_thresholds
+        all_threshold_fluences[i] = integral_fluence[i]
 
     #Integral fluxes will be saved to file; fluxes associated with a
     #differential threshold (energy bin) will not be saved to file
@@ -1655,6 +1704,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 print("The energy bin " + str_thresh[0] + " MeV "
                          "threshold was not crossed during the specified date "
                          "range. No SEP event. Continuing.")
+                all_threshold_fluences.append(0)
             else:
                 #Extract the original fluxes for the SEP start and stop times
                 sep_d, sep_f = datasets.extract_date_range(ct[0],eet[0],dates,
@@ -1664,7 +1714,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                                  model_name, input_threshold[i][0],
                                  input_threshold[i][1], sep_d, sep_f,
                                  energy_bins, is_diff_thresh, True) #savefile
-
+                bin_fl = fl[svbin] #fluence for bin associated with threshold
+                
                 od,op=calculate_onset_peak(experiment, energy_thresh,
                             dates, in_flx, ct, eet, showplot)
 
@@ -1688,18 +1739,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 onset_peak.append(op[0])
                 energy_thresholds.append(input_threshold[i][0])
                 flux_thresholds.append(input_threshold[i][1])
-                nfl = len(all_integral_fluences)
-                new_all_int_fluences = np.zeros(shape=(nfl+1,nfl+1))
-                for i in range(nfl):
-                    new_all_int_fluences[i]=np.append(all_integral_fluences[i],\
-                                                    [None])
-                #add NaN entry for differential threshold
-                #Want array of correct dimension, but won't have integral fluences
-                new_all_int_fluences[nfl] = [None]*(nfl+1)
-                all_integral_fluences = new_all_int_fluences
+                all_threshold_fluences.append(bin_fl) #differential bin fluence for threshold
                 integral_fluxes = np.append(integral_fluxes, [fluxes[svbin]], \
                                         axis=0)
-
 
     #####################################################################
     #Save all calculated values for all threshold definitions to csv file
@@ -1707,7 +1749,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     flux_type, options, doBGSub,
                     model_name, energy_thresholds, flux_thresholds,
                     crossing_time, onset_peak, onset_date, peak_flux, peak_time,
-                    rise_time, event_end_time, duration, all_integral_fluences,
+                    rise_time, event_end_time, duration, all_threshold_fluences,
                     plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
 
 
@@ -1742,7 +1784,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     energy_bins, model_name, startdate, enddate, options,
                     energy_thresholds, flux_thresholds, crossing_time,
                     onset_peak, onset_date, peak_flux, peak_time, rise_time,
-                    event_end_time, duration, all_integral_fluences,
+                    event_end_time, duration, all_threshold_fluences,
                     plot_diff_thresh, all_energies, all_fluence,
                     umasep, umasep_times, umasep_fluxes, proffname)
     isgood = ccmc_json.write_json(filled_json, jsonfname)
@@ -1965,7 +2007,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             plt.close(fig)
 
     return FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-            sep_day
+            sep_day, jsonfname
 
 
 if __name__ == "__main__":
@@ -2080,7 +2122,7 @@ if __name__ == "__main__":
 
 
     FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-    sep_day = run_all(str_startdate, str_enddate, experiment, flux_type,
+    sep_day, jsonfname = run_all(str_startdate, str_enddate, experiment, flux_type,
         model_name,user_file, showplot, saveplot, detect_prev_event, two_peaks,
         umasep, str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate)
 

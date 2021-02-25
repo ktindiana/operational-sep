@@ -2,13 +2,12 @@ import json
 import calendar
 import datetime
 from datetime import timedelta
-from datetime import datetime
 import copy
 import zulu
 from library import global_vars as vars
 import os
 
-__version__ = "0.3"
+__version__ = "0.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -21,6 +20,10 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   Previously, the code checked if the energy bin existed and set
 #   all_clear_boolean to None if not. This produced the wrong value in the
 #   case where differential channels were converted to integral.
+#2021-02-24, changes in v0.4: Added subroutines to read in json file and
+#   convert zulu time to datetime.
+#   Modified fill_json to account for change in threshold fluences array in
+#   v2.5 of operational_sep_quantities.py.
 
 email = vars.email
 version = vars.version
@@ -54,6 +57,26 @@ def make_ccmc_zulu_time(dt):
     stzdt = stzdt.split(':00+00:00')
     zuludate = stzdt[0] + "Z"
     return zuludate
+ 
+ 
+def zulu_to_time(zt):
+    """Convert Zulu time to datetime"""
+    #Time e.g. 2014-01-08T05:05:00Z or 2012-07-12T22:25Z
+    if zt == '':
+        return ''
+    if zt == None:
+        return None
+  
+    strzt = zt.split('T')
+    strzt[1] = strzt[1].strip('Z')
+    n = strzt[1].split(':')
+    stdt = strzt[0] + ' ' + strzt[1]
+
+    if len(n) == 2:
+        dt = datetime.datetime.strptime(stdt, '%Y-%m-%d %H:%M')
+    if len(n) == 3:
+        dt = datetime.datetime.strptime(stdt, '%Y-%m-%d %H:%M:%S')
+    return dt
 
 
 def find_energy_bin(lowedge, energy_bins):
@@ -74,7 +97,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
                 model_name, startdate, enddate, options, energy_thresholds,
                 flux_thresholds, crossing_time, onset_peak, onset_date,
                 peak_flux, peak_time, rise_time, event_end_time, duration,
-                all_integral_fluences, diff_thresh, all_energies, all_fluence,
+                all_threshold_fluences, diff_thresh, all_energies, all_fluence,
                 umasep, umasep_times, umasep_fluxes, profile_filename):
     """Add all the appropriate values to the json template for model or
         observations.
@@ -99,7 +122,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
     template[key]['contacts'][0]['name'] = "operational_sep_quantities"
     template[key]['contacts'][0]['email'] = email
     template[key]['options'] = options
-    now = datetime.now()
+    now = datetime.datetime.now()
     znow = make_ccmc_zulu_time(now)
     template[key]['issue_time'] = znow
 
@@ -178,7 +201,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
             template[key][type_key][i]['event_length']['threshold'] \
                                 = flux_thresholds[i]
             template[key][type_key][i]['fluence']['fluence_value'] \
-                                = all_integral_fluences[i][i]
+                                = all_threshold_fluences[i]
             template[key][type_key][i]['fluence']['units'] = 'cm^-2*sr^-1'
             template[key][type_key][i]['fluence_spectrum']['start_time'] = zct
             template[key][type_key][i]['fluence_spectrum']['end_time'] = zeet
@@ -275,3 +298,15 @@ def write_json(template, filename):
 
     print("Wrote SEP values to json file --> " + filename)
     return True
+
+
+def read_in_json(filename):
+    """Read in json file """
+    if not os.path.isfile(filename):
+        sys.exit("validation_json_handler: could not read in file " \
+                + filename + ". Exiting.")
+
+    with open(filename) as f:
+        info=json.load(f)
+
+    return info
