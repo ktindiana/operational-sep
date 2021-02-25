@@ -1705,6 +1705,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                          "threshold was not crossed during the specified date "
                          "range. No SEP event. Continuing.")
                 all_threshold_fluences.append(0)
+                #NEED TO FILL ALL VARIABLES WITH ZERO HERE?
             else:
                 #Extract the original fluxes for the SEP start and stop times
                 sep_d, sep_f = datasets.extract_date_range(ct[0],eet[0],dates,

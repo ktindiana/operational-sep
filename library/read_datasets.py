@@ -14,13 +14,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-__version__ = "0.2"
+__version__ = "0.3"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
 #2021-01-06, Changes in 0.2: Added SEPEMv3 data set and made changes to
 #   necessary subroutines to accomodate the new data set.
+#2021-02-25, Changes 0.3: Changed GOES-13, 14, 15 S14 option to include
+#   S14 corrections to channels P6 and P7. Had previously only
+#   applied S14 to P2 - P5 for those experiments.
 
 
 datapath = vars.datapath
@@ -1179,9 +1182,9 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
                             [700.0,-1]]
             if "S14" in options:
                 #S14 is not specifically calibrated to these GOES, but
-                #apply the GOES-11 EPS energy bins for P2 - P5
+                #apply the GOES-11 EPS energy bins for P2 - P7
                 energy_bins = [[5.0,7.9],[9.4,15.9],[16.7,23.2],
-                           [32.5,56.4],[84.0,200.0],[110.0,900.0],
+                           [32.5,56.4],[89.8,114.0],[120.0,186.0],
                            [330.0,420.0],[420.0,510.0],[510.0,700.0],
                            [700.0,-1]]
             if "Bruno2017" in options:
@@ -1203,7 +1206,7 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
                         if experiment == "GOES-15":
                             energy_bins[4] = [95.9,132.3]
                             energy_bins[5] = [144.6,202.3]
-                if "corrected" in options  or "uncorrected" not in options:
+                if "corrected" in options or "uncorrected" not in options:
                     if west_detector.count("A") >= west_detector.count("B"):
                         #A detector bins
                         if experiment == "GOES-13":
