@@ -25,7 +25,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "2.5"
+__version__ = "2.5.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -131,6 +131,14 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   is integral or differential. If the user specifies a differential energy
 #   channel (e.g. 5 - 7 MeV) with a threshold, then the corresponding element in
 #   all_threshold_fluences will have the fluence in the 5 - 7 MeV bin.
+#2021-02-28, Changes in 2.5.1: Adjusting the onset peak estimation to fix bugs.
+#   Reorganized some of the error checking into subroutines to clean up run_all.
+#2021-03-02, Changes in 2.5.2: Added resorting of bins if they are in "reverse"
+#   order. For example, SEPMOD produces flux files for energies in order
+#   of 1000, 750, 500, ... MeV bins. This doesn't matter for integral fluxes,
+#   but from_differential_to_integral flux expects differential bins
+#   in increasing energy order. Added sort_bin_order to ensure that
+#   energy bins are always in increasing order of effective energies.
 
 
 #See full program description in all_program_info() below
@@ -949,6 +957,13 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             peak_index = np.where(smooth_flux[i] == np.amax(smooth_flux[i]))
             onset_date[i] = dates[peak_index[0][0]]
             continue
+        #If all entries are zero flux (bg-sub or SEPEMv3)
+        is_all_zero = np.all((smooth_flux[i] == 0))
+        if is_all_zero:
+            #No non-zero fluxes
+            onset_peak[i] = 0.
+            onset_date[i] = None
+            continue
 
         #Get value of maximum positive derivative in first 24 hours
         #record where deriv first goes negative
@@ -1023,21 +1038,22 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             #Max value of the normalized derivative in first 24 hours
             max_index =  np.argmax(run_deriv[i][index_neg:index_24]) + index_neg
             #Find where derivative falls below zero after the max
-            index_neg2 = 0
+            index_neg2 = index_neg
             first_neg = False
             for j in range(max_index,index_24+1):
                 if run_deriv[i][j] < 0 and not first_neg:
                     index_neg2 = j
                     first_neg = True
             #Find the maximum flux in the range where the onset peak should be
-            check_peak = max(integral_fluxes[i][index_neg:index_neg2])
-            if check_peak > onset_peak[i]:
-                onset_peak[i] = max(integral_fluxes[i][index_neg:index_neg2])
-                onset_index = np.argmax(integral_fluxes[i][index_neg:index_neg2])
-                onset_date[i] = dates[index_neg + onset_index]
-                print("Recalculated onset peak for " + str(energy_thresholds[i]) \
-                    + " MeV: " + str(onset_peak[i]) + ", Onset peak time: " \
-                    + str(onset_date[i]))
+            if index_neg2 > index_neg:
+                check_peak = max(integral_fluxes[i][index_neg:index_neg2])
+                if check_peak > onset_peak[i]:
+                    onset_peak[i] = max(integral_fluxes[i][index_neg:index_neg2])
+                    onset_index = np.argmax(integral_fluxes[i][index_neg:index_neg2])
+                    onset_date[i] = dates[index_neg + onset_index]
+                    print("Recalculated onset peak for " + str(energy_thresholds[i]) \
+                        + " MeV: " + str(onset_peak[i]) + ", Onset peak time: " \
+                        + str(onset_date[i]))
 
 
     if showplot:
@@ -1250,7 +1266,7 @@ def save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
 
 
 def print_values_to_file(experiment, flux_type, options, doBGSub,
-                model_name, energy_thresholds,
+                model_name, startdate, energy_thresholds,
                 flux_thresholds, crossing_time, onset_peak, onset_date,
                 peak_flux, peak_time, rise_time, event_end_time, duration,
                 threshold_fluences, is_diff_thresh, umasep, umasep_times,
@@ -1367,37 +1383,8 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
     return year, month, day, True
 
 
-
-######## MAIN PROGRAM #########
-def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
-        user_file, showplot, saveplot, detect_prev_event, two_peaks, umasep,
-        str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate):
-    """"Runs all subroutines and gets all needed values. Takes the command line
-        areguments as input. Written here to allow code to be imported into
-        other python scripts.
-        str_startdate, str_enddate, experiment, flux_type are strings.
-        model_name is a string. If model is "user", set model_name to describe
-        your model (e.g. MyModel), otherwise set to ''.
-        user_file is a string. Defaul is ''. If user is selected for experiment,
-        then name of flux file is specified in user_file.
-        showplot, detect_prev_event, two_peaks, and umasep are booleans.
-        Set str_thresh to be '100,1' for default value or modify to add your own
-        threshold.
-        This routine will generate boolean flags that indicate if the event
-        starts at the very first time point, ends on the very last time point,
-        has a duration less than 12 hours, or has a >100 MeV onset more than
-        24 hours after the >10 MeV onset. These flags intend to help the user
-        running the program in batch mode if a certain event might have
-        incorrect timing.
-    """
-    #Define important flags here
-    FirstStart = False #threshold crossed on first data point
-    LastEnd = False #event ends on last data point instead of threshold
-    ShortEvent = False #Start to end less than 12 hours, perhaps 2 peak issue
-    LateHundred = False #>100 MeV threshold crossed >24 hours after >10 MeV
-
-    #CHECK AND VALIDATE OPTIONS
-    options = options.split(";")
+def error_check_options(experiment, flux_type, options, doBGSub):
+    """Make sure the selected options make sense for the experiment."""
     if "S14" in options and experiment[0:4] != "GOES":
         sys.exit("Sandberg et al. (2014) effective energies (S14) may only "
             "be applied to GOES data.")
@@ -1428,34 +1415,18 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 "fluxes. Integral fluxes have already been derived by "
                 "applying corrections for cross-contamination and removing "
                 "the instrument background levels.")
+    if ("uncorrected" in options or "S14" in options or "Bruno2017" in options)\
+                and experiment[0:4] != "GOES":
+        sys.exit("The options you have selected are only applicable to GOES "
+                "data. Please remove these options and run again: "
+                "uncorrected, S14, or Bruno2017.")
 
 
-    str_thresh = str_thresh.strip().split(";")
-    nin_thresh = len(str_thresh)
-    is_diff_thresh = [False]*nin_thresh #True if differential flux threshold
-    input_threshold = []
-    for i in range(nin_thresh):
-        str_thresh[i] = str_thresh[i].strip().split(",")
-        if "-" in str_thresh[i][0]:
-            is_diff_thresh[i] = True
-            thresh0 = str_thresh[i][0].split("-")
-            input_threshold.append([float(thresh0[0]), float(str_thresh[i][1])])
-            print("Found differential threshold " + str_thresh[i][0])
-        else:
-            input_threshold.append([float(str_thresh[i][0]), \
-                                    float(str_thresh[i][1])])
 
-    if len(str_startdate) == 10: #only YYYY-MM-DD
-        str_startdate = str_startdate  + ' 00:00:00'
-    if len(str_enddate) == 10: #only YYYY-MM-DD
-        str_enddate = str_enddate  + ' 00:00:00'
-    startdate = datetime.datetime.strptime(str_startdate, "%Y-%m-%d %H:%M:%S")
-    enddate = datetime.datetime.strptime(str_enddate, "%Y-%m-%d %H:%M:%S")
-
+def error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh):
+    """Check that all of the user inputs make sense and fall within bounds.
+    """
     #CHECKS ON INPUTS
-    if (str_startdate == "" or str_enddate == ""):
-        sys.exit('You must enter a valid date range. Exiting.')
-
     if (enddate < startdate):
         sys.exit('End time before start time! Enter a valid date range. '
                 'Exiting.')
@@ -1494,21 +1465,110 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                   + str(sepemv3_end_date) +
             '. Please change your requested dates. Exiting.')
 
-    if ("uncorrected" in options or "S14" in options or "Bruno2017" in options)\
-                and experiment[0:4] != "GOES":
-        sys.exit("The options you have selected are only applicable to GOES "
-                "data. Please remove these options and run again: "
-                "uncorrected, S14, or Bruno2017.")
 
 
+def sort_bin_order(all_fluxes, energy_bins):
+    """Check the order of the energy bins. Usually, bins go from
+        low to high energies, but some modelers or users may
+        go in reverse order. Usually expect:
+        [[10,20],[20,30],[30,40]]
+        But user may instead input files with fluxes in order of:
+        [[30,40],[20,30],[10,20]]
+        
+        This subroutine will reorder the fluxes and energy_bins
+        to go in increasing order. If differential fluxes were input,
+        this reordering will ensure that integral fluxes are
+        estimated properly.
+    """
+
+    nbins = len(energy_bins)
+    #Rank energy bins in order of lowest to highest effective
+    #energies
+    eff_en = []
+    for i in range(nbins):
+        if energy_bins[i][1] == -1:
+            eff_en.append(energy_bins[i][0])
+        else:
+            midpt = math.sqrt(energy_bins[i][0]*energy_bins[i][1])
+            eff_en.append(midpt)
+            
+    eff_en_np = np.array(eff_en)
+    sort_index = np.argsort(eff_en_np) #indices in sorted order
+    
+    sort_fluxes = np.array(all_fluxes)
+    sort_bins = []
+    for i in range(nbins):
+        sort_fluxes[i] = all_fluxes[sort_index[i]]
+        sort_bins.append(energy_bins[sort_index[i]])
+    
+    return sort_fluxes, sort_bins
+
+
+######## MAIN PROGRAM #########
+def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
+        user_file, showplot, saveplot, detect_prev_event, two_peaks, umasep,
+        str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate):
+    """"Runs all subroutines and gets all needed values. Takes the command line
+        areguments as input. Written here to allow code to be imported into
+        other python scripts.
+        str_startdate, str_enddate, experiment, flux_type are strings.
+        model_name is a string. If model is "user", set model_name to describe
+        your model (e.g. MyModel), otherwise set to ''.
+        user_file is a string. Defaul is ''. If user is selected for experiment,
+        then name of flux file is specified in user_file.
+        showplot, detect_prev_event, two_peaks, and umasep are booleans.
+        Set str_thresh to be '100,1' for default value or modify to add your own
+        threshold.
+        This routine will generate boolean flags that indicate if the event
+        starts at the very first time point, ends on the very last time point,
+        has a duration less than 12 hours, or has a >100 MeV onset more than
+        24 hours after the >10 MeV onset. These flags intend to help the user
+        running the program in batch mode if a certain event might have
+        incorrect timing.
+    """
+    #Define important flags here
+    FirstStart = False #threshold crossed on first data point
+    LastEnd = False #event ends on last data point instead of threshold
+    ShortEvent = False #Start to end less than 12 hours, perhaps 2 peak issue
+    LateHundred = False #>100 MeV threshold crossed >24 hours after >10 MeV
+    
+    #Check for empty dates
+    if (str_startdate == "" or str_enddate == ""):
+        sys.exit('You must enter a valid date range. Exiting.')
+
+    #PROCESS INPUTS
+    options = options.split(";")
     user_fname[0] = user_file #input as argument, default is 'tmp.txt'
 
-    #create data and output paths if don't exist
-    datasets.check_paths()
+    str_thresh = str_thresh.strip().split(";")
+    nin_thresh = len(str_thresh)
+    is_diff_thresh = [False]*nin_thresh #True if differential flux threshold
+    input_threshold = []
+    for i in range(nin_thresh):
+        str_thresh[i] = str_thresh[i].strip().split(",")
+        if "-" in str_thresh[i][0]:
+            is_diff_thresh[i] = True
+            thresh0 = str_thresh[i][0].split("-")
+            input_threshold.append([float(thresh0[0]), float(str_thresh[i][1])])
+            print("Found differential threshold " + str_thresh[i][0])
+        else:
+            input_threshold.append([float(str_thresh[i][0]), \
+                                    float(str_thresh[i][1])])
+        
+    if len(str_startdate) == 10: #only YYYY-MM-DD
+        str_startdate = str_startdate  + ' 00:00:00'
+    if len(str_enddate) == 10: #only YYYY-MM-DD
+        str_enddate = str_enddate  + ' 00:00:00'
+    startdate = datetime.datetime.strptime(str_startdate, "%Y-%m-%d %H:%M:%S")
+    enddate = datetime.datetime.strptime(str_enddate, "%Y-%m-%d %H:%M:%S")
 
-    #Check and prepare the data
+    #PERFORM CHECKS AND VALIDATE INPUTS
+    error_check_options(experiment, flux_type, options, doBGSub)
+    error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh)
+    datasets.check_paths()
     filenames1, filenames2, filenames_orien = datasets.check_data(startdate,
                                     enddate, experiment, flux_type, user_file)
+
     #read in flux files
     if experiment != "user":
         all_dates, all_fluxes, west_detector =datasets.read_in_files(experiment,
@@ -1519,6 +1579,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Define energy bins
     energy_bins = datasets.define_energy_bins(experiment, flux_type, \
                                 west_detector, options)
+    
+    all_fluxes, energy_bins = sort_bin_order(all_fluxes, energy_bins)
+    
     #IF REQUESTED BACKGROUND SUBTRACTION
     if doBGSub:
         bgfluxes, sepfluxes, bgdates = bgsub.derive_background(str_startdate, \
@@ -1599,6 +1662,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             LateHundred = True #>100 threshold crossed late after >10 crossed
     ##########################
 
+
+    #------INTEGRAL THRESHOLDS------
     for i in range(nthresh):
         #######Quality Checks#######
         if crossing_time[i] == startdate:
@@ -1660,6 +1725,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         #same index order as the energies specified in energy_thresholds
         all_threshold_fluences[i] = integral_fluence[i]
 
+   
     #Integral fluxes will be saved to file; fluxes associated with a
     #differential threshold (energy bin) will not be saved to file
     save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
@@ -1667,6 +1733,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 integral_fluxes)
 
 
+    #------DIFFERENTIAL THRESHOLDS------
     #For plotting, we need to expand the is_diff_thresh list to include
     #the integral thresholds (for all fluxes calculated above)
     plot_diff_thresh = [False]*nthresh  #integral thresholds
@@ -1748,7 +1815,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Save all calculated values for all threshold definitions to csv file
     sep_year, sep_month, sep_day, IsCrossed = print_values_to_file(experiment,
                     flux_type, options, doBGSub,
-                    model_name, energy_thresholds, flux_thresholds,
+                    model_name, startdate, energy_thresholds, flux_thresholds,
                     crossing_time, onset_peak, onset_date, peak_flux, peak_time,
                     rise_time, event_end_time, duration, all_threshold_fluences,
                     plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
