@@ -1,6 +1,7 @@
 import operational_sep_quantities as sep
 from library import ccmc_json_handler as ccmc_json
 from library import keys
+from library import global_vars as gl
 from importlib import reload
 import matplotlib.pyplot as plt
 import argparse
@@ -11,7 +12,7 @@ import sys
 import os
 import asciitable
 
-__version__ = "0.4"
+__version__ = "0.5"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -25,6 +26,11 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   set.
 #2021-02-24, Changes in 0.4: Read in json files produced by
 #   operational_sep_quantities.py and then write certain quantities to list.
+#2021-04-05, Changes in 0.4.1: Reads pathnames from library/global_vars.py.
+#   Added checking for listpath. Code will check for listpath and create.
+#2021-05-17, changes in 0.5: Discovered differences in CCMC's json files.
+#   Making changes here to be consistent with their format. CCMC defines
+#   "fluences" and "event_lengths" as arrays.
 
 """This and supporting codes are found in the respository:
         https://github.com/ktindiana/operational-sep
@@ -71,9 +77,9 @@ __email__ = "kathryn.whitman@nasa.gov"
         If UMASEP, then the additional columns:
             Ts + 3hr,Ts + 4hr,Ts + 5hr,Ts + 6hr,Ts + 7hr
 """
-datapath = 'data'
-outpath = 'output'
-listpath = 'lists'
+datapath = gl.datapath
+outpath = gl.outpath
+listpath = gl.listpath
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger('sep')
@@ -85,6 +91,13 @@ saveplot = True
 detect_prev_event_default = False #Set to true if get FirstStart flag
 two_peaks_default = False #Set to true if get ShortEvent flag
 ############## END INPUTS #################
+
+def check_list_path():
+    if not os.path.isdir(listpath):
+        print('check_paths: Directory containing lists, ' + listpath +
+        ', does not exist. Creating.')
+        os.mkdir(listpath);
+
 
 
 def read_sep_dates(sep_filename):
@@ -195,7 +208,7 @@ def initialize_files(jsonfname):
     for i in range(nthresh):
         energy_min = data[key_main][key_type][i]['energy_channel']['min']
         energy_max = data[key_main][key_type][i]['energy_channel']['max']
-        thresh = data[key_main][key_type][i]['event_length']['threshold']
+        thresh = data[key_main][key_type][i]['event_lengths'][0]['threshold']
         
         #Create an output file to contain list of calculated
         #quantities for all SEPs in input list
@@ -249,7 +262,7 @@ def write_sep_lists(jsonfname):
     for i in range(nthresh):
         energy_min = data[key_main][key_type][i]['energy_channel']['min']
         energy_max = data[key_main][key_type][i]['energy_channel']['max']
-        thresh = data[key_main][key_type][i]['event_length']['threshold']
+        thresh = data[key_main][key_type][i]['event_lengths'][0]['threshold']
         
         #Open or create an output file to contain list of calculated
         #quantities for all SEPs in input list
@@ -277,14 +290,14 @@ def write_sep_lists(jsonfname):
         #Pick out columns to extract and save to SEP list
         #start time, onset peak, onset time, peak flux, peak time, end time, fluence
         #If UMASEP, then all delayed proton values <---EDIT TO INCLUDE IN OUTPUT
-        zst = data[key_main][key_type][i]['event_length']['start_time']
+        zst = data[key_main][key_type][i]['event_lengths'][0]['start_time']
         start_time = ccmc_json.zulu_to_time(zst)
         if start_time == '' or start_time == None: #NO SEP EVENT FOR THRESHOLD
             continue
         sep_year = start_time.year
         sep_month = start_time.month
         sep_day = start_time.day
-        zet = data[key_main][key_type][i]['event_length']['end_time']
+        zet = data[key_main][key_type][i]['event_lengths'][0]['end_time']
         end_time = ccmc_json.zulu_to_time(zet)
         
         onset_peak = data[key_main][key_type][i]['peak_intensity']['intensity']
@@ -295,7 +308,7 @@ def write_sep_lists(jsonfname):
         zmft = data[key_main][key_type][i]['peak_intensity_esp']['time']
         max_flux_time = ccmc_json.zulu_to_time(zmft)
         
-        fluence = data[key_main][key_type][i]['fluence']['fluence_value']
+        fluence = data[key_main][key_type][i]['fluences'][0]['fluence_value']
         
         #WRITE QUANTITIES TO FILE
         fin = open(threshfile,'a')
@@ -321,7 +334,7 @@ def write_sep_lists(jsonfname):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--Filename", type=str, default='tmp.csv', \
-            help=("Name of csv file containing list of SEP start dates."
+            help=("Name of csv file containing list of SEP start dates and files."
             "Default is tmp.csv."))
     parser.add_argument("--OutFilename", type=str, default='lists/out.csv', \
             help=("Name of csv file containing list of SEP dates with "
@@ -343,6 +356,8 @@ if __name__ == "__main__":
     outfname = args.OutFilename
     threshold = args.Threshold
     umasep = args.UMASEP
+    
+    check_list_path()
 
     #READ IN SEP DATES AND experiments
     start_dates, end_dates, experiments, flux_types, flags, model_names, \
@@ -408,6 +423,7 @@ if __name__ == "__main__":
 
             plt.close('all')
             sep = reload(sep)
+            gl = reload(gl)
 
         except SystemExit as e:
             # this log will include traceback
@@ -417,6 +433,7 @@ if __name__ == "__main__":
             fout.write(str(start_date) +', , , , ,' + '\"' + str(e) + '\"' )
             fout.write('\n')
             sep = reload(sep)
+            gl = reload(gl)
             continue
 
     fout.close()

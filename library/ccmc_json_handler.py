@@ -7,7 +7,7 @@ import zulu
 from library import global_vars as vars
 import os
 
-__version__ = "0.4"
+__version__ = "0.5"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -24,6 +24,14 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   convert zulu time to datetime.
 #   Modified fill_json to account for change in threshold fluences array in
 #   v2.5 of operational_sep_quantities.py.
+#2021-05-18, changes in 0.5: Realized that there were some differences
+#   between the json files produced here and the CCMC format. CCMC defines
+#   the fluences field as an array allowing multiple fluences, so the fluences
+#   field was changed to an array here.
+#   CCMC also has "event_lengths" as an array that allows the specification
+#   of multiple start and end times. Changed the field name from "event_length"
+#   to "event_lengths" and made it an array. Only one entry to
+#   "event_lengths" is created by this program.
 
 email = vars.email
 version = vars.version
@@ -51,6 +59,8 @@ def make_ccmc_zulu_time(dt):
     """Make a datetime string in the format YYYY-MM-DDTHH:MMZ"""
     if dt == None:
         return None
+    if dt == 0:
+        return 0
 
     zdt = zulu.create(dt.year, dt.month, dt.day, dt.hour, dt.minute)
     stzdt = str(zdt)
@@ -66,6 +76,8 @@ def zulu_to_time(zt):
         return ''
     if zt == None:
         return None
+    if zt == 0:
+        return 0
   
     strzt = zt.split('T')
     strzt[1] = strzt[1].strip('Z')
@@ -145,7 +157,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
             template[key][type_key][i]['peak_intensity']['units'] = "pfu"
             template[key][type_key][i]['peak_intensity_esp']['units'] \
                              = "pfu"
-            template[key][type_key][i]['event_length']['units'] = "pfu"
+            template[key][type_key][i]['event_lengths'][0]['units'] = "pfu"
             template[key][type_key][i]['threshold_crossings'][0]['threshold_units']\
                             = "pfu"
             template[key][type_key][i]['threshold_crossings'][1]['threshold_units']\
@@ -162,7 +174,7 @@ def fill_json(template, experiment, flux_type, energy_bins,
                             = "[MeV/n cm^2 s sr]^(-1)"
             template[key][type_key][i]['peak_intensity_esp']['units'] \
                             = "[MeV/n cm^2 s sr]^(-1)"
-            template[key][type_key][i]['event_length']['units'] \
+            template[key][type_key][i]['event_lengths'][0]['units'] \
                             = "[MeV/n cm^2 s sr]^(-1)"
             template[key][type_key][i]['threshold_crossings'][0]['threshold_units']\
                             = "[MeV/n cm^2 s sr]^(-1)"
@@ -196,13 +208,13 @@ def fill_json(template, experiment, flux_type, energy_bins,
                                 = peak_flux[i]
             template[key][type_key][i]['peak_intensity_esp']['time'] \
                                 = zpdate
-            template[key][type_key][i]['event_length']['start_time'] = zct
-            template[key][type_key][i]['event_length']['end_time'] = zeet
-            template[key][type_key][i]['event_length']['threshold'] \
+            template[key][type_key][i]['event_lengths'][0]['start_time'] = zct
+            template[key][type_key][i]['event_lengths'][0]['end_time'] = zeet
+            template[key][type_key][i]['event_lengths'][0]['threshold'] \
                                 = flux_thresholds[i]
-            template[key][type_key][i]['fluence']['fluence_value'] \
+            template[key][type_key][i]['fluences'][0]['fluence_value'] \
                                 = all_threshold_fluences[i]
-            template[key][type_key][i]['fluence']['units'] = 'cm^-2*sr^-1'
+            template[key][type_key][i]['fluences'][0]['units'] = 'cm^-2*sr^-1'
             template[key][type_key][i]['fluence_spectrum']['start_time'] = zct
             template[key][type_key][i]['fluence_spectrum']['end_time'] = zeet
             template[key][type_key][i]['fluence_spectrum']['energy_bins'] \
@@ -268,9 +280,9 @@ def fill_json(template, experiment, flux_type, energy_bins,
                                 = -999
             template[key][type_key][i]['peak_intensity_esp']['time'] \
                                 = zpdate
-            template[key][type_key][i]['event_length']['start_time'] = zct
-            template[key][type_key][i]['event_length']['end_time'] = zeet
-            template[key][type_key][i]['event_length']['threshold'] \
+            template[key][type_key][i]['event_lengths'][0]['start_time'] = zct
+            template[key][type_key][i]['event_lengths'][0]['end_time'] = zeet
+            template[key][type_key][i]['event_lengths'][0]['threshold'] \
                                 = flux_thresholds[i]
             template[key][type_key][i]['threshold_crossings'][0]['crossing_time']\
                                 = zct

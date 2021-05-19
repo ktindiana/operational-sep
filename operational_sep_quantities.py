@@ -25,7 +25,7 @@ import pandas as pd
 import scipy
 from scipy import signal
 
-__version__ = "2.5.2"
+__version__ = "2.5.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -139,6 +139,14 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   but from_differential_to_integral flux expects differential bins
 #   in increasing energy order. Added sort_bin_order to ensure that
 #   energy bins are always in increasing order of effective energies.
+#!***!2021-03-03, Changes in 2.5.3: Changed threshold crossing logic.
+#   Previously,required flux to exceed threshold (>) for 3 consecutive points
+#   to get event start. Changed to flux >= threshold for 3 consecutive points.
+#2021-05-17, changes in 2.5.4: Nothing has changed in the
+#   operational_sep_quantities.py code, but the ccmc_json_handler.py
+#   code was modified to v0.4 and changed the format of the outpuer
+#   json file a little bit. I want to mark this change within this code
+#   as well and explicitly state the date when it happened.
 
 
 #See full program description in all_program_info() below
@@ -605,17 +613,17 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
 
     for i in range(ndates):
         if not threshold_crossed:
-            if(fluxes[i] > flux_threshold):
+            if(fluxes[i] >= flux_threshold):
                 start_counter = 0
                 if i+(npoints-1) < ndates:
                     for ii in range(npoints):
-                        if fluxes[i+ii] > flux_threshold:
+                        if fluxes[i+ii] >= flux_threshold:
                             start_counter = start_counter + 1
                 if start_counter == npoints:
                     crossing_time = dates[i]
                     threshold_crossed = True
         if threshold_crossed and not event_ended:
-            if (fluxes[i] > end_threshold):
+            if (fluxes[i] >= end_threshold):
                 end_counter = 0  #reset if go back above threshold
             if (fluxes[i] <= end_threshold): #flux drops below 85% threshold
                 end_counter = end_counter + 1
@@ -640,9 +648,9 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
                 if fluxes[i] > peak_flux:
                     peak_flux = fluxes[i]
                     peak_time = dates[i]
-
-        rise_time = peak_time - crossing_time
-        duration = event_end_time - crossing_time
+        if peak_time != 0:
+            rise_time = peak_time - crossing_time
+            duration = event_end_time - crossing_time
 
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
 
@@ -1767,8 +1775,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             ct,pf,pt,rt,eet,dur=calculate_event_info(energy_thresh,\
                         flux_thresh, dates, in_flx, detect_prev_event,two_peaks,
                         is_diff_thresh[i])
-            if ct == 0:
-                print("The energy bin " + str_thresh[0] + " MeV "
+            if ct[0] == 0:
+                print("The energy bin " + str_thresh[i][0] + " MeV "
                          "threshold was not crossed during the specified date "
                          "range. No SEP event. Continuing.")
                 all_threshold_fluences.append(0)
@@ -1941,10 +1949,11 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                         label="Start, End")
             plt.axhline(flux_thresholds[i],color='red',linestyle=':',
                         label="Threshold")
-            if onset_peak[i] != None:
+            if onset_peak[i] != None and onset_date[i] != None:
                 plt.plot_date(onset_date[i],onset_peak[i],'o',color="black",
                         label="Onset Peak")
-            plt.plot_date(peak_time[i],peak_flux[i],'ro',mfc='none',
+            if peak_time[i] != None and peak_flux[i] != None:
+                plt.plot_date(peak_time[i],peak_flux[i],'ro',mfc='none',
                         label="Max Flux")
             if umasep:
                 for k in range(len(umasep_times[i])):
@@ -1955,7 +1964,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             plt.suptitle(plot_title)
             if plot_diff_thresh[i]:
                 plt.ylabel('Differential Flux\n 1/[MeV cm^2 s sr]')
-            plt.yscale("log")
+            if sum(integral_fluxes[i]) > 0:
+                plt.yscale("log")
             #ymin = max(1e-6, min(integral_fluxes[i]))
             # plt.ylim(ymin, peak_flux[i]+peak_flux[i]*.2)
             ax.legend(loc='upper right')
@@ -2044,7 +2054,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     + '_' + 'Fluence'
         fig = plt.figure(figname,figsize=(6,5))
         ax = plt.subplot(111)
-        markers = ['bo','P','D','v','^']
+        markers = ['bo','P','D','v','^','<','>','*','d','+']
         for j in range(len(energy_thresholds)):
             if crossing_time[j] == 0:
                 continue

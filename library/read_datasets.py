@@ -1,4 +1,4 @@
-from library import global_vars as vars
+from library import global_vars as gl
 import re
 import calendar
 import datetime
@@ -26,13 +26,13 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   applied S14 to P2 - P5 for those experiments.
 
 
-datapath = vars.datapath
-outpath = vars.outpath
-plotpath = vars.plotpath
-badval = vars.badval #bad data points will be set to this value; must be negative
-user_col = vars.user_col
-user_delim = vars.user_delim
-user_energy_bins = vars.user_energy_bins
+datapath = gl.datapath
+outpath = gl.outpath
+plotpath = gl.plotpath
+badval = gl.badval #bad data points will be set to this value; must be negative
+user_col = gl.user_col
+user_delim = gl.user_delim
+user_energy_bins = gl.user_energy_bins
 
 
 def check_paths():
@@ -891,11 +891,14 @@ def read_in_user_files(filenames1):
             for k in range(nhead):
                 csvfile.readline()  # Skip header rows.
 
-            if user_delim == " " or user_delim == "":
-                for j in range(len(user_col)):
+            user_col_mod = []
+            for j in range(len(user_col)):
+                if user_delim == " " or user_delim == "":
                     #date takes two columns if separated by whitespace
                     #adjust the user input columns to account for this
-                    user_col[j] = user_col[j] + 1
+                    user_col_mod.append(user_col[j] + 1)
+                else:
+                    user_col_mod.append(user_col[j])
 
             count = 0
             for line in csvfile:
@@ -911,13 +914,15 @@ def read_in_user_files(filenames1):
                 date = datetime.datetime.strptime(str_date,
                                                 "%Y-%m-%d %H:%M:%S")
                 dates.append(date)
-                for j in range(len(user_col)):
-                   # print("Read in flux for column " + str(user_col[j]) + ': '
-                   #     + str(date) + ' ' + row[user_col[j]])
-                    if row[user_col[j]] == 'n/a': #REleASE
+                
+                for j in range(len(user_col_mod)):
+                    #print("Read in flux for column " + str(user_col[j]) + ': '\
+                    #    + str(date)) #+ ' ' + row[user_col[j]])
+                    #print(row)
+                    if row[user_col_mod[j]] == 'n/a': #REleASE
                         flux = None
                     else:
-                        flux = float(row[user_col[j]])
+                        flux = float(row[user_col_mod[j]])
                         if flux < 0:
                             flux = badval
                     fluxes[j][count] = flux
