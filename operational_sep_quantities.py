@@ -24,8 +24,9 @@ import array as arr
 import pandas as pd
 import scipy
 from scipy import signal
+from statistics import mode
 
-__version__ = "2.5.4"
+__version__ = "2.5.5"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -147,6 +148,22 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   code was modified to v0.4 and changed the format of the outpuer
 #   json file a little bit. I want to mark this change within this code
 #   as well and explicitly state the date when it happened.
+#2021-05-27, changes in 2.5.5: Added the NoInterp flag to allow users
+#   to specify that negative flux or None values should be set to None.
+#   If NoInterp is not set, the default behavior is to fill in bad data
+#   points using linear interpolation in time. This may not be desired
+#   for model output as it inherently changes the model predictions.
+#   Zeroes are always treated as valid values and are not replaced.
+#   If there are gaps in the time steps, the code does NOT try to
+#   fill in the gaps. It will only perform interpolation for time
+#   steps present in the input data set.
+#   Additionally, changed the way in which the time resolution was
+#   calculated in calculate_fluence. Previously, the time resolution
+#   was determined by the time difference between the first and
+#   second time points. Now the difference in time is calculated for
+#   every consecutive set of time points and the most common value
+#   for the difference is used as the time resolution. This is done
+#   in case there are time gaps in the data set.
 
 
 #See full program description in all_program_info() below
@@ -187,6 +204,21 @@ def all_program_info(): #only for documentation purposes
     the 'data' directory. Because the SEPEM data set is so large (every 5
     minutes from 1974 to 2015 for RSDv2 and to 2017 for RSDv3), the program will
     break up the data into yearly files for faster reading.
+    
+    Data sets are checked for bad data point (negative or None value fluxes)
+    and the default behavior is to fill in those bad data points by
+    performing a linear interpolation with time. This choice was made to
+    calculate more accurate event-intergrated fluence values from data.
+    Interpolation with time is not appropriate for model predictions, as
+    it will inherently change the prediction or may not be desired by
+    the user for the data set. Turn off interpolation with time by
+    setting the --NoInterp flag (or nointerp=True). If the interpolation
+    is turned off, negative flux values will be set to None.
+    Zeroes are always treated as valid values and are not replaced.
+    If there are gaps in the time steps, the code does NOT try to
+    fill in the gaps. It will ONLY perform interpolation for time
+    steps present in the input data set. i.e. gaps in time are not
+    interpolated, only time steps with negative or None flux values.
 
     The values calculated here are important for space radiation operations:
        Onset time, i.e. time to cross thresholds
@@ -297,10 +329,13 @@ def all_program_info(): #only for documentation purposes
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
 
     In order to calculate the fluence, the program determines time_resolution
-    (seconds) from two (fairly random) data points at the start of the SEP
-    event. GOES and SEPEM data sets have a time resolution of 5 minutes. If the
-    user wishes to use a data set with measurements at irregular times, then the
-    subroutine calculate_fluence should be modified.
+    (seconds) by finding the difference between every consecutive set of
+    time points in the data set. The most common difference is identified as
+    the time resolution. This method should find an accurate time resolution
+    even if there are gaps in the time steps.
+    If the time steps in the data set are truly irregular, the user will
+    have to manually set the time resolution inside the subroutine
+    calculate_fluence.
 
     OUTPUT: This program outputs 3 to 4 files, 1 per defined threshold plus
     a summary file containing all of the values calculated for each threshold.
@@ -705,38 +740,66 @@ def get_energy_bin_index(energy_threshold, energy_bins):
             "requested: " + str(energy_threshold) +". Exiting.")
     
     
+def determine_time_resolution(dates):
+    """The time resolution is found by taking the difference between
+       every consecutive data point. The most common difference is
+       taken as the time resolution. Even if the data set has gaps,
+       if there are enough consecutive time points in the observational
+       or model output, the correct time resolution should be identified.
+    """
+    ndates = len(dates)
+    time_diff = [a - b for a,b in zip(dates[1:ndates],dates[0:ndates-1])]
+    time_resolution = mode(time_diff)
+    return time_resolution
+
 
 def calculate_fluence(dates, flux):
     """This subroutine sums up all of the flux in the 1D array "flux". The
        "dates" and "flux" arrays input here should reflect only the intensities
        between the SEP start and stop times, determined by the subroutine
-       integral_threshold_crossing. "flux" should contain the intensity
+       integral_threshold_crossing.
+       
+       flux (array,list) should contain the intensity
        time series for a single energy bin or single integral channel (1D
        array). The subroutine does not differentiate between differential or
-       integral flux. dates contains the 1D array of datetimes that
-       correspond to the flux measurements.
+       integral flux.
+       
+       dates (array,list of datetime objects) contains the 1D array of
+       datetimes that correspond to the flux measurements.
+       
        The extract_date_range subroutine is used prior to calling this one to
        make the dates and fluxes arrays covering only the SEP time period.
        The flux will be multiplied by time_resolution and summed for all of the
-       data between the start and end times. Data gaps are taken into account.
+       data between the start and end times. Negative or bad flux values
+       should have been set to None or interpolated with check_bad_data().
+       None values will be skipped.
+       
+       The time resolution is found by taking the difference between
+       every consecutive data point. The most common difference is
+       taken as the time resolution. Even if the data set has gaps,
+       if there are enough consecutive time points in the observational
+       or model output, the correct time resolution should be identified.
+       
        Fluence units will be 1/[MeV cm^2 sr] for GOES or SEPEM differential
        fluxes or 1/[cm^2 sr] for integral fluxes.
-       For SRAG operational purposes, the event start and end is determined by
-       the >100 MeV fluxes, as they are most pertinent to astronaut health
-       inside of the space station.
     """
     ndates = len(dates)
-    time_resolution = (dates[1] - dates[0]).total_seconds()
-    sum_flux = 0
+    time_resolution = determine_time_resolution(dates)
+    
+    #print("calculate_fluence: Identified a time resolution of "
+    #        + str(time_resolution.total_seconds()) + " seconds.")
+    
+    fluence = 0
     for i in range(ndates):
+        if flux[i] == None: continue
         if flux[i] >= 0:  #0 flux ok for models
-            sum_flux = sum_flux + flux[i]*time_resolution
+                fluence = fluence + flux[i]*time_resolution.total_seconds()
         else:
             sys.exit('Bad flux data value of ' + str(flux[i]) +
                     ' found for bin ' + str(i) + ', '
                     + str(dates[i]) + '. This should not happen. '
                     + 'Did you call check_for_bad_data() first?')
-    return sum_flux
+    return fluence
 
 
 def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
@@ -913,27 +976,23 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         location.
         The onset peak may provide a more physically appropriate comparison
         with models.
-        If code cannot identify onset peak, it will return a value of -1 on
-        the date 1970-01-01.
+        If code cannot identify onset peak, it will return a value of 0 on
+        the date None.
     """
     nthresh = len(energy_thresholds)
     smooth_flux = [[]]*nthresh
-    smooth_win = 9   #9 seems to work with order 7
     for i in range(nthresh):
-        #if (dates[1] - dates[0]) > datetime.timedelta(minutes=5):
+        #tried out a smoothing algorithm, but abandoned it
         smooth_flux[i] = integral_fluxes[i]
-        #else:
-        #    smooth_flux[i] = signal.savgol_filter(integral_fluxes[i],
-        #                   smooth_win, # window size used for filtering; 2 hr smoothing
-        #                  7) # order of fitted polynomial
 
 
     run_deriv = [[]]*nthresh
     nwin = 8 #Number of points away for calculating derivative, 5 min data
-    if (dates[1] - dates[0]) > datetime.timedelta(minutes=5):
+    time_resolution = determine_time_resolution(dates)
+    if time_resolution > datetime.timedelta(minutes=5):
         nwin = 1
     for i in range(nthresh):
-        if crossing_time[i] == 0:
+        if crossing_time[i] == 0: #no event, no threshold crossed
             continue
         zeroes = False #Models may output zero flux
         if 0 in smooth_flux[i]: zeroes = True
@@ -942,8 +1001,10 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         for j in range(1,nwin):
             deriv = smooth_flux[i][j] - smooth_flux[i][0]
             if not zeroes:
+                #normalize difference by the flux
                 run_deriv[i].append(deriv/smooth_flux[i][0])
             else:
+                #use difference directly
                 run_deriv[i].append(deriv)
         for j in range(nwin,len(smooth_flux[i])):
             deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin]
@@ -973,10 +1034,10 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             onset_date[i] = None
             continue
 
-        #Get value of maximum positive derivative in first 24 hours
+        #Get value of maximum positive derivative in first 18 hours
         #record where deriv first goes negative
         index_cross = 0
-        index_24 = 0
+        index_stp = 0
         last_date = crossing_time[i] + datetime.timedelta(hours=18)
         if last_date > event_end_time[i]:
             last_date = event_end_time[i]
@@ -984,30 +1045,30 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             if dates[j] <= crossing_time[i]:
                 index_cross = j
             if dates[j] <= last_date:
-                index_24 = j
+                index_stp = j
 
-        #Max value of the normalized derivative in first 24 hours
-        max_index =  np.argmax(run_deriv[i][index_cross:index_24]) + index_cross
+        #Max value of the normalized derivative in first 18 hours
+        max_index =  np.argmax(run_deriv[i][index_cross:index_stp]) + index_cross
         #Find where derivative falls below zero after the max
         index_neg = 0
         first_neg = False
         deriv_thresh = -0.05
-        for j in range(max_index,index_24+1):
+        for j in range(max_index,index_stp+1):
             if run_deriv[i][j] < deriv_thresh and not first_neg:
                 index_neg = j
                 first_neg = True
         while not first_neg:
             deriv_thresh = round(deriv_thresh + 0.01, 2) #negative value
-            for j in range(max_index,index_24+1):
+            for j in range(max_index,index_stp+1):
                 if run_deriv[i][j] < deriv_thresh and not first_neg:
                     index_neg = j
                     first_neg = True
             if deriv_thresh > 0:
                 print("calculate_onset_peak: Could not locate onset peak for "
                     +  str(energy_thresholds[i])
-                    + " MeV. Setting onset peak and date to None.")#to -1, date to 1970-01-01.")
-                onset_peak[i] = None #-1
-                onset_date[i] = None #datetime.datetime(year=1970,month=1,day=1)
+                    + " MeV. Setting onset peak and date to None.")
+                onset_peak[i] = None
+                onset_date[i] = None
                 first_neg = True #exit loop
 
         if onset_peak[i] == None:
@@ -1025,12 +1086,12 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         #Check the average derivative 1 hour prior to the onset peak
         #and the average two hours after the peak. If similar, likely event is
         #continuing to rise.
-        time_res = (dates[1] - dates[0]).total_seconds()
-        npts = math.ceil(60.*60./time_res)
+        time_res = determine_time_resolution(dates)
+        npts = math.ceil(60.*60./time_res.total_seconds())
         stpt = index_neg - npts
         if stpt < 0: stpt = 0
         endpt = index_neg + npts
-        if endpt >= index_24: #don't check past event end time
+        if endpt >= index_stp: #don't check past 18 hours into event
             continue
         if endpt >= len(dates): endpt = len(dates)-1
         deriv_ave_pre = sum(run_deriv[i][stpt:index_neg])/len(run_deriv[i][stpt:index_neg])
@@ -1043,12 +1104,12 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         #if the two differ by 10% or less
         if deriv_diff <= 0.1 or \
             (deriv_ave_post>0.1 and deriv_ave_post>deriv_ave_pre):
-            #Max value of the normalized derivative in first 24 hours
-            max_index =  np.argmax(run_deriv[i][index_neg:index_24]) + index_neg
+            #Max value of the normalized derivative in first 18 hours
+            max_index =  np.argmax(run_deriv[i][index_neg:index_stp]) + index_neg
             #Find where derivative falls below zero after the max
             index_neg2 = index_neg
             first_neg = False
-            for j in range(max_index,index_24+1):
+            for j in range(max_index,index_stp+1):
                 if run_deriv[i][j] < 0 and not first_neg:
                     index_neg2 = j
                     first_neg = True
@@ -1515,7 +1576,8 @@ def sort_bin_order(all_fluxes, energy_bins):
 ######## MAIN PROGRAM #########
 def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         user_file, showplot, saveplot, detect_prev_event, two_peaks, umasep,
-        str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate):
+        str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate,
+        nointerp=False):
     """"Runs all subroutines and gets all needed values. Takes the command line
         areguments as input. Written here to allow code to be imported into
         other python scripts.
@@ -1527,6 +1589,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         showplot, detect_prev_event, two_peaks, and umasep are booleans.
         Set str_thresh to be '100,1' for default value or modify to add your own
         threshold.
+        nointerp (boolean) - set to true to fill in negative fluxes with None
+            value rather than filling in via linear interpolation in time
+        
         This routine will generate boolean flags that indicate if the event
         starts at the very first time point, ends on the very last time point,
         has a duration less than 12 hours, or has a >100 MeV onset more than
@@ -1592,22 +1657,31 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     
     #IF REQUESTED BACKGROUND SUBTRACTION
     if doBGSub:
+        #sepfluxes are background subtracted fluxes
         bgfluxes, sepfluxes, bgdates = bgsub.derive_background(str_startdate, \
                     str_enddate, str_bgstartdate, str_bgenddate, experiment, \
                     flux_type, model_name,user_file, showplot, saveplot,options)
         #Extract the date range specified by the user
         dates, fluxes = datasets.extract_date_range(startdate, enddate,
                                     bgdates, sepfluxes)
-        #Remove bad data points (negative flux or None) w/ linear interp in time
-        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
+        if nointerp:
+            #Set bad data points (negative flux or None) to None
+            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins,nointerp)
+        else:
+            #Remove bad data points (negative flux or None) w/ linear interp in time
+            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
 
     #NO BACKGROUND SUBTRACTION
     if not doBGSub:
         #Extract the date range specified by the user
         dates, fluxes = datasets.extract_date_range(startdate, enddate,
                                 all_dates, all_fluxes)
-        #Remove bad data points (negative fluxes) with linear interp in time
-        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
+        if nointerp:
+            #Set bad data points (negative flux or None) to None
+            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins,nointerp)
+        else:
+            #Remove bad data points (negative flux or None) w/ linear interp in time
+            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
 
 
     if len(dates) <= 1:
@@ -1940,9 +2014,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             if doBGSub:
                 maskfluxes = np.ma.masked_where(integral_fluxes[i] <0, \
                                 integral_fluxes[i])
-                plt.plot_date(dates,maskfluxes,'-',label=data_label)
+                plt.plot_date(dates,maskfluxes,'o-',label=data_label)
             else:
-                plt.plot_date(dates,integral_fluxes[i],'-',label=data_label)
+                plt.plot_date(dates,integral_fluxes[i],'o-',label=data_label)
 
             plt.axvline(crossing_time[i],color='black',linestyle=':')
             plt.axvline(event_end_time[i],color='black',linestyle=':',
@@ -2149,6 +2223,10 @@ if __name__ == "__main__":
             "P2-P5 and Bruno2017 bins will be applied to P6-P11 for uncorrected "
             "fluxes.\n"
             "e.g. \"uncorrected;S14;Bruno2017\""))
+    parser.add_argument("--NoInterp",
+            help=("Do not fill in negative or missing fluxes via "
+                    "linear interpolation in time. Set as None values "
+                    "instead."), action="store_true")
     parser.add_argument("--SubtractBG",
             help="Set to calculate the background and subtract from the "\
                 "SEP flux. Must define start and end dates for the background.",
@@ -2196,12 +2274,14 @@ if __name__ == "__main__":
     two_peaks = args.TwoPeaks
     umasep = args.UMASEP
     options = args.options
+    nointerp = args.NoInterp
 
 
 
     FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
     sep_day, jsonfname = run_all(str_startdate, str_enddate, experiment, flux_type,
         model_name,user_file, showplot, saveplot, detect_prev_event, two_peaks,
-        umasep, str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate)
+        umasep, str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate,
+        nointerp)
 
     if showplot: plt.show()
