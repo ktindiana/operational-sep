@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "2.5.5"
+__version__ = "2.6"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -164,7 +164,23 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   every consecutive set of time points and the most common value
 #   for the difference is used as the time resolution. This is done
 #   in case there are time gaps in the data set.
-
+#2021-05-28, changes in 2.6: Discovered an unintended bug in the
+#   calculate_onset_peak code. I had intended to normalize the
+#   deriv variable by the changing flux value to minimize
+#   the derivative for jumps and dips when the flux is already
+#   elevated. Instead, I had simply normalized by the very first
+#   flux value in the array.
+#   deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin]
+#   Previously: run_deriv[i].append(deriv/smooth_flux[i][0])
+#   Changed to: run_deriv[i].append(deriv/smooth_flux[i][j-nwin])
+#   Now using two versions of the derivative to get the onset peak.
+#   One is the derivative divided by smooth_flux[i][j-nwin], which
+#   really highlights the intial rise. The second is deriv divided
+#   by a constant normalization factor (the first non-zero flux in
+#   the array). This is used to escape local minima.
+#   I intended to always use deriv/smooth_flux[i][j-nwin], but
+#   I made a typo in v0.8 that ended up dividing by a constant
+#   factor. I feel that combining the two concepts works best.
 
 #See full program description in all_program_info() below
 datapath = vars.datapath
@@ -642,7 +658,8 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     event_end_time = 0
     duration = 0
     npoints = 3 #require 3 points above threshold
-    tdiff = (dates[1] - dates[0]).seconds/(60) #time resolution of data set
+    tdiff = determine_time_resolution(dates)
+    tdiff = tdiff.total_seconds()/(60) #time resolution of data set
     if tdiff > 15:
         npoints = 1 #time resolution >15 mins, require one point above threshold
 
@@ -987,6 +1004,7 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
 
 
     run_deriv = [[]]*nthresh
+    run_deriv_norm = [[]]*nthresh
     nwin = 8 #Number of points away for calculating derivative, 5 min data
     time_resolution = determine_time_resolution(dates)
     if time_resolution > datetime.timedelta(minutes=5):
@@ -996,22 +1014,36 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             continue
         zeroes = False #Models may output zero flux
         if 0 in smooth_flux[i]: zeroes = True
+        if None in smooth_flux[i]: zeroes = True
+        
+        #Normalize the derivative by the flux value
+        #If there are zeroes or None values in the array,
+        #then normalize by a constant flux value
+        #Find the first positive flux value in the array
+        #Most likely smooth_flux[i][0]
+        normindx = np.nonzero(smooth_flux[i])
+        normfac = smooth_flux[i][normindx[0][0]]
 
-        run_deriv[i] = [0]
+        run_deriv[i] = [0] #normalized by constant factor
+        run_deriv_norm[i] = [0] #normalized by changing flux
         for j in range(1,nwin):
             deriv = smooth_flux[i][j] - smooth_flux[i][0]
+            run_deriv[i].append(deriv/normfac)
             if not zeroes:
                 #normalize difference by the flux
-                run_deriv[i].append(deriv/smooth_flux[i][0])
+                run_deriv_norm[i].append(deriv/smooth_flux[i][0])
             else:
                 #use difference directly
-                run_deriv[i].append(deriv)
+                run_deriv_norm[i].append(deriv/normfac)
+                
         for j in range(nwin,len(smooth_flux[i])):
             deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin]
+            run_deriv[i].append(deriv/normfac)
             if not zeroes:
-                run_deriv[i].append(deriv/smooth_flux[i][0])
+                run_deriv_norm[i].append(deriv/smooth_flux[i][j-nwin])
             else:
-                run_deriv[i].append(deriv)
+                run_deriv_norm[i].append(deriv/normfac)
+
 
     #Search for onset peak
     #Peak likely occurs near first time derivative goes from generally positive
@@ -1048,19 +1080,19 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                 index_stp = j
 
         #Max value of the normalized derivative in first 18 hours
-        max_index =  np.argmax(run_deriv[i][index_cross:index_stp]) + index_cross
+        max_index =  np.argmax(run_deriv_norm[i][index_cross:index_stp]) + index_cross
         #Find where derivative falls below zero after the max
         index_neg = 0
         first_neg = False
-        deriv_thresh = -0.05
+        deriv_thresh = -0.04
         for j in range(max_index,index_stp+1):
-            if run_deriv[i][j] < deriv_thresh and not first_neg:
+            if run_deriv_norm[i][j] < deriv_thresh and not first_neg:
                 index_neg = j
                 first_neg = True
         while not first_neg:
             deriv_thresh = round(deriv_thresh + 0.01, 2) #negative value
             for j in range(max_index,index_stp+1):
-                if run_deriv[i][j] < deriv_thresh and not first_neg:
+                if run_deriv_norm[i][j] < deriv_thresh and not first_neg:
                     index_neg = j
                     first_neg = True
             if deriv_thresh > 0:
@@ -1084,24 +1116,27 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         #Check and see if the event continues rising at a similar rate to the
         #onset peak. If so, it's likely a little dip on the way up.
         #Check the average derivative 1 hour prior to the onset peak
-        #and the average two hours after the peak. If similar, likely event is
+        #and the average 1 hour after the peak. If similar, likely event is
         #continuing to rise.
         time_res = determine_time_resolution(dates)
-        npts = math.ceil(60.*60./time_res.total_seconds())
+        npts = math.ceil(50.*60./time_res.total_seconds())
         stpt = index_neg - npts
         if stpt < 0: stpt = 0
         endpt = index_neg + npts
         if endpt >= index_stp: #don't check past 18 hours into event
             continue
         if endpt >= len(dates): endpt = len(dates)-1
+        #Use deriv that has not been normalized to compare pre and post rise
         deriv_ave_pre = sum(run_deriv[i][stpt:index_neg])/len(run_deriv[i][stpt:index_neg])
-        deriv_ave_post = sum(run_deriv[i][index_neg:endpt])/len(run_deriv[i][index_neg:endpt])
+        deriv_ave_post =  sum(run_deriv[i][index_neg:endpt])/len(run_deriv[i][index_neg:endpt])
         deriv_diff = (deriv_ave_pre - deriv_ave_post)/deriv_ave_pre
         deriv_diff = abs(deriv_diff)
 
-        #print("deriv_ave_pre: "+str(deriv_ave_pre)+" deriv_ave_post: "\
-        #    +str(deriv_ave_post)+" deriv_diff: "+str(deriv_diff))
-        #if the two differ by 10% or less
+        print("deriv_ave_pre: "+str(deriv_ave_pre)+" deriv_ave_post: "\
+            +str(deriv_ave_post)+" deriv_diff: "+str(deriv_diff)\
+            +" starting at date " + str(dates[index_neg]))
+        #if the two differ by 10% or less or deriv is bigger
+        #going forward
         if deriv_diff <= 0.1 or \
             (deriv_ave_post>0.1 and deriv_ave_post>deriv_ave_pre):
             #Max value of the normalized derivative in first 18 hours
@@ -1142,7 +1177,9 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
             ax.set_ylabel("Flux")
 
             ax2 = ax.twinx()
-            ax2.plot_date(dates,run_deriv[i],'-',color="green",\
+            ax2.plot_date(dates,run_deriv[i],'-',color="blue",\
+                        label="Derivative")
+            ax2.plot_date(dates,run_deriv_norm[i],'-',color="green",\
                         label="Normalized Derivative")
             ax2.axhline(0,color='red',linestyle=':')
             ax2.set_ylabel("Derivative")
@@ -2014,9 +2051,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             if doBGSub:
                 maskfluxes = np.ma.masked_where(integral_fluxes[i] <0, \
                                 integral_fluxes[i])
-                plt.plot_date(dates,maskfluxes,'o-',label=data_label)
+                plt.plot_date(dates,maskfluxes,'-',label=data_label)
             else:
-                plt.plot_date(dates,integral_fluxes[i],'o-',label=data_label)
+                plt.plot_date(dates,integral_fluxes[i],'-',label=data_label)
 
             plt.axvline(crossing_time[i],color='black',linestyle=':')
             plt.axvline(event_end_time[i],color='black',linestyle=':',
