@@ -1081,6 +1081,83 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
 
         #Max value of the normalized derivative in first 18 hours
         max_index =  np.argmax(run_deriv_norm[i][index_cross:index_stp]) + index_cross
+        
+        
+#        #Find first index where derivative drops below a small negative number
+#        index_neg = next((i for i, x in enumerate(run_deriv_norm[i][max_index:index_stp+1]) if x < -0.01), None)
+#        if index_neg == None: #No negative value found
+#                print("calculate_onset_peak: Could not locate onset peak for "
+#                    +  str(energy_thresholds[i])
+#                    + " MeV. Setting onset peak and date to None.")
+#                onset_peak[i] = None
+#                onset_date[i] = None
+#                continue #go to next threshold
+#        else:
+#            index_neg = index_neg + max_index
+#            #Find the maximum flux in the range where the onset peak should be
+#            onset_peak[i] = max(integral_fluxes[i][max_index:index_neg+1])
+#            onset_index = np.argmax(integral_fluxes[i][max_index:index_neg+1])
+#            onset_date[i] = dates[max_index + onset_index]
+#            print("Found onset peak for " + str(energy_thresholds[i]) \
+#                + " MeV: " + str(onset_peak[i]) + ", Onset peak time: " \
+#                + str(onset_date[i]))
+#            #Need index where derivative first drops below zero
+#            #for checks below
+#            index_zero = next((i for i, x in enumerate(run_deriv_norm[i][max_index:index_stp+1]) if x < 0), None)
+#            index_zero = index_zero + max_index
+#
+#        #Find the next positive value and then next negative value
+#        #Idea is to get the next bump in derivative and compare
+#        #this next rise with the previous one to see if it is
+#        #similar.
+#        #Keep searching every dip as needed
+#        index_neg_next = index_neg
+#        while index_neg_next < index_stp:
+#            index_pos = next((i for i, x in enumerate(run_deriv_norm[i][index_neg_next:index_stp+1]) if x > 0), None)
+#            if index_pos == None:
+#                break
+#            else:
+#                index_pos = index_pos + index_neg_next
+#
+#            index_neg_next = next((i for i, x in enumerate(run_deriv_norm[i][index_pos:index_stp+1]) if x < -0.01), None)
+#            if index_neg_next == None:
+#                break
+#            else:
+#                index_neg_next = index_neg_next + index_pos
+#
+#            #Now have indices bounding a "bump" of positive derivative
+#            #Find the max value and location of that value
+#            max_index_next =  np.argmax(run_deriv_norm[i][index_pos:index_neg_next+1]) + index_pos
+#            npts = max_index_next - index_pos
+#            if npts == 0: continue
+#            #Go the same number of points backwards in time to compare the
+#            #delta in the intial derivative with the new "bump" in the
+#            #derivative to see if the flux is continuing to increase
+#            #at a similar rate
+#            ave_deriv_init = sum(run_deriv_norm[i][index_zero - npts:index_zero+1])/npts
+#            ave_deriv_next = sum(run_deriv_norm[i][index_pos:max_index_next+1])/npts
+#            deriv_diff = abs(ave_deriv_init - ave_deriv_next)/ave_deriv_init
+#            print("ave_deriv_init: "+str(ave_deriv_init)+" ave_deriv_next: "\
+#                +str(ave_deriv_next)+" deriv_diff: "+str(deriv_diff)\
+#                +" n pts: " + str(npts) \
+#                +" starting at date " + str(dates[index_pos]))
+#
+#
+#            if deriv_diff <= 0.1 \
+#                or (ave_deriv_next>0.1 and ave_deriv_next>ave_deriv_init):
+#                onset_peak[i] = max(integral_fluxes[i][index_neg:index_neg_next])
+#                onset_index = np.argmax(integral_fluxes[i][index_neg:index_neg_next])
+#                onset_date[i] = dates[index_neg + onset_index]
+#                print("Recalculated onset peak for " + str(energy_thresholds[i]) \
+#                        + " MeV: " + str(onset_peak[i]) + ", Onset peak time: " \
+#                        + str(onset_date[i]))
+#            else:
+#                break #don't keep looking for onset peak
+        
+        
+        
+        
+        
         #Find where derivative falls below zero after the max
         index_neg = 0
         first_neg = False
@@ -1126,26 +1203,37 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         if endpt >= index_stp: #don't check past 18 hours into event
             continue
         if endpt >= len(dates): endpt = len(dates)-1
-        #Use deriv that has not been normalized to compare pre and post rise
+        #Use both derivatives to compare pre and post rise
         deriv_ave_pre = sum(run_deriv[i][stpt:index_neg])/len(run_deriv[i][stpt:index_neg])
         deriv_ave_post =  sum(run_deriv[i][index_neg:endpt])/len(run_deriv[i][index_neg:endpt])
         deriv_diff = (deriv_ave_pre - deriv_ave_post)/deriv_ave_pre
         deriv_diff = abs(deriv_diff)
 
+        deriv_ave_pre_norm = sum(run_deriv_norm[i][stpt:index_neg])/len(run_deriv_norm[i][stpt:index_neg])
+        deriv_ave_post_norm =  sum(run_deriv_norm[i][index_neg:endpt])/len(run_deriv_norm[i][index_neg:endpt])
+        deriv_diff_norm = (deriv_ave_pre_norm - deriv_ave_post_norm)/deriv_ave_pre_norm
+        deriv_diff_norm = abs(deriv_diff_norm)
+
         print("deriv_ave_pre: "+str(deriv_ave_pre)+" deriv_ave_post: "\
             +str(deriv_ave_post)+" deriv_diff: "+str(deriv_diff)\
             +" starting at date " + str(dates[index_neg]))
+        print("deriv_ave_pre_norm: "+str(deriv_ave_pre_norm)+" deriv_ave_post_norm: "\
+            +str(deriv_ave_post_norm)+" deriv_diff_norm: "+str(deriv_diff_norm)\
+            +" starting at date " + str(dates[index_neg]))
         #if the two differ by 10% or less or deriv is bigger
         #going forward
-        if deriv_diff <= 0.1 or \
-            (deriv_ave_post>0.1 and deriv_ave_post>deriv_ave_pre):
+        if deriv_diff <= 0.1 or deriv_diff_norm <= 0.1\
+            or (deriv_ave_post>0.1 and deriv_ave_post>deriv_ave_pre)\
+            or (deriv_ave_post_norm>0.1 and deriv_ave_post_norm>deriv_ave_pre_norm):
+#        if deriv_diff_norm <= 0.1\
+#            or (deriv_ave_post_norm>0.1 and deriv_ave_post_norm>deriv_ave_pre_norm):
             #Max value of the normalized derivative in first 18 hours
-            max_index =  np.argmax(run_deriv[i][index_neg:index_stp]) + index_neg
+            max_index =  np.argmax(run_deriv_norm[i][index_neg:index_stp]) + index_neg
             #Find where derivative falls below zero after the max
             index_neg2 = index_neg
             first_neg = False
             for j in range(max_index,index_stp+1):
-                if run_deriv[i][j] < 0 and not first_neg:
+                if run_deriv_norm[i][j] < 0 and not first_neg:
                     index_neg2 = j
                     first_neg = True
             #Find the maximum flux in the range where the onset peak should be
