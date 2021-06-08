@@ -1,7 +1,7 @@
 from library import read_datasets as datasets
 from library import global_vars as vars
 from library import ccmc_json_handler as ccmc_json
-import derive_background as bgsub
+from library import derive_background as bgsub
 import matplotlib.pyplot as plt
 import math
 import numpy as np
@@ -2253,7 +2253,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     + '_' + 'Fluence'
         fig = plt.figure(figname,figsize=(6,5))
         ax = plt.subplot(111)
-        markers = ['bo','P','D','v','^','<','>','*','d','+']
+        markers = ['o','P','D','v','^','<','>','*','d','+']
         for j in range(len(energy_thresholds)):
             if crossing_time[j] == 0:
                 continue
