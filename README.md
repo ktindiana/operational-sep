@@ -62,7 +62,7 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-2
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment EPHIN --FluxType differential --showplot --Threshold "40.9-53,0.001"
 
 **Perform background subtraction and apply Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins. (note: cannot bg-subtract GOES integral fluxes), e.g.:**\
-    python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-19 12:00:00" --Experiment GOES-13 --FluxType differential  --showplot --options uncorrected,S14,Bruno2017 --SubtractBG --BGStartDate 2012-05-10 --BGEndDate --2012-05-17
+    python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-19 12:00:00" --Experiment GOES-13 --FluxType differential  --showplot --options uncorrected,S14,Bruno2017 --SubtractBG --BGStartDate 2012-05-10 --BGEndDate 2012-05-17
 
 
 ## Run code from command line for user-input file as, e.g.:
