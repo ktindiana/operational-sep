@@ -327,6 +327,7 @@ def all_program_info(): #only for documentation purposes
     user_file = '' #if experiment is user, specify filename containing fluxes
     showplot = True  #Turn to False if don't want to see plots
     saveplot = False #turn to true if you want to save plots to file
+    options = '' #various options: S14, Bruno2017, uncorrected
     doBGSub = False #Set true if want to perform background subtraction
     bgstart_date = "2012-05-10" #Dates used to estimate mean background if
     bgend_date = "2012-05-17"   #doBGSub is set to True
@@ -336,7 +337,7 @@ def all_program_info(): #only for documentation purposes
     threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
 
     FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-    sep_day = sep.run_all(start_date, end_date, experiment, flux_type, \
+    sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type, \
         model_name, user_file, showplot, saveplot, detect_prev_event,  \
         two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
         bgend_date)
@@ -401,9 +402,12 @@ def all_program_info(): #only for documentation purposes
         user_fname - specify the name of the file containing the fluxes
                 through an argument in the command line. --UserFile  The
                 user_fname variable will be updated with that filename. ARGUMENT
-        time_resolution - will be calculated using two time points in your file;
-                if you have irregular time measurements, calculate_fluence()
-                must be modified/rewritten. AUTOMATICALLY DETERMINED.
+        time_resolution - the program determines time_resolution
+                (seconds) by finding the difference between every consecutive
+                set of time points in the data set. The most common difference
+                is identified as the time resolution. This method should find
+                an accurate time resolution even if there are gaps in the
+                time steps.. AUTOMATICALLY DETERMINED.
     """
 
 
