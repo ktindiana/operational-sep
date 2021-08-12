@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "2.6"
+__version__ = "3.0"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -181,12 +181,42 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   I intended to always use deriv/smooth_flux[i][j-nwin], but
 #   I made a typo in v0.8 that ended up dividing by a constant
 #   factor. I feel that combining the two concepts works best.
+#!!!!2021-07-19, changes in 3.0: Went up to the next integer version!!!
+#   number because this version has reconciled all differences
+#   with the CCMC SEP Scoreboard JSON format. i.e. this version
+#   produces JSON files and supporting output files in exactly
+#   the format required by the SEP Scoreboard. The format
+#   is specified at https://ccmc.gsfc.nasa.gov/challenges/sep.php.
+#       - JSON in CCMC format
+#       - cleaning up code and writing a lot more small subroutines.
+#       - changed calculate_fluence to multiply by 4pi to remove
+#            units of sr^-1
+#       - added global units variables at top of code
+#       - added ability for user to set units for a user-read file
+#           in global_vars.py
+#       - when threshold is not crossed, maximum flux in time period
+#           is saved in peak_flux rather than onset_peak, as before
+#   2021-08-06: Changing onset peak flux definition to be more
+#   independent of applied threshold. For events with maxmimum flux
+#   values less than 500/energy_channel, search for the onset peak
+#   starting 12 hours before the flux threshold is crossed.
+#   Onset peak will still only be derived if thresholds
+#   are crossed.
 
 #See full program description in all_program_info() below
 datapath = vars.datapath
 outpath = vars.outpath
 plotpath = vars.plotpath
 badval = vars.badval #bad data points will be set to this value; must be negative
+
+#####UNITS#####
+#If a user data set is read in, the units in global_vars.py will
+#supercede these units.
+energy_units = "MeV"
+flux_units_integral = "pfu"
+fluence_units_integral = "cm^-2"
+flux_units_differential = "MeV^-1*cm^-2*s^-1*sr^-1"
+fluence_units_differential = "MeV^-1*cm^-2"
 
 ######FOR USER DATA SETS######
 #(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
@@ -205,7 +235,9 @@ user_fname = ['tmp.txt']
 
 
 def all_program_info(): #only for documentation purposes
-    """This program will calculate various useful pieces of operational
+    """ Program description for operational_sep_quantities.py v3.0.
+    
+    This program will calculate various useful pieces of operational
     information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
     data and the SEPEM (RSDv2 and RSDv3) dataset.
 
@@ -221,8 +253,8 @@ def all_program_info(): #only for documentation purposes
     minutes from 1974 to 2015 for RSDv2 and to 2017 for RSDv3), the program will
     break up the data into yearly files for faster reading.
     
-    Data sets are checked for bad data point (negative or None value fluxes)
-    and the default behavior is to fill in those bad data points by
+    --NoInterp: Data sets are checked for bad data point (negative or None value
+    fluxes) and the default behavior is to fill in those bad data points by
     performing a linear interpolation with time. This choice was made to
     calculate more accurate event-intergrated fluence values from data.
     Interpolation with time is not appropriate for model predictions, as
@@ -248,23 +280,27 @@ def all_program_info(): #only for documentation purposes
        Event-integrated fluences
        Proton fluxes at various times after threshold crossing (UMASEP option)
 
-    User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1) or
-    integral fluxes (e.g. [s sr cm^2]^-1 or pfu). The program has no internal
-    checks orrequirements on units - EXCEPT FOR THE THRESHOLD DEFINITIONS
-    OF >10, 10 and >100, 1. If you convert those thresholds in the main program
-    to your units, you should be able to generate consistent results.
-    Also, all of the plots and messages refer to MeV, pfu, and cm. Change those
-    labels everywhere if you choose other units. Currently no features to change
-    units automatically.
+    UNITS: User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1)
+    or integral fluxes (e.g. [s sr cm^2]^-1 or pfu). Default units are:
+    MeV, cm, s, sr
+    Units are specified in library/global_vars.py.
+    The program has no internal checks or requirements on units - EXCEPT FOR
+    THE THRESHOLD DEFINITIONS OF >10, 10 and >100, 1.
+    If you convert those thresholds in the main program to your units,
+    you should be able to generate consistent results.
+    Currently there are no features to change units automatically. SEE MORE
+    about units in the USER INPUT DATA section below.
 
-    User may specify various options, that currently only apply to GOES data:
+    OPTIONS: User may specify various options, that currently only apply to
+    GOES data:
         Choose corrected or uncorrected GOES fluxes.
         Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
         energies to GOES uncorrected data.
     --options uncorrected
     --options uncorrected,S14,Bruno2017 (recommend using background subtraction)
 
-    Users may choose to perform a background subtraction by specifying:
+    BACKGROUND SUBTRACTION: Users may choose to perform a background
+    subtraction by specifying:
     --SubtractBG --BGStartDate YYYY-MM-DD --BGEndDate YYYY-MM-DD
     The user should look at the data and select an appropriate time frame
     prior to the event when the background is calm and well-defined. If
@@ -298,7 +334,19 @@ def all_program_info(): #only for documentation purposes
         >30 MeV - Ts + 3, 4, 5, 6, 7 hours
         >50 MeV - Ts + 3, 4, 5, 6, 7 hours
         >100 MeV - Ts + 3, 4, 5, 6, 7 hours
-
+    
+    --spase_id: If you know the appropriate spase_id for the your model or
+    experiment, you may specify it here to be filled in to the json file
+    for CCMC's SEP Scoreboard.
+    
+    Note about EVENT END TIME: Currently, the code calculates the end of the
+    event as the first time that the flux drops below threshold*endfac for
+    three consecutive points. The endfac variable is specified in
+    library/global_vars.py.
+    Mimicking a SRAG code, endfac is set to 0.85 (85% of threshold). This
+    may be changed in the future to update this to more NOAA SWPC-like logic
+    to define the end of an SEP event.
+    
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
     python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
@@ -323,6 +371,7 @@ def all_program_info(): #only for documentation purposes
     end_date = '2012-05-19 12:00:00'
     experiment = 'GOES-13'
     flux_type = 'integral'
+    spase_id = ''
     model_name = '' #if experiment is user, set model_name to describe data set
     user_file = '' #if experiment is user, specify filename containing fluxes
     showplot = True  #Turn to False if don't want to see plots
@@ -334,13 +383,14 @@ def all_program_info(): #only for documentation purposes
     detect_prev_event = True  #Helps if previous event causes high intensities
     two_peaks = False  #Helps if two increases above threshold in one event
     umasep = False #Set to true if want UMASEP values (see explanation above)
-    threshold = '100,1' #default; modify to add a threshold to 10,10 and 100,1
+    threshold = '' #Add a threshold to 10,10 and 100,1: '30,1' or '4.9-7.3,0.01'
+    nointerp = False #Default False; set to True to stop linear interpolatin in time
 
-    FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-    sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type, \
-        model_name, user_file, showplot, saveplot, detect_prev_event,  \
+    sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
+        end_date, experiment, flux_type, model_name, user_file,\
+        spase_id, showplot, saveplot, detect_prev_event,  \
         two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
-        bgend_date)
+        bgend_date,nointerp)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -367,16 +417,57 @@ def all_program_info(): #only for documentation purposes
     then the output files simply contain the >10 and >100 MeV time series from
     the input files. If the original data were differential fluxes, then the
     estimated >10 and >100 MeV fluxes are output as time series.
+    
+    The program also writes any time profile to file if a threshold was applied
+    to it. Each energy channel is written to an independent file, named according
+    to CCMC's SEP Scoreboard naming conventions. These accompany a json file
+    that contains all quantities calculated for the SEP event. There is also a csv
+    file that contains most of the same values recorded in the json file.
+    
+    Example output for values derived from SEPMOD forecasts for the 2021-05-29
+    SEP event with additional threshold >10, 0.001 pfu, >100, 0.0001 pfu,
+    >30 MeV, 1 pfu, >50 MeV, 1 pfu, and >60 MeV, 0.079 pfu. Some of the files
+    below are only created if a threshold was crossed. A default run would produce
+    only 10 and 100 MeV files, sep_values_*.csv and json file:
+    fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv
+    fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv
+    fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv
+    fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv
+    fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv
+    fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv
+    integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv
+    sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt
+    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json
+    
+    The json and txt files listed above would be the ones that would be appropriate
+    to read into the CCMC SEP Scoreboard or to pass to the SEP validation code
+    being developed in conjunction with the SEP Scoreboard. The csv files are legacy
+    files, but may also be easier for some users to read.
+    
 
     USER INPUT DATA SETS: Users may input their own data set. For example, if an
     SEP modeler would like to feed their own intensity time series into this
     code and calculate all values in exactly the same way they were calculated
-    for data, it is possible to do that. Fluxes should be in units of
-    1/[MeV cm^2 s sr] or 1/[cm^2 s sr] and energy channels in MeV for the plot
-    labels to be correct. You can use any units, as long as you are consistent
-    with energy units in energy channel/bin definition and in fluxes and you
-    MODIFY THE THRESHOLD VALUES TO REFLECT YOUR UNITS. You may then want to
-    modify plot labels accordingly if not using MeV and cm.
+    for data, it is possible to do that. Default flux units are
+    1/[MeV cm^2 s sr] or 1/[cm^2 s sr] and energy channels in MeV for the default
+    thresholds to be correct. You can specify your units in the
+    library/global_vars.py file.
+    
+    You can use any units, as long as you are consistent with energy units in
+    energy channel/bin definition and in fluxes and you MODIFY THE THRESHOLD
+    VALUES TO REFLECT YOUR UNITS. If you want to use different units, but
+    still have the correct operational definitions, you need to modify these
+    lines in define_thresholds() below:
+        energy_thresholds = [10,100] #MeV; flux for particles of > this MeV
+        flux_thresholds = [10,1] #pfu; exceed this level of intensity
+    
     NOTE: The first column in your flux file is assumed to be time in format
     YYYY-MM-DD HH:MM:SS. IMPORTANT FORMATTING!!
     NOTE: The flux file may contain header lines that start with a hash #,
@@ -408,20 +499,63 @@ def all_program_info(): #only for documentation purposes
                 is identified as the time resolution. This method should find
                 an accurate time resolution even if there are gaps in the
                 time steps.. AUTOMATICALLY DETERMINED.
+                
+    Running the code for a user-input file may look like the example below.
+    Note that the --UserFile location is with respect to the "data" directory
+    inside the operational-sep directory:
+    python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
+    
+    VALUES SPECIFIED IN library/global_vars.py:
+        datapath - directory containing data, 'data'
+        outpath - directory for program output, 'output'
+        plotpath - directory for saving plots, 'plots'
+        listpath - directory for lists (for run_multi_sep.py)
+        badval - will set any bad data points to this value
+        endfac - multiplicative factor to define threshold for
+                end of event; threshold*endfac (default 0.85)
+        nsigma - number of sigma to define SEP versus background
+                flux in background subtraction routine
+        version - if you are running a model or data set, allows you
+                to enter a version number
+        user_col - array defining flux columns (0 is always datetime)
+        user_delim - delimeter used to separate the columns in the time
+                profile file that you will read in
+        user_energy_bins - energy bins associated with the columns
+                specified in user_col
+        energy_units - e.g. "MeV'
+        flux_units_integral - e.g. "pfu"
+        fluence_units_integral - e.g. "cm^-2"
+        flux_units_differential - e.g. "MeV^-1*cm^-2*s^-1*sr^-1" (CCMC format)
+        fluence_units_differential - e.g. "MeV^-1*cm^-2" (CCMC format)
+        
+        (setting the units here will make correct units on plots and in json
+        file, but doesn't change operational threshold values; must be done
+        accordingly by hand)
     """
 
 
 def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                 fluxes, options):
-    """If user selected differential fluxes, convert to integral fluxes to
-       caluculate operational threshold crossings (>10 MeV protons exceed 10
-       pfu, >100 MeV protons exceed 1 pfu).
-       Assume that the measured fluxes correspond to the center of the energy
-       bin and use power law interpolation to extrapolate integral fluxes
-       above user input min_energy.
-       The intent is to calculate >10 MeV and >100 MeV fluxes, but leaving
-       flexibility for user to define the minimum energy for the integral flux.
-       An integral flux will be provided for each timestamp (e.g. every 5 mins).
+    """ If user selected differential fluxes, convert to integral fluxes to
+        caluculate operational threshold crossings (>10 MeV protons exceed 10
+        pfu, >100 MeV protons exceed 1 pfu).
+        Assume that the measured fluxes correspond to the center of the energy
+        bin and use power law interpolation to extrapolate integral fluxes
+        above user input min_energy.
+        The intent is to calculate >10 MeV and >100 MeV fluxes, but leaving
+        flexibility for user to define the minimum energy for the integral flux.
+        An integral flux will be provided for each timestamp (e.g. every 5 mins).
+       
+        INPUTS:
+        experiment (string)
+        min_energy (float) - bottom energy for integral flux calculation
+        energy_bins (float 1xn array) - bins for each energy channel
+        fluxes (float nxm array) - fluxes with time for each energy channel
+        options (string array) - effective energies for GOES channels
+        
+        OUTPUTS:
+        integral_fluxes (float 1xm array) - estimate integral flux for >min_energy
+            (Returns all zero values if no energy bins above min_energy)
     """
     print('Converting differential flux to integral flux for >'
             + str(min_energy) + 'MeV.')
@@ -550,18 +684,33 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
 
 def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
             energy_thresholds, energy_bins, options):
-    """Select or create the integral fluxes that correspond to the desired
-       energy thresholds.
-       If the user selected differential fluxes, then the
-       differential fluxes will be converted to integral fluxes with the
-       minimum energy defined by the set energy thresholds.
-       If the user selected integral fluxes, then the channels corresponding to
-       the desired energy thresholds will be identified.
-       If an energy channel with a specified is not present, will return a
-       None value for the integral fluxes, and remove that threshold in
-       run_all. (e.g. if >100 MeV fluxes were not in the data or model
-       fluxes, return a None value for integral fluxes and remove the
-       >100 MeV, 1 pfu threshold.)
+    """ Select or create the integral fluxes that correspond to the desired
+        energy thresholds.
+        If the user selected differential fluxes, then the
+        differential fluxes will be converted to integral fluxes with the
+        minimum energy defined by the set energy thresholds.
+        If the user selected integral fluxes, then the channels corresponding to
+        the desired energy thresholds will be identified.
+        If an energy channel with a specified is not present, will return a
+        None value for the integral fluxes, and remove that threshold in
+        run_all. (e.g. if >100 MeV fluxes were not in the data or model
+        fluxes, return a None value for integral fluxes and remove the
+        >100 MeV, 1 pfu threshold.)
+        
+        INPUTS:
+        fluxes (float nxm array) - flux time profile for each energy channel
+        experiment (string)
+        flux_type (string) - integral or differential
+        flux_thresholds (float 1xp array) - flux threshold values
+        energy_thresholds (float 1xp array) - energy channels to which the
+            flux threshold values are applied
+        energy_bins (float 1xn array) - bins for each energy channel in fluxes
+        options (string array) - bg subtraction, effective energies for
+            GOES channels
+            
+        OUTPUTS:
+        integral_fluxes (float array) - integral fluxes associated with each
+            energy channel in energy_thresholds; >energy_thresholds[i]
     """
     nthresh = len(flux_thresholds)
     nenergy = len(energy_bins)
@@ -608,39 +757,52 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
     return integral_fluxes
 
 
-def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
-    """Calculate the time that a threshold is crossed.
-       Operational thresholds used by the NASA JSC Space Radiation Analysis
-       Group to determine actions that should be taken during an SEP event are:
+def calculate_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
+    """ Calculate the time that a threshold is crossed.
+        Operational thresholds used by the NASA JSC Space Radiation Analysis
+        Group to determine actions that should be taken during an SEP event are:
             >10 MeV proton flux exceeds 10 pfu (1/[cm^2 s sr])
             >100 MeV proton flux exceeds 1 pfu (1/[cm^2 s sr])
         An SEP event is considered to start if 3 consecutive points are
         above threshold. The start time is set to the first point that crossed
         threshold.
-       If the user input differential flux, then the program has converted it
-       to integral fluxes to calculate the integral threshold crossings.
-       If the user selected fluxes that were already integral fluxes, then
-       the correct channel was identified to determine these crossings.
-       GOES and SEPEM data have a 5 minute time resolution, so initial
-       crossings are accurate to 5 minutes.
-       This program also calculates peak flux and time of peak flux for time
-       period specified by user. It then calculates rise time by comparing:
-       rise time = time of peak flux - threshold crossing time
-       If no thresholds are crossed during specified time period, peak time
-       and rise time will be 0.
-       The event end time is much more subjective. For this program, I follow
-       the code that officially calls the end of an event when SRAG supports
-       ISS operations. When the flux has three consecutive points (15 minutes
-       of GOES data) below 0.85*threshold, then the event is ended. The end time
-       is corrected back to the first of the three data points. This end
-       criteria has no physics basis. It simply ensures that a new event will
-       not erroneously begin within the SRAG SEP alarm code due to flux
-       fluctuations around threshold as the SEP flux decays away slowly.
-       If the time period specified by the user ends before the event falls
-       below 0.85*threshold, then the event_end_time is set to the last time
-       in the specified time range. The program will give a message indicating
-       that the user may want to extend the requested time frame in order to
-       better-capture the end of the event.
+        
+        Values are calcualated for any additional thresholds provided by user.
+        
+        This program also calculates peak flux and time of peak flux for time
+        period specified by user. It then calculates rise time by comparing:
+        rise time = time of peak flux - threshold crossing time
+        If no thresholds are crossed during specified time period, peak time
+        and rise time will be 0.
+        The event end time is much more subjective. For this program, I follow
+        the code that officially calls the end of an event when SRAG supports
+        ISS operations. When the flux has three consecutive points (15 minutes
+        of GOES data) below 0.85*threshold, then the event is ended. The end time
+        is corrected back to the first of the three data points. This end
+        criteria has no physics basis. It simply ensures that a new event will
+        not erroneously begin within the SRAG SEP alarm code due to flux
+        fluctuations around threshold as the SEP flux decays away slowly.
+        If the time period specified by the user ends before the event falls
+        below 0.85*threshold, then the event_end_time is set to the last time
+        in the specified time range. The program will give a message indicating
+        that the user may want to extend the requested time frame in order to
+        better-capture the end of the event.
+        
+        INPUTS:
+        energy_threshold (float) - energy channel for which the
+            flux threshold value should be applied
+        flux_threshold (float) - flux threshold value
+        dates (datetime 1xn array) - dates associated with the flux time profile
+        fluxes (float 1xn array) - flux with time for the single energy channel
+                associated with energy_threshold
+        
+        OUTPUTS:
+        crossing_time (datetime)
+        peak_flux (float) - maximum flux value between start and end time
+        peak_time (datetime)
+        rise_time (timedelta) - (peak_time - crossing_time)
+        event_end_time (datetime)
+        duration (timedelta) - (event_end_time - crossing_time)
     """
     #flux_threshold, e.g. 10 pfu (1/[cm^2 s sr])
     #energy_threshold, e.g. 10 MeV --> integral flux for >10 MeV protons
@@ -649,9 +811,9 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     print('Calculating threshold crossings and SEP event characteristics.')
 
     ndates = len(dates)
-    end_threshold = 0.85*flux_threshold #used by SRAG operators; if this ever
-                    #changes, must update threshold crossing entry in
-                    #ccmc_json_handler.py: fill_json
+    end_threshold = vars.endfac*flux_threshold
+                    #endfac = 0.85 used by SRAG operators;
+                    #Can specify value in library/global_vars.py
 
     threshold_crossed = False
     event_ended = False
@@ -711,11 +873,58 @@ def integral_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
 
 
+def consistent_peak_fluxes(crossing_time, onset_peak, onset_date,
+        peak_flux, peak_time):
+    """ If a threshold is not crossed, then the max flux is saved
+        as zero and the onset peak is saved as the maximum value
+        in the time range considered. This is technically
+        not correct.
+        Swapping the two values to more correct.
+        
+        INPUTS (for n SEP events):
+        crossing_time (datetime 1xn array) - value will be zero
+            if no threshold was crossed
+        onset_peak (float 1xn array) - value of onset peak for each
+            SEP event, max flux if no thresholds crossed
+        onset_date (datetime 1xn array) - time of onset peaks
+        peak_flux (float 1xn array) - values of maximum flux for
+            each SEP event, zero if no threshold crossed
+        peak_time (datetime 1xn array) - value of peak flux, zero if
+            threshold not crossed
+            
+        OUTPUTS (same as above, but values switched around):
+        onset_peak - value set to zero if no threshold crossed
+        onset_date - value set to zero if no threshold crossed
+        peak_flux - value of max flux during time period
+        peak_time - time of max flux
+    """
+    if len(crossing_time) != len(onset_peak):
+        sys.exit("consistent_peak_flux: Different lengths for "
+                "threshold crossings and onset peaks. Exiting.")
+
+    for i in range(len(crossing_time)):
+        if crossing_time[i] == 0:
+            peak_flux[i] = onset_peak[i]
+            peak_time[i] = onset_date[i]
+            onset_peak[i] = 0
+            onset_date[i] = 0
+    
+    return onset_peak, onset_date, peak_flux, peak_time
+
+
 def check_bin_exists(threshold, energy_bins):
-    """If a user specifies a threshold for a differential energy bin, check
+    """ If a user specifies a threshold for a differential energy bin, check
         to see that the energy bin is in the requested data set.
         threshold is a list of strings.
         Expect threshold[0] = lowedge-highedge, threshold[1] = flux value
+        
+        INPUTS:
+        threshold (string) - threshold input by user in string format
+        energy_bins (float 2xn array) - energy bins for n energy channels
+        
+        OUTPUTS:
+        Boolean indicating specified bins exist, or exit
+        
     """
     edges = threshold[0].split("-")
     lowedge = float(edges[0])
@@ -731,7 +940,7 @@ def check_bin_exists(threshold, energy_bins):
 
 
 def get_energy_bin_index(energy_threshold, energy_bins):
-    """Find the index associated with the integral or differential energy bin, check
+    """ Find the index associated with the integral or differential energy bin, check
         to see that the energy bin is in the requested data set.
         threshold is a list of strings.
         For integral, expect:
@@ -740,6 +949,13 @@ def get_energy_bin_index(energy_threshold, energy_bins):
         For differential, expect:
             energy_threshold[0] = lowedge
             energy_threshold[1] = highedge
+            
+        INPUTS:
+        energy_threshold (float or 1x2 array)
+        energy_bins (float 2xn array) - energy bins for n energy channels
+        
+        OUTPUTS:
+        index (integer) - index of energy bin associated with energy_threshold
     """
     
     is_array = isinstance(threshold, list) #number or array?
@@ -762,11 +978,17 @@ def get_energy_bin_index(energy_threshold, energy_bins):
     
     
 def determine_time_resolution(dates):
-    """The time resolution is found by taking the difference between
-       every consecutive data point. The most common difference is
-       taken as the time resolution. Even if the data set has gaps,
-       if there are enough consecutive time points in the observational
-       or model output, the correct time resolution should be identified.
+    """ The time resolution is found by taking the difference between
+        every consecutive data point. The most common difference is
+        taken as the time resolution. Even if the data set has gaps,
+        if there are enough consecutive time points in the observational
+        or model output, the correct time resolution should be identified.
+        
+        INPUTS:
+        dates (datetime 1xm array) - dates associated with flux time profile
+        
+        OUTPUTS:
+        time_resolution (time delta object)
     """
     ndates = len(dates)
     time_diff = [a - b for a,b in zip(dates[1:ndates],dates[0:ndates-1])]
@@ -775,34 +997,35 @@ def determine_time_resolution(dates):
 
 
 def calculate_fluence(dates, flux):
-    """This subroutine sums up all of the flux in the 1D array "flux". The
-       "dates" and "flux" arrays input here should reflect only the intensities
-       between the SEP start and stop times, determined by the subroutine
-       integral_threshold_crossing.
-       
-       flux (array,list) should contain the intensity
-       time series for a single energy bin or single integral channel (1D
-       array). The subroutine does not differentiate between differential or
-       integral flux.
-       
-       dates (array,list of datetime objects) contains the 1D array of
-       datetimes that correspond to the flux measurements.
-       
-       The extract_date_range subroutine is used prior to calling this one to
-       make the dates and fluxes arrays covering only the SEP time period.
-       The flux will be multiplied by time_resolution and summed for all of the
-       data between the start and end times. Negative or bad flux values
-       should have been set to None or interpolated with check_bad_data().
-       None values will be skipped.
-       
-       The time resolution is found by taking the difference between
-       every consecutive data point. The most common difference is
-       taken as the time resolution. Even if the data set has gaps,
-       if there are enough consecutive time points in the observational
-       or model output, the correct time resolution should be identified.
-       
-       Fluence units will be 1/[MeV cm^2 sr] for GOES or SEPEM differential
-       fluxes or 1/[cm^2 sr] for integral fluxes.
+    """ This subroutine sums up all of the flux in the 1xn array "flux". The
+        "dates" and "flux" arrays input here should reflect only the intensities
+        between the SEP start and stop times, determined by the subroutine
+        calculate_threshold_crossing. The subroutine does not differentiate between
+        differential or integral flux.
+        
+        The extract_date_range subroutine is used prior to calling this one to
+        make the dates and fluxes arrays covering only the SEP time period.
+        The flux will be multiplied by time_resolution and summed for all of the
+        data between the start and end times. Negative or bad flux values
+        should have been set to None or interpolated with check_bad_data().
+        None values will be skipped.
+        
+        The time resolution is found by taking the difference between
+        every consecutive data point. The most common difference is
+        taken as the time resolution. Even if the data set has gaps,
+        if there are enough consecutive time points in the observational
+        or model output, the correct time resolution should be identified.
+        
+        Fluence units will be 1/[MeV cm^2] for GOES or SEPEM differential
+        fluxes or 1/[cm^2] for integral fluxes.
+        
+        INPUTS:
+        flux (float 1xn array) - intensity time series for a single energy bin
+            or single integral channel (1D array).
+        dates (datetime 1xn array) - datetimes that correspond to the fluxes
+        
+        OUTPUTS:
+        fluence (float) - sum of all the flux values in flux
     """
     ndates = len(dates)
     time_resolution = determine_time_resolution(dates)
@@ -820,25 +1043,50 @@ def calculate_fluence(dates, flux):
                     ' found for bin ' + str(i) + ', '
                     + str(dates[i]) + '. This should not happen. '
                     + 'Did you call check_for_bad_data() first?')
+                    
+    fluence = fluence*4.0*math.pi #multiply 4pi steradians
     return fluence
 
 
 def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
                 model_name, energy_threshold,
                 flux_threshold, sep_dates, sep_fluxes, energy_bins,
-                is_diff_thresh, save_file):
-    """Calculate the fluence spectrum for each of the energy channels in the
-       user selected data set. If the user selected differential fluxes, then
-       the fluence values correspond to each energy bin. If the user selected
-       integral fluxes, then the fluence values correspond to each integral bin.
-       Writes fluence values to file according to boolean save_file.
-       If the user input a threshold for a differential energy bin,
-       is_diff_thresh will be true and the filename will not contain "gt".
+                diff_thresh, save_file):
+    """ Calculate the fluence spectrum for each of the energy channels in the
+        user selected data set. If the user selected differential fluxes, then
+        the fluence values correspond to each energy bin. If the user selected
+        integral fluxes, then the fluence values correspond to each integral bin.
+        Writes fluence values to file according to boolean save_file.
+        If the user input a threshold for a differential energy bin,
+        is_diff_thresh will be true and the filename will not contain "gt".
+        
+        INPUTS:
+        experiment (string)
+        flux_type (string) - integral or differential
+        options (string array) - bg subtraction, effective energies for
+            GOES channels
+        model_name (string) - name of model or user experiment, if relevant
+        energy_threshold (float) - energy channel to which the
+            flux threshold value is applied
+        flux_threshold (float) - flux threshold value
+        sep_dates (datetime 1xm array) - dates trimmed between SEP start and
+            end times
+        sep_fluxes (float nxm array) - flux time profiles for each energy channel
+            trimmed between SEP start and end times
+        energy_bins (float 1xn array) - bins for each energy channel
+        diff_thresh (boolean) - indicates if the energy_threshold and
+            flux_threshold refer to a differential channel (True)
+        save_file (boolean) - set True to save fluence values to file
+        
+        OUTPUTS:
+        fluence (float 1xn array) - fluence value in each energy bin
+        energies (float 1xn array) - bin centers for each energy bin
     """
     nenergy = len(energy_bins)
     fluence = np.zeros(shape=(nenergy))
     energies = np.zeros(shape=(nenergy))
     for i in range(nenergy):
+        #Multiplied by 4pi sr (units of e.g. 1/[cm^2] or 1/[MeV cm^2])
         fluence[i] = calculate_fluence(sep_dates, sep_fluxes[i,:])
         if energy_bins[i][1] != -1:
             energies[i] = math.sqrt(energy_bins[i][0]*energy_bins[i][1])
@@ -852,11 +1100,11 @@ def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
         day = sep_dates[0].day
         mod1 = 'gt'
         mod2 = '>'
-        unit = 'pfu'
-        if is_diff_thresh:
+        unit = flux_units_integral #'pfu'
+        if diff_thresh:
             mod1 = ''
             mod2 = 'differential energy bin with low edge '
-            unit = '1/[MeV cm^2 s sr]'
+            unit = flux_units_differential #'1/[MeV cm^2 s sr]'
         modifier = ''
         if options[0] != '':
             for opt in options:
@@ -874,13 +1122,15 @@ def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
         fout = open(foutname,"w+")
 
         fout.write('\"#Event defined by ' + mod2 + str(energy_threshold) \
-                    + ' MeV, ' + str(flux_threshold) +' '+unit + '; start time '
+                    + ' '+ energy_units + ', ' + str(flux_threshold) \
+                    +' '+ unit + '; start time '
                     + str(sep_dates[0]) + ', end time '
                     + str(sep_dates[len(sep_dates)-1]) + '\"\n')
         if flux_type == "differential":
-            fout.write("#Elow,Emid,Ehigh,Fluence 1/[MeV cm^2 sr]\n")
+            fout.write("#Elow,Emid,Ehigh,Fluence " +
+                        fluence_units_differential + "\n")
         if flux_type == "integral":
-            fout.write("#>Elow,Fluence 1/[cm^2 sr]\n")
+            fout.write("#>Elow,Fluence " + fluence_units_integral + "\n")
 
         for i in range(nenergy):
             if flux_type == "differential":
@@ -894,31 +1144,54 @@ def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
 
 
 def calculate_event_info(energy_thresholds,flux_thresholds,dates,
-                integral_fluxes, detect_prev_event, two_peaks, is_diff_thresh):
-    """Uses the integral fluxes (either input or estimated from differential
-       channels) and all the energy and flux thresholds set in the main program
-       to calculate SEP event quantities.
+                integral_fluxes, detect_prev_event, two_peaks, diff_thresh):
+    """ Applies energy and flux thresholds to calculate SEP event quantities:
             Threshold crossing time (onset)
             Peak Flux in date range specified by user
             Time of Peak Flux
             Rise Time (onset to peak flux)
             Event End Time (below 0.85*threshold for 3 data points, e.g 15 min)
             Duration (onset to end)
-       If the detect_prev_event flag is set to true and the threshold is crossed
-       on the first time in the specified date range, this indicates that fluxes
-       were already high due to a previous event. The code will look for the
-       flux to drop below threshold and then increase above threshold again
-       during the specified time period. If this flag is not set, then the code
-       simply take the first threshold crossing as the start of the SEP event.
-
-       If the two_peaks flag is set to true, the code will use the first
-       identified threshold crossing as the start time. A second threshold
-       crossing will be allowed. The event end will be determined as the drop
-       below threshold after the second threshold crossing. The duration will
-       be the end time - first threshold crossing time. The peak will be
-       determined as the largest flux value found in both threshold crossings.
-       The peak and rise times will be calculated from the first threshold
-       crossing time.
+        If the detect_prev_event flag is set to true and the threshold is crossed
+        on the first time in the specified date range, this indicates that fluxes
+        were already high due to a previous event. The code will look for the
+        flux to drop below threshold and then increase above threshold again
+        during the specified time period. If this flag is not set, then the code
+        simply take the first threshold crossing as the start of the SEP event.
+        
+        If the two_peaks flag is set to true, the code will use the first
+        identified threshold crossing as the start time. A second threshold
+        crossing will be allowed. The event end will be determined as the drop
+        below threshold after the second threshold crossing. The duration will
+        be the end time - first threshold crossing time. The peak will be
+        determined as the largest flux value found in both threshold crossings.
+        The peak and rise times will be calculated from the first threshold
+        crossing time.
+        
+        NOTE: integral_fluxes is a "historic" name and may actual contain
+        integral or differential fluxes. They correspond to the flux channels
+        for which a threshold has been applied.
+        
+        INPUTS:
+        energy_thresholds (float 1xn array) - energy channels for which a
+            threshold is applied
+        flux_thresholds (float 1xn array) - flux thresholds to apply
+        dates (datetime 1xm array)
+        integral_fluxes (float nxm array) - fluxes only associated with the
+            energy channels in energy_thresholds
+        detect_prev_event (boolean)
+        two_peaks (boolean)
+        diff_thresh (boolean) - indicates if the energy_threshold and
+            flux_threshold refer to a differential channel (True)
+            
+        OUTPUTS:
+        crossing_time (datetime 1xn array) - crossing times for n applied thresholds
+        peak_flux (float 1xn array) - max flux value between start and end time
+        peak_time (datetime 1xn array)
+        rise_time (timedelta 1xn array) - (peak_time - crossing_time)
+        event_end_time (datetime 1xn array)
+        duration (timedelta 1xn arrat) - (event_end_time - crossing_time)
+        
     """
     nthresh = len(flux_thresholds)
     crossing_time = []
@@ -928,7 +1201,7 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
     event_end_time = []
     duration = []
     for i in range(nthresh):
-        ct,pf,pt,rt,eet,dur = integral_threshold_crossing(energy_thresholds[i],
+        ct,pf,pt,rt,eet,dur = calculate_threshold_crossing(energy_thresholds[i],
                         flux_thresholds[i],dates,integral_fluxes[i])
         if detect_prev_event and ct == dates[0]:
             print("Threshold may have been high due to previous event."
@@ -937,7 +1210,7 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
             last_date = dates[len(dates)-1]
             tmp_dates, tmp_fluxes = datasets.extract_date_range(eet,last_date,
                                 dates,integral_fluxes)
-            ct,pf,pt,rt,eet,dur = integral_threshold_crossing(\
+            ct,pf,pt,rt,eet,dur = calculate_threshold_crossing(\
                             energy_thresholds[i],flux_thresholds[i],
                             tmp_dates,tmp_fluxes[i])
 
@@ -948,7 +1221,7 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                 last_date = dates[len(dates)-1]
                 tmp_dates, tmp_fluxes = datasets.extract_date_range(eet,
                                     last_date,dates,integral_fluxes)
-                ct2,pf2,pt2,rt2,eet2,dur2 = integral_threshold_crossing(\
+                ct2,pf2,pt2,rt2,eet2,dur2 = calculate_threshold_crossing(\
                                 energy_thresholds[i],flux_thresholds[i],
                                 tmp_dates,tmp_fluxes[i])
 
@@ -970,17 +1243,18 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
         event_end_time.append(eet)
         duration.append(dur)
         mod = '>'
-        units = 'pfu'
-        if is_diff_thresh:
+        units = flux_units_integral #'pfu'
+        if diff_thresh:
             mod = ''
-            units = '1/[MeV cm^2 s sr]'
+            units = flux_units_differential #'1/[MeV cm^2 s sr]'
         print(
                'Flux      Threshold    Time Crossed         Peak Flux'
                 + '            Peak Time' + '            Rise Time'
                 + '  End Time' + '            Duration'
              )
         print(
-                mod + str(energy_thresholds[i]) + ' MeV   '
+                mod + str(energy_thresholds[i]) + ' '
+                + energy_units + '   '
                 + str(flux_thresholds[i]) + ' ' + units + '       '
                 + str(crossing_time[i]) + '  '+ str(peak_flux[i]) + '   '
                 + str(peak_time[i]) + '  ' + str(rise_time[i]) + '    '
@@ -991,14 +1265,41 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
 
 def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                 crossing_time, event_end_time, showplot):
-    """Calculate the peak associated with the initial SEP onset. This subroutine
+    """ Calculate the peak associated with the initial SEP onset. This subroutine
         searches for the rollover that typically occurs after the SEP onset.
         The peak value will be specified as the flux value at the rollover
         location.
+        If the event peak is larger than 500/energy channel (e.g. for >10
+        MeV, if peak is above 50 pfu), then the rollover will be found
+        starting from the threshold crossing time.
+        If the event is a "weaker" event with a maximum below the value above,
+        the rollover location will be identified starting from 12 hours
+        prior to threshold crossing time. The onset peak time may be BEFORE
+        THE EVENT START TIME with this logic, but is more independent of the
+        level of the threshold and more linked to the behavior of the flux
+        time profile.
         The onset peak may provide a more physically appropriate comparison
         with models.
         If code cannot identify onset peak, it will return a value of 0 on
         the date None.
+        
+        INPUTS:
+        experiment (string) e.g. GOES-13
+        energy_thresholds (float 1xn array) - energy channels for which thresholds
+            are applied
+        dates (datetime 1xm array) - dates associated with flux time profile
+        integral_fluxes (float nxm array) - fluxes for each energy channel for
+            which a threshold is applied; each is the same length as dates
+        crossing_time (datetime 1xn array) - threshold crossing times for each energy
+            channel for which a threshold is applied
+        event_end_time (datetime 1xn array) - end times for each energy channel for which
+            a threshold is applied
+        showplot (bool)
+        
+        OUTPUTS:
+        onset_date (datetime 1xn array) - time of onset peak
+        onset_peak (float 1xn array) - flux value of onset peak
+        
     """
     nthresh = len(energy_thresholds)
     smooth_flux = [[]]*nthresh
@@ -1026,13 +1327,14 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         #Find the first positive flux value in the array
         #Most likely smooth_flux[i][0]
         normindx = np.nonzero(smooth_flux[i])
-        normfac = smooth_flux[i][normindx[0][0]]
+        normfac = np.amax(smooth_flux[i][normindx[0]])
 
         run_deriv[i] = [0] #normalized by constant factor
         run_deriv_norm[i] = [0] #normalized by changing flux
         for j in range(1,nwin):
             deriv = smooth_flux[i][j] - smooth_flux[i][0]
             run_deriv[i].append(deriv/normfac)
+            #run_deriv_norm[i].append(deriv/normfac)
             if not zeroes:
                 #normalize difference by the flux
                 run_deriv_norm[i].append(deriv/smooth_flux[i][0])
@@ -1043,6 +1345,7 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         for j in range(nwin,len(smooth_flux[i])):
             deriv = smooth_flux[i][j] - smooth_flux[i][j-nwin]
             run_deriv[i].append(deriv/normfac)
+            #run_deriv_norm[i].append(deriv/normfac)
             if not zeroes:
                 run_deriv_norm[i].append(deriv/smooth_flux[i][j-nwin])
             else:
@@ -1072,13 +1375,20 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
 
         #Get value of maximum positive derivative in first 18 hours
         #record where deriv first goes negative
+        #For an event that just barely crosses threshold, look for
+        #onset peak prior to threshold crossing
+        #For very large event, begin looking after threshold crossing
+        buffer = 0
+        if np.amax(smooth_flux[i]) < 500/energy_thresholds[i]:
+            buffer = 12
+        
         index_cross = 0
         index_stp = 0
         last_date = crossing_time[i] + datetime.timedelta(hours=18)
         if last_date > event_end_time[i]:
             last_date = event_end_time[i]
         for j in range(len(dates)):
-            if dates[j] <= crossing_time[i]:
+            if dates[j] <= (crossing_time[i] - datetime.timedelta(hours=buffer)):
                 index_cross = j
             if dates[j] <= last_date:
                 index_stp = j
@@ -1178,8 +1488,8 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                     first_neg = True
             if deriv_thresh > 0:
                 print("calculate_onset_peak: Could not locate onset peak for "
-                    +  str(energy_thresholds[i])
-                    + " MeV. Setting onset peak and date to None.")
+                    +  str(energy_thresholds[i]) + " " + energy_units
+                    + ". Setting onset peak and date to None.")
                 onset_peak[i] = None
                 onset_date[i] = None
                 first_neg = True #exit loop
@@ -1190,9 +1500,9 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         onset_peak[i] = max(integral_fluxes[i][max_index:index_neg])
         onset_index = np.argmax(integral_fluxes[i][max_index:index_neg])
         onset_date[i] = dates[max_index + onset_index]
-        print("Found onset peak for " + str(energy_thresholds[i]) \
-            + " MeV: " + str(onset_peak[i]) + ", Onset peak time: " \
-            + str(onset_date[i]))
+        print("Found onset peak for " + str(energy_thresholds[i]) + " "
+            + energy_units + ": " + str(onset_peak[i])
+            + ", Onset peak time: " + str(onset_date[i]))
 
         #Check and see if the event continues rising at a similar rate to the
         #onset peak. If so, it's likely a little dip on the way up.
@@ -1218,12 +1528,12 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         deriv_diff_norm = (deriv_ave_pre_norm - deriv_ave_post_norm)/deriv_ave_pre_norm
         deriv_diff_norm = abs(deriv_diff_norm)
 
-        print("deriv_ave_pre: "+str(deriv_ave_pre)+" deriv_ave_post: "\
-            +str(deriv_ave_post)+" deriv_diff: "+str(deriv_diff)\
-            +" starting at date " + str(dates[index_neg]))
-        print("deriv_ave_pre_norm: "+str(deriv_ave_pre_norm)+" deriv_ave_post_norm: "\
-            +str(deriv_ave_post_norm)+" deriv_diff_norm: "+str(deriv_diff_norm)\
-            +" starting at date " + str(dates[index_neg]))
+        #print("deriv_ave_pre: "+str(deriv_ave_pre)+" deriv_ave_post: "\
+        #    +str(deriv_ave_post)+" deriv_diff: "+str(deriv_diff)\
+        #    +" starting at date " + str(dates[index_neg]))
+        #print("deriv_ave_pre_norm: "+str(deriv_ave_pre_norm)+" deriv_ave_post_norm: "\
+         #   +str(deriv_ave_post_norm)+" deriv_diff_norm: "+str(deriv_diff_norm)\
+         #   +" starting at date " + str(dates[index_neg]))
         #if the two differ by 10% or less or deriv is bigger
         #going forward
         if deriv_diff <= 0.1 or deriv_diff_norm <= 0.1\
@@ -1247,8 +1557,8 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
                     onset_peak[i] = max(integral_fluxes[i][index_neg:index_neg2])
                     onset_index = np.argmax(integral_fluxes[i][index_neg:index_neg2])
                     onset_date[i] = dates[index_neg + onset_index]
-                    print("Recalculated onset peak for " + str(energy_thresholds[i]) \
-                        + " MeV: " + str(onset_peak[i]) + ", Onset peak time: " \
+                    print("Recalculated onset peak for " + str(energy_thresholds[i]) + " " + energy_units
+                        + ": " + str(onset_peak[i]) + ", Onset peak time: "
                         + str(onset_date[i]))
 
 
@@ -1281,10 +1591,27 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
 
 def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
                 integral_fluxes, crossing_time):
-    """Uses the integral fluxes (either input or estimated from differential
-       channels) and all the energy and flux thresholds set in the main program
-       to calculate SEP event quantities specific to the UMASEP model.
+    """ Uses the integral fluxes (either input or estimated from differential
+        channels) and all the energy and flux thresholds set in the main program
+        to calculate SEP event quantities specific to the UMASEP model.
             Flux at threshold crossing time + 3, 4, 5, 6, 7 hours
+            
+        INPUTS:
+        energy_thresholds (float 1xn array) - energy channels for which thresholds
+            are applied
+        flux_thresholds (float 1xn array) - flux thresholds that are applied
+        dates (datetime 1xm array) - dates associated with flux time profile
+        integral_fluxes (float nxm array) - fluxes for each energy channel for
+            which a threshold is applied; each is the same length as dates
+        crossing_time (datetime 1xn array) - threshold crossing times for each energy
+            channel for which a threshold is applied
+            
+        OUTPUTS:
+        proton_delay_times (datetime nx5 array) - times 3, 4, 5, 6, 7 hours
+            after crossing time for n thresholds
+        proton_flux (float nx5 array) - value of flux at each delay time and for
+            each threshold
+        
     """
     nthresh = len(flux_thresholds)
     proton_flux = []
@@ -1338,21 +1665,6 @@ def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
                             integral_fluxes[i][save_index - 1])/2.
             save_dates[k] = dates[save_index]
 
-#            print(
-#                   'Flux      Threshold    Time Crossed         '+
-#                   'Target Delayed Time       Actual Delayed Time    ' +
-#                   'Proton Flux at Delay'
-#                  )
-#            print(
-#                    '>' + str(energy_thresholds[i]) + ' MeV   '
-#                    + str(flux_thresholds[i]) + ' pfu       '
-#                    + str(crossing_time[i]) + '  '
-#                    + str(delay_times[i][k]) + '  '
-#                    + str(save_dates[k]) + '  '
-#                    + '   ' + str(save_flux[k])
-#                )
-
-
         proton_flux.append(save_flux)
         proton_delay_times.append(save_dates)
 
@@ -1362,12 +1674,33 @@ def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
 
 def report_threshold_fluences(experiment, flux_type, model_name,
                 energy_thresholds, energy_bins, sep_dates, sep_fluxes):
-    """Report fluences for specified thresholds, typically >10, >100 MeV.
-       These values are interesting to use for comparison with literature and
-       for quantifying event severity.
-       If the user has input integral channels, then this information has also
-       been saved in the output fluence file. If the user selected differential
-       channels, then these values come from the estimated integral fluxes.
+    """ Report fluences for specified thresholds, typically >10, >100 MeV.
+        These values are interesting to use for comparison with literature and
+        for quantifying event severity.
+        
+        Assumes that energy_thresholds are referring to integral energy
+        channels.
+        Assumes that sep_fluxes are integral or estimated integral
+        fluxes for each energy channel in energy_thresholds.
+        If the input fluxes were differential, then this subroutine only
+        works correctly for integral energy_thresholds and matching sep_fluxes
+        that were estimated for each integral channel in energy_thresholds.
+        
+        INPUTS:
+        experiment (string)
+        flux_type (string) - integral or differential
+        model_name (string) - name of model or experiment if experiment = "user"
+        energy_thresholds (float 1xn array) - integral energy channels for
+            which a threshold has been applied
+        energy_bins (float 2xm array) - energy bins for input fluxes
+        sep_dates (datetime 1xp array) - time profile dates trimmed to
+            start and stop of SEP event
+        sep_fluxes (float mxp array) - flux time profiles for each energy
+            channel trimmed to start and end dates
+            
+        OUTPUTS:
+        integral_fluence (float 1xn array) - event fluence for all
+            integral energy channels for which a threshold was applied
     """
     tmp_energy_bins = []
     nthresh = len(energy_thresholds)
@@ -1388,16 +1721,20 @@ def report_threshold_fluences(experiment, flux_type, model_name,
                     sep_integral_fluxes[i,:] = sep_fluxes[j,:]
 
     #Generate integral fluence spectrum for only the integral channels
+    #If input fluxes in sep_fluxes are differential, convert them to
+    #estimated integral fluxes in get_fluence_spectrum
     #that were specified with thresholds and in the same index order
+    #Returns fluences multiplied by 4pi
+    #get_fluence_spectrum(experiment, flux_type, options, doBGSub,
+    #            model_name, energy_threshold,
+    #            flux_threshold, sep_dates, sep_fluxes, energy_bins,
+    #            diff_thresh, save_file)
+    #No output file is written, so only the sep_dates, sep_integral_fluxes,
+    #and tmp_energy_bins arguments are used for anything
     integral_fluence, integral_energies = get_fluence_spectrum(experiment,
-                    '', False, #Filler values for filename b/c file not saved
-                    "integral",model_name, 0, 0,sep_dates, sep_integral_fluxes,
-                    tmp_energy_bins, False, False) #always integral; don't save file
-
-    #for i in range(nthresh):
-    #    integral_fluence[i] = integral_fluence[i]*4.*math.pi
-    #    print("Event-integrated fluence for >" + str(integral_energies[i])
-    #        + " MeV: " + str(integral_fluence[i]) + " 1/[cm^2]")
+                    "integral", '', False, #Filler values for filename b/c file not saved
+                    model_name, 0, 0,sep_dates, sep_integral_fluxes,
+                    tmp_energy_bins, False, False) #diff_thresh; savefile
 
     return integral_fluence
 
@@ -1409,6 +1746,30 @@ def save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
         the same values in the time series.
         If the input data set was in differential energy bins, then this file
         contains the estimated integral fluxes calculated in this program.
+        
+        Writes out csv file with dates in first column and integral fluxes
+        for which a threshold was applied in the remaining columns. Writes
+        fluxes for full time period specified by user.
+        Any differential channels for which a threshold was applied are not
+        included in this file.
+        
+        INPUTS:
+        experiment (string)
+        flux_type (string) - integral or differential
+        options (string array) - S14, Bruno2017, uncorrected options for GOES data
+        doBGSub (boolean) - indicates if background subtration is performed
+        model_name (string) - name of model or user experiment, if relevant
+        energy_thresholds (float 1xn array) - energy channels for which
+            flux thresholds are applied
+        crossing_time (datetime 1xn array) - start times of sep event for each
+            energy channel (energy_thresolds) for which a threshold was applied
+        dates (datetime 1xm array) - dates for flux time profile
+        integral_fluxes (float nxm array) - flux time profiles for each energy channel
+            for which a threshold was applied; assumed to be (estimated)integral fluxes
+        
+        OUTPUTS:
+        No outputs except output file named e.g.
+            integral_fluxes_GOES-13_differential_2012_3_7.csv
     """
     nthresh = len(energy_thresholds)
     ndates = len(dates)
@@ -1443,12 +1804,15 @@ def save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
     print('Writing integral flux time series to file --> ' + foutname)
     fout = open(foutname,"w+")
     if flux_type == "integral":
-        fout.write('#Integral fluxes in units of 1/[cm^2 s sr] \n')
+        fout.write('#Integral fluxes in units of '
+                    + flux_units_integral + '\n')
     if flux_type == "differential":
-        fout.write('#Estimated integral fluxes in units of 1/[cm^2 s sr] \n')
+        fout.write('#Estimated integral fluxes in units of '
+                    +flux_units_differential + '\n')
 
-    fout.write('#Columns headers indicate low end of integral channels in MeV;'
-                    ' e.g. >10 MeV \n')
+    fout.write('#Columns headers indicate low end of integral channels in '
+                    + energy_units + ';'
+                    ' e.g. >10 ' + energy_units +'\n')
     fout.write('#Date')
     for thresh in energy_thresholds: #build header
         fout.write(',' + str(thresh))
@@ -1463,21 +1827,71 @@ def save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
 
 
 
+
 def print_values_to_file(experiment, flux_type, options, doBGSub,
                 model_name, startdate, energy_thresholds,
                 flux_thresholds, crossing_time, onset_peak, onset_date,
                 peak_flux, peak_time, rise_time, event_end_time, duration,
                 threshold_fluences, is_diff_thresh, umasep, umasep_times,
                 umasep_fluxes):
-    """Write all calculated values to file for all thresholds. Event-integrated
-       fluences for >10, >100 MeV (and user-defined threshold) will also be
-       included. Writes out file with name e.g.
-       output/sep_values_experiment_fluxtype_YYYY_M_D.csv
-       If the UMASEP option was selected, add on the proton values calculated
-       at the UMASEP Ts + Xhr time points.
-       is_diff_thresh indicates whether the user input a differential
-       threshold. If so, the user threshold bin(s) will refer to differential
-       fluxes.
+    """ Write all calculated values to file for all thresholds. Event-integrated
+        fluences for >10, >100 MeV (and user-defined threshold) will also be
+        included. Writes out file with name e.g.
+        output/sep_values_experiment_fluxtype_YYYY_M_D.csv
+        If the UMASEP option was selected, add on the proton values calculated
+        at the UMASEP Ts + Xhr time points.
+        is_diff_thresh indicates whether the user input a differential
+        threshold. If so, the user threshold bin(s) will refer to differential
+        fluxes.
+        
+        Writes all values out to a csv file. These values and more are also
+        written out to json file in a different subroutine.
+        
+        INPUTS:
+        experiment (string)
+        flux_type (string) - integral or differential
+        options (string array) - can be S14, Bruno2017, uncorrected and apply
+            to GOES data
+        doBGSub (boolean) - indicates if background subtraction performed
+        model_name (string) - model or experiment name if experiment = "user"
+        startdate (datetime) - start date of time period entered by user
+        energy_thresholds (float 1xn array) - all energy channels for which
+            a flux threshold was applied (both integral and differential)
+        flux_thresholds (float 1xn array) - flux thresholds for each of the
+            energy channels in energy_thresholds
+        crossing_time (datetime 1xn array) - SEP event start time for each
+            applied threshold
+        onset_peak (float 1xn array) - onset peak for each applied threshold
+        onset_date (datetime 1xn array) - onset peak time for each applied
+            threshold
+        peak_flux (float 1xn array) - maximum flux for each applied threshold
+        peak_time (datetime 1xn array) - time of maximum flux for each applied
+            threshold
+        rise_time (timedelta 1xn array) - start time to max flux
+        event_end_time (datetime 1xn array) - end time for each applied threshold
+        duration (timedelta 1xn array) - end time minus start time
+        threshold_fluences (float 1xn array) - event fluence for each energy
+            channel in energy_thresholds
+        is_diff_thresh (bool 1xn array) - indicates if threshold applied to
+            integral or differential channel, e.g. if channel in energy_thresholds
+            is an integral or differential channel
+        umasep (boolean) - indicate if user called UMASEP flag
+        umasep_times (datetime 5xn array) - times 3, 4, 5, 6, 7, 9 hours after
+            crossing time for each applied threshold
+        umasep_fluxes (float 5xn) - fluxes at each of those times for each
+            applied threshold
+            
+        OUTPUTS:
+        year (integer) - year of either SEP event or startdate (if no
+            thresholds crossed)
+        month (integer) - month of either SEP event or startdate (if no
+            thresholds crossed)
+        day (integer) - day of either SEP event or startdate (if no
+            thresholds crossed)
+        Output file named e.g.
+            output/sep_values_experiment_fluxtype_YYYY_M_D.csv
+        
+        
     """
     nthresh = len(energy_thresholds)
     numa = 0
@@ -1522,10 +1936,16 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
     print('Writing SEP values to file --> ' + foutname)
     fout = open(foutname,"w+")
     #Write header
-    if flux_type == "integral":
-        fout.write('#Energy Threshold [MeV],Flux Threshold [pfu],Start Time,'
-            + 'Onset Peak Flux [pfu],Onset Time,Max Flux [pfu]'
-            +',Max Time,Rise Time,End Time,Duration')
+    fout.write('#For thresholds that depend on integral fluxes (annotated '
+            'with >) Flux Threshold, Onset Peak Flux, and Max Peak Flux '
+            'have units of [' + flux_units_integral
+            +'] and Bin Fluence has units of ['
+            + fluence_units_integral + '].\n')
+    fout.write('#For thresholds that depend on differential fluxes (no '
+            '>) Flux Threshold, Onset Peak Flux and Max Peak Flux '
+            'have units of [' + flux_units_differential
+            + '] and Bin Fluence has units of ['
+            + fluence_units_differential + '].\n')
     if flux_type == "differential":
         fout.write('#For thresholds that depend on integral fluxes (annotated '
                     'with >) - differential fluxes were converted '
@@ -1536,16 +1956,15 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
                         'using the energy bin with low edge specified in the '
                         'Energy Threshold column and differential flux in the '
                         'Flux Threshold column to define the SEP quantities.\n')
-            fout.write('#Onset Peak Flux and Max Flux have units of '
-                        '1/[MeV cm^2 s sr] for the differential thresholds.\n')
-        fout.write('#Energy Threshold [MeV],Flux Threshold [pfu],'
-            + 'Start Time,Onset Peak Flux 1/[cm2 s sr],Onset Time,'
-            'Max Flux 1/[cm2 s sr],Max Time,Rise Time,End Time,Duration')
+            
+    fout.write('#Energy Threshold [' + energy_units
+            + '],Flux Threshold,Start Time,Onset Peak Flux,Onset Time,'
+            'Max Flux,Max Time,Rise Time,End Time,Duration, Bin Fluence')
 
-    fout.write(',Bin Fluence')
     if umasep:
         for jj in range(numa):
-            fout.write(',UMASEP Delay (hr),Flux pfu')
+            fout.write(',UMASEP Delay [hr],Flux ['
+                        + flux_units_integral + ']')
     fout.write('\n')
     nthresh = len(energy_thresholds)
 
@@ -1582,7 +2001,17 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
 
 
 def error_check_options(experiment, flux_type, options, doBGSub):
-    """Make sure the selected options make sense for the experiment."""
+    """ Make sure the selected options make sense for the experiment.
+        INPUTS:
+        experiment (string)
+        flux_type (string) - integral or differential
+        options (string array) - various options applied to GOES data
+        doBGSub (boolean) - indicates if background subtraction to be
+            performed
+        
+        OUTPUTS:
+        no outputs by system exit if error found
+    """
     if "S14" in options and experiment[0:4] != "GOES":
         sys.exit("Sandberg et al. (2014) effective energies (S14) may only "
             "be applied to GOES data.")
@@ -1622,12 +2051,29 @@ def error_check_options(experiment, flux_type, options, doBGSub):
 
 
 def error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh):
-    """Check that all of the user inputs make sense and fall within bounds.
+    """ Check that all of the user inputs make sense and fall within bounds.
+        
+        INPUTS:
+        startdate (datetime) - start of time period entered by user
+        enddate (datetime) - end of time period entered by user
+        experiment (string) - name of experiment specifed by user
+        flux_type (string) - integral or differential
+        is_diff_thresh (bool 1xn array) - where n indicates the number of
+            thresholds input by the user, e.g. "30,1;50,1" n=2
+            Indicates if the user-input thresholds apply to integral or
+            differential channels
+            
+        OUTPUTS:
+        None, but system exit if error found
     """
     #CHECKS ON INPUTS
     if (enddate < startdate):
         sys.exit('End time before start time! Enter a valid date range. '
                 'Exiting.')
+                
+    if flux_type == "":
+        sys.exit('User must indicate whether input flux is integral or '
+                'differential. Exiting.')
 
     if (experiment == "SEPEM" and flux_type == "integral"):
         sys.exit('The SEPEM (RSDv2) data set only provides differential fluxes.'
@@ -1677,6 +2123,17 @@ def sort_bin_order(all_fluxes, energy_bins):
         to go in increasing order. If differential fluxes were input,
         this reordering will ensure that integral fluxes are
         estimated properly.
+        
+        INPUTS:
+        all_fluxes (float nxm array) - fluxes for n energy channels
+            and m time points
+        energy_bins (float 2xn array) - energy bins for each of the
+            energy channels
+            
+        OUTPUTS:
+        sort_fluxes (float nxm array) - same as above, but sorted so
+            that the lowest energy channel is first and highest is last
+        sort_bins (float 2xn array) - same as above, but sorted
     """
 
     nbins = len(energy_bins)
@@ -1702,52 +2159,29 @@ def sort_bin_order(all_fluxes, energy_bins):
     return sort_fluxes, sort_bins
 
 
-######## MAIN PROGRAM #########
-def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
-        user_file, showplot, saveplot, detect_prev_event, two_peaks, umasep,
-        str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate,
-        nointerp=False):
-    """"Runs all subroutines and gets all needed values. Takes the command line
-        areguments as input. Written here to allow code to be imported into
-        other python scripts.
-        str_startdate, str_enddate, experiment, flux_type are strings.
-        model_name is a string. If model is "user", set model_name to describe
-        your model (e.g. MyModel), otherwise set to ''.
-        user_file is a string. Defaul is ''. If user is selected for experiment,
-        then name of flux file is specified in user_file.
-        showplot, detect_prev_event, two_peaks, and umasep are booleans.
-        Set str_thresh to be '100,1' for default value or modify to add your own
-        threshold.
-        nointerp (boolean) - set to true to fill in negative fluxes with None
-            value rather than filling in via linear interpolation in time
+####TOOLS#####
+def get_input_thresholds(str_thresh):
+    """ Get user specified input thresholds,
+        INPUTS:
+        str_thresh (string) input by user with thresholds
+            separated by semi-colons
         
-        This routine will generate boolean flags that indicate if the event
-        starts at the very first time point, ends on the very last time point,
-        has a duration less than 12 hours, or has a >100 MeV onset more than
-        24 hours after the >10 MeV onset. These flags intend to help the user
-        running the program in batch mode if a certain event might have
-        incorrect timing.
+        OUTPUTS:
+        input_threshold (2xn floats) array as
+            [[binLow, flux threshold],
+             [bin Low, fluxthreshold],
+             ...]
+        
+        is_diff_thresh (bool array)
     """
-    #Define important flags here
-    FirstStart = False #threshold crossed on first data point
-    LastEnd = False #event ends on last data point instead of threshold
-    ShortEvent = False #Start to end less than 12 hours, perhaps 2 peak issue
-    LateHundred = False #>100 MeV threshold crossed >24 hours after >10 MeV
+    input_threshold = []
+    is_diff_thresh = []
+    if str_thresh == "":
+        return input_threshold, is_diff_thresh
     
-    #Check for empty dates
-    if (str_startdate == "" or str_enddate == ""):
-        sys.exit('You must enter a valid date range. Exiting.')
-
-    #PROCESS INPUTS
-    options = options.split(";")
-    user_fname[0] = user_file #input as argument, default is 'tmp.txt'
-
-    str_thresh = str_thresh.strip().split(";")
     nin_thresh = len(str_thresh)
     is_diff_thresh = [False]*nin_thresh #True if differential flux threshold
-    input_threshold = []
     for i in range(nin_thresh):
-        str_thresh[i] = str_thresh[i].strip().split(",")
         if "-" in str_thresh[i][0]:
             is_diff_thresh[i] = True
             thresh0 = str_thresh[i][0].split("-")
@@ -1756,21 +2190,64 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         else:
             input_threshold.append([float(str_thresh[i][0]), \
                                     float(str_thresh[i][1])])
-        
-    if len(str_startdate) == 10: #only YYYY-MM-DD
-        str_startdate = str_startdate  + ' 00:00:00'
-    if len(str_enddate) == 10: #only YYYY-MM-DD
-        str_enddate = str_enddate  + ' 00:00:00'
-    startdate = datetime.datetime.strptime(str_startdate, "%Y-%m-%d %H:%M:%S")
-    enddate = datetime.datetime.strptime(str_enddate, "%Y-%m-%d %H:%M:%S")
+                                    
+    return input_threshold, is_diff_thresh
 
-    #PERFORM CHECKS AND VALIDATE INPUTS
-    error_check_options(experiment, flux_type, options, doBGSub)
-    error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh)
-    datasets.check_paths()
+
+def str_to_datetime(date):
+    """ String date to datetime
+        INPUTS:
+        date (string) - date as "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
+        
+        OUTPUTS:
+        dt (datetime) - datetime conversion of date
+    """
+    if len(date) == 10: #only YYYY-MM-DD
+        date = date  + ' 00:00:00'
+    dt = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+    return dt
+
+
+def read_in_flux_files(experiment, flux_type, user_file, model_name, startdate,
+        enddate, str_startdate, str_enddate, str_bgstartdate, str_bgenddate,
+        options, doBGSub, nointerp, showplot, saveplot):
+    """ Read in the appropriate data or user files. Performs
+        background subtraction, if requested. Trims to dates
+        between start time and end time. Interpolates bad
+        points with linear interpolation in time.
+        
+        INPUTS:
+        experiment (string)
+        flux_type (string) - integral, differential
+        user_file (string) - file containing user's flux time profiles
+        model_name (string) - model name or experiment if experiment = "user"
+        startdate (datetime) - start date of time period entered by user
+        enddate (datetime) - end date of time period entered by user
+        str_startdate (string) - start date in string form
+        str_enddate (string) - end date in string form
+        str_bgstartdate (string) - start date of time period to be used for
+            background subtraction
+        str_bgenddate (string) - end date of time period to be used or
+            background subtraction
+        options (string array) - options that could be applied
+        doBGSub (bool) - indicate if background subtraction to be performed
+        nointerp (bool) - indicates if user doesn't want to do linear
+            interpolation in time for negative of bad flux values
+        showplot (bool)
+        saveplot (bool) - save plots automatically to "plots" directory
+        
+        OUTPUTS:
+        dates (datetime 1xm array) - times in flux time profile trimmed
+            between startdate and enddate
+        fluxes (numpy float nxm array) - fluxes for n energy channels and m
+            time steps; these are background subtracted fluxes if background
+            subtraction was selected.
+        energy_bins (array nx2 for n thresholds)
+    """
+    
     filenames1, filenames2, filenames_orien = datasets.check_data(startdate,
                                     enddate, experiment, flux_type, user_file)
-
+                                    
     #read in flux files
     if experiment != "user":
         all_dates, all_fluxes, west_detector =datasets.read_in_files(experiment,
@@ -1793,35 +2270,60 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         #Extract the date range specified by the user
         dates, fluxes = datasets.extract_date_range(startdate, enddate,
                                     bgdates, sepfluxes)
-        if nointerp:
-            #Set bad data points (negative flux or None) to None
-            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins,nointerp)
-        else:
-            #Remove bad data points (negative flux or None) w/ linear interp in time
-            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
 
     #NO BACKGROUND SUBTRACTION
     if not doBGSub:
         #Extract the date range specified by the user
         dates, fluxes = datasets.extract_date_range(startdate, enddate,
                                 all_dates, all_fluxes)
-        if nointerp:
-            #Set bad data points (negative flux or None) to None
-            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins,nointerp)
-        else:
-            #Remove bad data points (negative flux or None) w/ linear interp in time
-            fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
-
-
+    
+    if nointerp:
+        #Set bad data points (negative flux or None) to None
+        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins,nointerp)
+    else:
+        #Remove bad data points (negative flux or None) w/ linear interp in time
+        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
+        
     if len(dates) <= 1:
         sys.exit("The specified start and end dates were not present in the "
                 "specified input file. Exiting.")
-
-    #Define thresholds to use for start and end of event
+    
+    return dates, fluxes, energy_bins
+      
+      
+      
+def define_thresholds(input_threshold, is_diff_thresh, str_thresh, energy_bins):
+    """ Two operational thresholds plus any thresholds
+        specified by the user.
+        
+        INPUTS:
+        input_threshold (float 2xn array) - thresholds specified by user e.g.
+            [[30,1],[50,1]]
+        
+        is_diff_thresh (bool 1xn array) - indicates whether the input threshold
+            is a differential channel
+            
+        str_thresh (string) - threshold as input by user in command line e.g.
+            "30,1;50,1;4.9-8.3,10"
+            
+        OUTPUTS:
+        energy_thresholds (float 1x(n+2) array) - e.g. [10,100,30,50,4.9]
+            energy channels for which a threshold will be applied. Includes
+            the two operational thresholds plus any thresholds entered by
+            the user
+        
+        flux_thresholds (float 1x(n+2) array) - e.g. [10,1,1,1,10]
+            flux thresholds to be applied to the energy channels in
+            energy_thresholds. Includes the two operational thresholds
+            plus any thresholds entered by the user
+        
+    """
     energy_thresholds = [10,100] #MeV; flux for particles of > this MeV
     flux_thresholds = [10,1] #pfu; exceed this level of intensity
-    for i in range(nin_thresh):
-        if input_threshold[i][0] != 100 or input_threshold[i][1] != 1:
+    
+    if input_threshold != []:
+        nin_thresh = len(input_threshold)
+        for i in range(nin_thresh):
             if not is_diff_thresh[i]:
                 energy_thresholds.append(input_threshold[i][0])
                 flux_thresholds.append(input_threshold[i][1])
@@ -1835,71 +2337,89 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         flux_thresholds.append(1) #Used for UMASEP-30 development
         energy_thresholds.append(50)
         flux_thresholds.append(1) #Used for UMASEP-50 development
+                 
+    return energy_thresholds, flux_thresholds
+                                    
 
-    #Estimate or select integral fluxes corresponding the energy_thresholds
-    integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
-                    flux_thresholds, energy_thresholds, energy_bins, options)
-
-    #Calculate SEP event quantities for energy and flux threshold combinations
-    #integral fluxes are used to define event start and stop
-    #Calculate SEP values for all thresholds, however:
-    #Operationally, >100 MeV fluxes above 1 pfu are used to define an SEP event
-    #that has radiation dose signifigance for astronauts behind shielding.
-    crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration=\
-        calculate_event_info(energy_thresholds,flux_thresholds, dates,
-                    integral_fluxes, detect_prev_event, two_peaks, False)
-                    #Always integral fluxes here, so False
-
-    #Calculate onset peak for all thresholds
-    onset_date, onset_peak = calculate_onset_peak(experiment, energy_thresholds,
-                dates, integral_fluxes, crossing_time, event_end_time, showplot)
-
-    #Calculate times used in UMASEP
-    umasep_times =[]
-    umasep_fluxes=[]
-    if umasep:
-        umasep_times, umasep_fluxes = calculate_umasep_info(energy_thresholds,
-                        flux_thresholds, dates, integral_fluxes, crossing_time)
-
-    #Calculate event-integrated fluences for all thresholds
+def calculate_integral_fluences(experiment, flux_type, options,
+        model_name, doBGSub, startdate, enddate, energy_bins,
+        energy_thresholds, flux_thresholds, dates, fluxes,
+        integral_fluxes,
+        crossing_time, event_end_time, all_threshold_fluences,
+        all_fluence, all_energies):
+    """ Calculate fluence values for all integral energy thresholds
+        between start and end times determined in each channel.
+        This subroutine is only called for the thresholds applied
+        to integral channels.
+        
+        INPUTS:
+        experiment (string)
+        flux_type (string) - integral, differential
+        options (string array) - options that could be applied
+        model_name (string) - model name or experiment if experiment = "user"
+        doBGSub (bool) - indicate if background subtraction to be performed
+        startdate (datetime) - start date of time period entered by user
+        enddate (datetime) - end date of time period entered by user
+        energy_bins (float 2xp array) - energy bins for all of the flux channels
+        energy_thresholds (float 1xn array) - energy channels for which a
+            threshold is applied (at this point, only the integral ones)
+        flux_thresholds (float 1xn array) - flux thresholds applied to
+            the energy channels in energy_thresholds
+        dates (datetime 1xm array) - time points for the flux time profiles
+        fluxes (float pxm array) - flux time profiles for p energy bins and m
+            time steps
+        integral_fluxes (float nxm array) - flux time profiles of integral
+            or estimated integral fluxes for n energy channels and m time steps
+        crossing_time (datetime 1xn array) - SEP event start times for each
+            energy channel with an applied threshold
+        event_end_time (datetime 1xn array) - SEP event end times for each
+            energy channel with an applied threshold
+        all_threshold_fluences (float 1xn array) - fluence values for integral
+            or estimated integral fluxes in the n energy channels for which
+            thresholds were applied
+        all_fluence (float nxp array) - fluence spectrum in the original
+            integral or differential energy channels associated with
+            energy_bins. Fluence calculated between crossing_time and
+            event_end_time, so this is the fluence spectrum associated with
+            the events defined by the thresholds applied to each energy channel
+        all_energies (float 1xp array) - effective energies for energy_bins,
+            defined by sqrt(low bin edge*high bin edge)
+        
+        
+        OUTPUTS:
+        Arrays filled in for the integral thresholds:
+        all_threshold_fluences (float 1xn array) - fluence values for integral
+            or estimated integral fluxes in the n energy channels for which
+            thresholds were applied
+        all_fluence (float nxp array) - fluence spectrum in the original
+            integral or differential energy channels associated with
+            energy_bins. Fluence calculated between crossing_time and
+            event_end_time, so this is the fluence spectrum associated with
+            the events defined by the thresholds applied to each energy channel
+        all_energies (float 1xp array) - effective energies for energy_bins,
+            defined by sqrt(low bin edge*high bin edge)
+        
+    """
     nthresh = len(energy_thresholds)
-    all_threshold_fluences = [0]*nthresh #fluences corresponding to >10, >100 MeV and other thresholded bins
-    all_fluence = np.zeros(shape=(nthresh,len(energy_bins))) #fluence spectrum
-    all_energies = np.zeros(shape=(nthresh,len(energy_bins))) #corresponding energy bin centers
-
-    #######Quality check for >10 and >100######
-    if crossing_time[0] != 0 and crossing_time[1] != 0:
-        if crossing_time[1] - crossing_time[0] > datetime.timedelta(hours=12):
-            LateHundred = True #>100 threshold crossed late after >10 crossed
-    ##########################
-
-
-    #------INTEGRAL THRESHOLDS------
     for i in range(nthresh):
-        #######Quality Checks#######
-        if crossing_time[i] == startdate:
-            FirstStart = True  #threshold crossed on first time point
-        if event_end_time[i] == enddate:
-            LastEnd = True
-        if crossing_time[i] != 0 and event_end_time[i] != 0:
-            if event_end_time[i]-crossing_time[i]<datetime.timedelta(hours=12):
-                ShortEvent = True
-        ############################
         #If no threshold was crossed during specified date range
         if crossing_time[i] == 0:
-            print("The >" + str(energy_thresholds[i]) + " MeV threshold was "
+            print("The >" + str(energy_thresholds[i]) + " "
+                    + energy_units + " " + energy_units + " threshold was "
                      "not crossed during the specified date range. No SEP "
                      "event. Continuing.")
             continue
 
-        #Extract the original fluxes for the SEP start and stop times
+        #Extract the original fluxes trimmed for the SEP start and stop times
         sep_dates, sep_fluxes = datasets.extract_date_range(crossing_time[i],
                              event_end_time[i],dates,fluxes)
 
-        #Calculate fluence spectrum for the SEP event; either differential or
-        #integral as specified by the user
+        #Calculate fluence spectrum for the SEP event.
+        #Fluence spectrum will be of integral fluxes if the original
+        #data set read in was integral; fluence spectrum will be of
+        #differential fluxes if original data set was differential
         print('=====Calculating event fluence for event defined by >'
-                + str(energy_thresholds[i]) + ' MeV, for '
+                + str(energy_thresholds[i]) + ' ' + energy_units + ', for '
                 + str(crossing_time[i]) + ' to ' + str(event_end_time[i]))
         if crossing_time[i] == event_end_time[i]:
             sys.exit("Event start and end time the same (did you set "
@@ -1909,13 +2429,22 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                          options, doBGSub,
                          model_name, energy_thresholds[i], flux_thresholds[i],
                          sep_dates, sep_fluxes, energy_bins, False, True)
-                         #is_diff_thresh False, always integral flux; savefile
+                         #diff_thresh; savefile
+                         #Only thresholds applied to integral flux
+                         #channels are specified so far
+                         #The False indicates the threshold is associated
+                         #with integral channels and has nothing to do
+                         #with whether the fluxes themselves are integral
+                         #or differential
 
         all_fluence[i] = fluence #in native units of experiment
         all_energies[i] = energies
 
         #Always calculate fluences for integral fluxes >10, >100 MeV and
-        #any user input threshold fluences
+        #any user input thresholds applied to integral channels
+        #The fluences produced here are only for integral flux channels
+        #that have had a threshold applied and the fluence is only
+        #for that channel (not a spectrum as calculated above)
         if flux_type == "integral":
             integral_fluence = report_threshold_fluences(experiment, flux_type,
                         model_name, energy_thresholds, energy_bins,
@@ -1936,27 +2465,122 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         #same index order as the energies specified in energy_thresholds
         all_threshold_fluences[i] = integral_fluence[i]
 
-   
-    #Integral fluxes will be saved to file; fluxes associated with a
-    #differential threshold (energy bin) will not be saved to file
-    save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
-                model_name, energy_thresholds, crossing_time, dates,
-                integral_fluxes)
+    return all_threshold_fluences, all_fluence, all_energies
 
 
-    #------DIFFERENTIAL THRESHOLDS------
-    #For plotting, we need to expand the is_diff_thresh list to include
-    #the integral thresholds (for all fluxes calculated above)
+
+def append_differential_thresholds(energy_thresholds, flux_thresholds,
+        options, str_thresh, is_diff_thresh, plt_energy, plt_flux,
+        input_threshold, energy_bins,
+        dates, fluxes, detect_prev_event, two_peaks,
+        umasep, umasep_times, umasep_fluxes,
+        all_threshold_fluences, all_fluence, all_energies,
+        crossing_time, peak_flux, peak_time, rise_time, event_end_time,
+        duration, onset_date, onset_peak, integral_fluxes):
+    """ Add the threshold crossing information for differential channels
+        as specified by the user.
+        
+        Definitions:
+        n integral energy thresholds (>10, >100 + user input integral
+            thresholds)
+        m energy bins associated with the input flux files
+        p user input thresholds (integral + differential, define
+            d differential channels for which a threshold is applied
+            n-2 = integral channels, (n-2)+d = p)
+        q time points in the flux time profiles (between user input
+            start and end dates)
+        
+        INPUTS (filled in up to thresholds applied to integral channels):
+        energy_thresholds (float 1xn array) - energy channels for which a
+            threshold is applied (at this point, only the integral ones)
+        flux_thresholds (float 1xn array) - flux thresholds applied to
+            the energy channels in energy_thresholds
+        str_thresh (string 1xp array) - p user input thresholds broken into
+            an array (need for generating plot labels)
+        is_diff_thresh (bool 1xp array) - indicates which of the user
+            thresholds are applied to differential channels
+        plt_energy (float 1xn array) - holds energy thresholds for the
+            integral channels at this point
+        plt_flux (float 1xn array) - hold the flux thresholds for the
+            integral channels at this point
+        input_threshold (float 2xp array) - p input thresholds in form
+            [binlowedge, flux threshold]
+        energy_bins (float 2xm array) - m energy bins for each input
+            flux channel
+        dates (datetime 1xq array) - q time points for the flux time profile
+        fluxes (float mxq array) - flux time profiles for m energy bins and
+            q time points
+        detect_prev_event (bool) - option for finding start of event
+        two_peaks (bool) - option for extending event length
+        umasep (boolean) - indicate if user called UMASEP flag
+        umasep_times (datetime 5xn array) - times 3, 4, 5, 7, 9 hours after
+            crossing time for each applied threshold
+        umasep_fluxes (float 5xn) - fluxes at each of those times for each
+            applied threshold
+        all_threshold_fluences (float 1xn array) - fluence values for integral
+            or estimated integral fluxes in the n energy channels for which
+            thresholds were applied
+        all_fluence (float nxm array) - fluence spectrum in the original
+            integral or differential energy channels associated with
+            energy_bins. Fluence calculated between crossing_time and
+            event_end_time, so this is the fluence spectrum associated with
+            the events defined by the thresholds applied to each energy channel
+        all_energies (float 1xm array) - effective energies for energy_bins,
+            defined by sqrt(low bin edge*high bin edge)
+        crossing_time (datetime 1xn array) - SEP event start time for each
+            applied threshold
+        peak_flux (float 1xn array) - maximum flux for each applied threshold
+        peak_time (datetime 1xn array) - time of maximum flux for each applied
+            threshold
+        rise_time (timedelta 1xn array) - start time to max flux
+        event_end_time (datetime 1xn array) - end time for each applied threshold
+        duration (timedelta 1xn array) - end time minus start time
+        onset_peak (float 1xn array) - onset peak for each applied threshold
+        onset_date (datetime 1xn array) - onset peak time for each applied
+            threshold
+        integral_fluxes (float nxq array) - flux time profiles of integral
+            or estimated integral fluxes for n energy channels and m time steps
+       
+        
+        OUTPUTS:
+        (thresholds applied to differential channels have been
+        appended; define d as the number of differential channels for
+        which the user applied a threshold.
+        n+d = total number of thresholds applied to energy channels):
+        
+        energy_thresholds (float 1x(n+d) array)
+        flux_thresholds (float 1x(n+d) array)
+        plot_diff_thresh (bool 1x(n+d) array)
+        plt_energy (float 1x(n+d) array)
+        plt_flux (float 1x(n+d) array)
+        all_threshold_fluences (float 1x(n+d) array)
+        all_fluence (float (n+d)xm array)
+        all_energies (float 1xm array)
+        crossing_time (datetime 1x(n+d) array)
+        peak_flux (float 1x(n+d) array)
+        peak_time (datetime 1x(n+d) array)
+        rise_time (timedelta 1x(n+d) array)
+        event_end_time (datetime 1x(n+d) array)
+        duration (timedelta 1x(n+d) array)
+        onset_date (datetime 1x(n+d) array)
+        onset_peak (float 1x(n+d) array)
+        integral_fluxes (float (n+d)xq array)
+    """
+    #plot_diff_threshold will indicate whether all thresholds applied
+    #are integral or differential for all channels
+    #So far, is_diff_thresh only held entries related to the
+    #thresholds input by the user. plot_diff_thresh includes the native
+    #>10 MeV, 10 pfu and >100 MeV, 1 pfu thresholds
+    #Because all the integral channel thresholds were already grouped
+    #together in energy_thresholds, fill plot_diff_thresh for all
+    #integral channel thresholds, then tack on the differential channels
+    #at the end
+    nthresh = len(energy_thresholds) #only integral channel thresholds so far
     plot_diff_thresh = [False]*nthresh  #integral thresholds
-    plt_energy = []  #string thresholds for plot labels
-    plt_flux = []
-    for i in range(nthresh):
-        plt_energy.append(str(energy_thresholds[i]))
-        plt_flux.append(str(flux_thresholds[i]))
-
 
     #If a differential threshold was specified, calculate everything with
     #correct differential channel
+    nin_thresh = len(input_threshold)
     for i in range(nin_thresh):
         if is_diff_thresh[i]:
             plot_diff_thresh.append(True) #diff tacked onto end
@@ -1968,22 +2592,29 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             for k in range(len(energy_bins)):
                 if energy_bins[k][0] == input_threshold[i][0]:
                     svbin = k
-
-            energy_thresh = [] #calculate_onset_peak needs arrays
-            energy_thresh.append(input_threshold[i][0])
-            flux_thresh = []
-            flux_thresh.append(input_threshold[i][1])
-            in_flx = []
-            in_flx.append(fluxes[svbin])
+            #Expect an nxm array, but looking at one flux profile at
+            #a time. Hack it by putting the single threshold info
+            #into arrays
+            energy_thresh = [input_threshold[i][0]] #calculate_onset_peak needs arrays
+            flux_thresh = [input_threshold[i][1]]
+            in_flx = np.array([fluxes[svbin]])
             ct,pf,pt,rt,eet,dur=calculate_event_info(energy_thresh,\
                         flux_thresh, dates, in_flx, detect_prev_event,two_peaks,
                         is_diff_thresh[i])
             if ct[0] == 0:
-                print("The energy bin " + str_thresh[i][0] + " MeV "
-                         "threshold was not crossed during the specified date "
-                         "range. No SEP event. Continuing.")
-                all_threshold_fluences.append(0)
-                #NEED TO FILL ALL VARIABLES WITH ZERO HERE?
+                print("The energy bin " + str_thresh[i][0] + " "
+                        + energy_units +
+                        " threshold was not crossed during the specified date "
+                        "range. No SEP event. Continuing.")
+                fl = np.array([0]*len(energy_bins))
+                en = np.array([0]*len(energy_bins))
+                bin_fl = 0
+                pf = [np.amax(fluxes[svbin])]
+                pf_idx = np.where(fluxes[svbin] == np.amax(fluxes[svbin]))
+                pt = [dates[pf_idx[0][0]]]
+                op = pf #onset peak = max flux when no threshold crossed
+                od = pt #time of max flux
+                
             else:
                 #Extract the original fluxes for the SEP start and stop times
                 sep_d, sep_f = datasets.extract_date_range(ct[0],eet[0],dates,
@@ -1992,7 +2623,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                                  options, doBGSub,
                                  model_name, input_threshold[i][0],
                                  input_threshold[i][1], sep_d, sep_f,
-                                 energy_bins, is_diff_thresh, True) #savefile
+                                 energy_bins, is_diff_thresh[i], True) #savefile
                 bin_fl = fl[svbin] #fluence for bin associated with threshold
                 
                 od,op=calculate_onset_peak(experiment, energy_thresh,
@@ -2005,24 +2636,83 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     umasep_times.append(umasep_t[0])
                     umasep_fluxes.append(umasep_f[0])
 
-                #user-specified differential thresholds will be tacked onto the end
-                all_fluence = np.append(all_fluence, [fl], axis=0) #in native units of experiment
-                all_energies = np.append(all_energies, [en], axis=0)
-                crossing_time.append(ct[0])
-                peak_flux.append(pf[0])
-                peak_time.append(pt[0])
-                rise_time.append(rt[0])
-                event_end_time.append(eet[0])
-                duration.append(dur[0])
-                onset_date.append(od[0])
-                onset_peak.append(op[0])
-                energy_thresholds.append(input_threshold[i][0])
-                flux_thresholds.append(input_threshold[i][1])
-                all_threshold_fluences.append(bin_fl) #differential bin fluence for threshold
-                integral_fluxes = np.append(integral_fluxes, [fluxes[svbin]], \
-                                        axis=0)
+            #user-specified differential thresholds will be tacked onto the end
+            all_fluence = np.append(all_fluence, [fl], axis=0) #in native units of experiment
+            all_energies = np.append(all_energies, [en], axis=0)
+            crossing_time.append(ct[0])
+            peak_flux.append(pf[0])
+            peak_time.append(pt[0])
+            rise_time.append(rt[0])
+            event_end_time.append(eet[0])
+            duration.append(dur[0])
+            onset_date.append(od[0])
+            onset_peak.append(op[0])
+            energy_thresholds.append(input_threshold[i][0])
+            flux_thresholds.append(input_threshold[i][1])
+            all_threshold_fluences.append(bin_fl) #differential bin fluence for threshold
+            integral_fluxes = np.append(integral_fluxes, [fluxes[svbin]], \
+                                    axis=0)
 
-    #####################################################################
+    return energy_thresholds, flux_thresholds, plot_diff_thresh, plt_energy,\
+        plt_flux, all_threshold_fluences, all_fluence, all_energies,\
+        crossing_time, peak_flux, peak_time, rise_time, event_end_time,\
+        duration, onset_date, onset_peak, integral_fluxes
+
+ 
+def write_zulu_time_profile(filename, dates, fluxes):
+    """ Write out the time profile with the date in the
+        first column as the ISO standard and flux in the
+        second column as:
+        YYYY-MM-DDTHH:MM:SSZ    Float
+        
+        INPUTS:
+        Filename (string) - name of file to write
+        date (datetime 1xn array) - list of dates
+        fluxes (float 1xn array) - corresponding fluxes
+        
+        OUTPUTS:
+        None but writes output file with filename
+    """
+    fname = outpath + "/" + filename
+    outfile = open(fname, "w")
+    for i in range(len(dates)):
+        zdate = ccmc_json.make_ccmc_zulu_time(dates[i])
+        outfile.write(zdate + "    " + str(fluxes[i]) + "\n")
+        
+    outfile.close()
+    print("write_zulu_time_profile: Wrote file --> " + fname)
+
+
+
+def write_info_to_file(experiment, flux_type, options, doBGSub,
+        energy_bins, model_name, spase_id, startdate, enddate,
+        energy_thresholds, flux_thresholds, dates, integral_fluxes,
+        crossing_time, onset_peak, onset_date, peak_flux, peak_time,
+        rise_time, event_end_time, duration, all_threshold_fluences,
+        all_fluence, plot_diff_thresh,
+        umasep, umasep_times, umasep_fluxes):
+    """ Write information to csv and json file.
+        Writes all of the derived information for all the
+        energy-threshold combinations to file.
+        
+        INPUTS:
+        The inputs here are the same as the outputs produced by
+        append_differential_thresholds(). Please see the list
+        of those outputs for detailed explanations of these inputs.
+        
+        OUTPUTS:
+        No outputs except files are written:
+            -fluence spectra files for each energy channel for which a
+                threshold was applied
+            -integral fluxes in csv file for which a threshold was
+                applied
+            -flux time profiles in txt files for each energy channel for
+                which a threshold was applied
+            -json file in CCMC format containing blocks of information
+                for each energy channel for which a threshold was applied
+            -csv file containing all timing and peak flux values
+    """
+    
     #Save all calculated values for all threshold definitions to csv file
     sep_year, sep_month, sep_day, IsCrossed = print_values_to_file(experiment,
                     flux_type, options, doBGSub,
@@ -2030,10 +2720,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     crossing_time, onset_peak, onset_date, peak_flux, peak_time,
                     rise_time, event_end_time, duration, all_threshold_fluences,
                     plot_diff_thresh, umasep, umasep_times, umasep_fluxes)
-
-
-    #####################################################################
-    #Write information to json file
+    
+    
+    #SAVE TO JSON FILE
     type = "observations"
     if experiment == "user":
         type = "model"
@@ -2041,41 +2730,280 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
     modifier = ''
     if options[0] != '':
+        options = sorted(options) #to always make consistent filenames
         for opt in options:
             modifier = modifier + '_' + opt
     if doBGSub:
         modifier = modifier + '_bgsub'
-
-    jsonfname = outpath + '/sep_values_' + experiment + modifier + '_' \
-                + flux_type + '_' + str(sep_year) + '_' + str(sep_month) + '_' \
-                + str(sep_day) +'.json'
-    proffname = 'integral_fluxes_' + experiment + modifier + '_' \
-                 + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
-                 + '_' + str(sep_day) + '.csv'
+        options.append(",BGSubtracted")
+        
+        
+    #Get issue time of forecast (now)
+    now = datetime.datetime.now()
+    issue_time = ccmc_json.make_ccmc_zulu_time(now)
+    
+    #Generate filenames in CCMC preferred format
+    #issue time in CCMC format YYYY-MM-DDTHH:MM:SSZ
+    zstdate = ccmc_json.make_ccmc_zulu_time(startdate)
+    #For native data set which is an observation, don't include issue time
+    #in the filename since nothing should change in the measurements
+    if experiment != "user":
+        fnameprefix = experiment + "_" + flux_type + modifier + "." + zstdate.replace(":","")
+    
+    #For a user data set or model, include issue time
+    if experiment == "user":
+        fnameprefix = experiment + "_" + flux_type + modifier + "." + zstdate.replace(":","") + "." + issue_time.replace(":","")
     if experiment == 'user' and model_name != '':
-        jsonfname = outpath + '/sep_values_' + model_name + modifier + '_' \
-                    + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
-                    + '_' + str(sep_day) +'.json'
-        proffname = 'integral_fluxes_' + model_name + modifier + '_' \
-                     + flux_type + '_' + str(sep_year) + '_' + str(sep_month) \
-                     + '_' + str(sep_day) + '.csv'
-    filled_json = ccmc_json.fill_json(template, experiment, flux_type,
-                    energy_bins, model_name, startdate, enddate, options,
-                    energy_thresholds, flux_thresholds, crossing_time,
+            fnameprefix = model_name + "_" + flux_type + modifier + "." + zstdate.replace(":","") + "." + issue_time.replace(":","")
+            
+    jsonfname = outpath +'/' + fnameprefix + ".json"
+    
+    #filenames for time profiles
+    proffnames = []
+    for j in range(len(energy_thresholds)):
+        energy = energy_thresholds[j]
+        if (not plot_diff_thresh[j] and flux_type == "differential")\
+            or flux_type == "integral":
+            profname = fnameprefix + "." + str(energy) \
+                        + energy_units + ".txt"
+        else:
+            bin = ccmc_json.find_energy_bin(energy, energy_bins)
+            profname = fnameprefix + "." + str(bin[0]) + "-" + str(bin[1])\
+                        + energy_units + ".txt"
+        proffnames.append(profname)
+    
+    ##### WRITE JSON FILE #######
+    filled_json = ccmc_json.fill_json(template, issue_time,
+                    experiment, flux_type,
+                    energy_bins, model_name, spase_id, startdate, enddate,
+                    options, energy_thresholds, flux_thresholds, crossing_time,
                     onset_peak, onset_date, peak_flux, peak_time, rise_time,
                     event_end_time, duration, all_threshold_fluences,
-                    plot_diff_thresh, all_energies, all_fluence,
-                    umasep, umasep_times, umasep_fluxes, proffname)
+                    plot_diff_thresh, all_fluence,
+                    umasep, umasep_times, umasep_fluxes, proffnames,
+                    energy_units, flux_units_integral, fluence_units_integral,
+                    flux_units_differential, fluence_units_differential)
+    
+    filled_json = ccmc_json.clean_json(filled_json,experiment)
     isgood = ccmc_json.write_json(filled_json, jsonfname)
     if not isgood:
         print("WARNING: ccmc_json_handler: write_json could not write your " \
                 "file "+ str(jsonfname))
-
+    
+    ##### WRITE INDIVIDUAL FLUX FILES #####
+    #Note that integral_fluxes actually contains time profiles for all
+    #the energy channels for which a threshold was applied, including
+    #for any differential channels
+    for j in range(len(energy_thresholds)):
+        profnm = proffnames[j]
+        write_zulu_time_profile(profnm, dates, integral_fluxes[j])
+        
+    #IF NO THRESHOLDS CROSSED, EXIT PROGRAM. ONLY PLOTTING REMAINS.
     if not IsCrossed:
         sys.exit("No thresholds were crossed during this time period. "
                 "Max flux has been written to json file in onset peak in file "
                 + jsonfname + ". Exiting. ")
 
+
+    return sep_year, sep_month, sep_day, jsonfname
+
+
+######## MAIN PROGRAM #########
+def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
+        user_file, spase_id, showplot, saveplot, detect_prev_event,
+        two_peaks, umasep, str_thresh, options, doBGSub, str_bgstartdate,
+        str_bgenddate, nointerp=False):
+    """"Runs all subroutines and gets all needed values. Takes the command line
+        arguments as input. Code may be imported into other python scripts and
+        run using this routine.
+        
+        INPUTS:
+        str_startdate (string) - user input start date "YYYY-MM-DD" or
+            "YYYY-MM-DD HH:MM:SS"
+        str_enddate (string) - user input end date "YYYY-MM-DD" or
+            "YYYY-MM-DD HH:MM:SS"
+        experiment (string) - "GOES-08" up to "GOES-15", "SEPEM", "SEPEMv3",
+            "EPHIN", "EPHIN_REleASE", or "user"
+        flux_type (string) - "integral" or "differential" indicates the type
+            of flux to read in
+        model_name (string) - If model is "user", set model_name to describe
+            your model or data set (e.g. MyModel), otherwise set to ''.
+        user_file (string) - Default is ''. If "user" is selected for experiment,
+            specify name of flux file.
+        spase_id (string) - Default is ''. If you know the spase_id of you
+            model or experiment, enter it here for the json file
+        showplot (bool) - Set to True to show plots when run
+        saveplot (bool) - Set to True to automatically save plots to the
+            plots directory when run
+        detect_prev_event (bool) - option for finding start of event
+        two_peaks (bool) - option for extending event length
+        umasep (boolean) - call flag to run code for specific time related
+            to the UMASEP model
+        str_thresh (string) - user-input thresholds in the format "30,1"
+            for >30 MeV exceeds 1 pfu, "4-7,0.01" for 4-7 MeV differential
+            channel exceeds 0.01.  "30,1;4-7,0.01" multiple thresholds
+            separated by semi-colon.
+        nointerp (boolean) - set to true to fill in negative fluxes with None
+            value rather than filling in via linear interpolation in time
+        
+        OUTPUTS:
+        sep_year (integer) - year of start of SEP event or year of beginning
+            of user-input time period (if no threshold crossed)
+        ep_month (integer) - month of start of SEP event or year of beginning
+            of user-input time period (if no threshold crossed)
+        sep_day (integer) - day of start of SEP event or year of beginning
+            of user-input time period (if no threshold crossed)
+        jsonfname (string) - name of saved json file (could include issue time,
+            which is the time that the program is run, so absolutely
+            need to pass file name back as argument)
+        and generates multiple plots
+    """
+    #Check for empty dates
+    if (str_startdate == "" or str_enddate == ""):
+        sys.exit('You must enter a valid date range. Exiting.')
+
+    #PROCESS INPUTS
+    options = options.split(";")
+    user_fname[0] = user_file #input as argument, default is 'tmp.txt'
+    
+    #Break up thresholds into a string array
+    input_threshold = []
+    is_diff_thresh = []
+    if str_thresh != "":
+        str_thresh = str_thresh.strip().split(";")
+        for kk in range(len(str_thresh)):
+            str_thresh[kk] = str_thresh[kk].strip().split(",")
+        input_threshold, is_diff_thresh = get_input_thresholds(str_thresh)
+    
+    startdate = str_to_datetime(str_startdate)
+    enddate = str_to_datetime(str_enddate)
+
+    #PERFORM CHECKS AND VALIDATE INPUTS
+    error_check_options(experiment, flux_type, options, doBGSub)
+    error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh)
+    datasets.check_paths()
+    
+    #SET UNITS
+    if experiment == "user":
+        global energy_units
+        global flux_units_integral
+        global fluence_units_integral
+        global flux_units_differential
+        global fluence_units_differential
+        
+        energy_units = vars.energy_units
+        flux_units_integral = vars.flux_units_integral
+        fluence_units_integral = vars.fluence_units_integral
+        flux_units_differential = vars.flux_units_differential
+        fluence_units_differential = vars.fluence_units_differential
+    
+    #READ IN FLUXES AND ENERGY BINS, BG SUBTRACT, INTERPOLATE
+    dates, fluxes, energy_bins = read_in_flux_files(experiment,
+        flux_type, user_file, model_name, startdate,
+        enddate, str_startdate, str_enddate, str_bgstartdate,
+        str_bgenddate, options, doBGSub, nointerp, showplot, saveplot)
+   
+    #Define ONLY INTEGRAL thresholds to use for start and end of event
+    #Will tack on differential thresholds later on
+    #At this point, energy_thresholds and flux_thresholds correspond
+    #ONLY to threshold applied to integral flux channels
+    energy_thresholds, flux_thresholds = define_thresholds(input_threshold,
+                is_diff_thresh, str_thresh, energy_bins)
+    
+    #Estimate or select integral fluxes corresponding the energy_thresholds
+    #Pull out or estimate only the integral flux channels for which a
+    #threshold will be applied
+    integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
+                    flux_thresholds, energy_thresholds, energy_bins, options)
+
+    #Calculate SEP event quantities for energy and flux threshold combinations
+    #integral fluxes are used to define event start and stop
+    crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration=\
+        calculate_event_info(energy_thresholds,flux_thresholds, dates,
+                    integral_fluxes, detect_prev_event, two_peaks, False)
+                    #Always integral fluxes here, so False
+
+    #Calculate onset peak for all thresholds
+    onset_date, onset_peak = calculate_onset_peak(experiment, energy_thresholds,
+                dates, integral_fluxes, crossing_time, event_end_time, showplot)
+
+    #Calculate times used in UMASEP
+    umasep_times =[]
+    umasep_fluxes=[]
+    if umasep:
+        umasep_times, umasep_fluxes = calculate_umasep_info(energy_thresholds,
+                        flux_thresholds, dates, integral_fluxes, crossing_time)
+
+    #Arrays for event-integrated fluences for all thresholds, both
+    #integral and differential
+    nthresh = len(energy_thresholds)
+    all_threshold_fluences = [0]*nthresh #fluences corresponding to >10, >100 MeV and other thresholded bins
+    all_fluence = np.zeros(shape=(nthresh,len(energy_bins))) #fluence spectrum
+    all_energies = np.zeros(shape=(nthresh,len(energy_bins))) #corresponding energy bin centers
+
+    #------INTEGRAL THRESHOLD FLUENCES------
+    #Fill in fluence arrays for the integral channels
+    all_threshold_fluences, all_fluence, all_energies = \
+        calculate_integral_fluences(experiment, flux_type, options,
+            model_name, doBGSub, startdate, enddate, energy_bins,
+            energy_thresholds, flux_thresholds, dates, fluxes,
+            integral_fluxes, crossing_time, event_end_time,
+            all_threshold_fluences,
+            all_fluence, all_energies)
+    
+    #Save to file the integral fluxes for all integral channels
+    #where thresholds were applied - multiple fluxes in a single file
+    save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
+                model_name, energy_thresholds, crossing_time, dates,
+                integral_fluxes)
+
+    #------APPEND INFO FOR DIFFERENTIAL THRESHOLDS------
+    #I'm sorry. This is a mess. I will rewrite eventually
+    plot_diff_thresh = [False]*nthresh
+    plt_energy = []  #string thresholds for plot labels
+    plt_flux = []
+    for i in range(nthresh):
+        plt_energy.append(str(energy_thresholds[i]))
+        plt_flux.append(str(flux_thresholds[i]))
+    
+    if True in is_diff_thresh:
+        energy_thresholds, flux_thresholds, plot_diff_thresh,\
+        plt_energy, plt_flux,\
+        all_threshold_fluences, all_fluence, all_energies,\
+        crossing_time, peak_flux, peak_time, rise_time, event_end_time,\
+        duration, onset_date, onset_peak, integral_fluxes\
+            = append_differential_thresholds(energy_thresholds,
+                flux_thresholds, options,
+                str_thresh, is_diff_thresh, plt_energy, plt_flux,
+                input_threshold, energy_bins,
+                dates, fluxes, detect_prev_event, two_peaks,
+                umasep, umasep_times, umasep_fluxes,
+                all_threshold_fluences, all_fluence, all_energies,
+                crossing_time, peak_flux, peak_time, rise_time, event_end_time,
+                duration, onset_date, onset_peak, integral_fluxes)
+
+    #If threshold isn't crossed, the maximum flux was stored in onset
+    #peak and peak_flux was saved as 0.
+    #Transfer onset_peak to peak_flux and set onset_peak to zero.
+    onset_peak, onset_date, peak_flux, peak_time = consistent_peak_fluxes(\
+                crossing_time, onset_peak, onset_date, peak_flux, peak_time)
+    #####################################################################
+    #Write information to csv and json files
+    #Note that, at this point in the code, integral_fluxes contains
+    #both the integral flux time profiles for which thresholds were applied
+    #and any differential flux channel time profiles for which
+    #thresholds were applied
+    sep_year, sep_month, sep_day, jsonfname\
+        = write_info_to_file(experiment, flux_type, options, doBGSub,
+        energy_bins, model_name, spase_id,  startdate, enddate,
+        energy_thresholds, flux_thresholds, dates, integral_fluxes,
+        crossing_time, onset_peak, onset_date, peak_flux, peak_time,
+        rise_time, event_end_time, duration, all_threshold_fluences,
+        all_fluence, plot_diff_thresh,
+        umasep, umasep_times, umasep_fluxes)
+
+
+    
     #####################################################################
     #===============PLOTS==================
     if saveplot or showplot:
@@ -2119,27 +3047,31 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         for i in range(nthresh):
             if crossing_time[i] == 0:
                 continue
-            data_label = (experiment + ' >'+ plt_energy[i] + ' MeV')
+            data_label = (experiment + ' >'+ plt_energy[i] + ' '
+                            + energy_units)
             plot_title = 'Threshold crossings for ' + experiment + '\n ' \
                             + title_mod + ' ' + flux_type + ' Fluxes '
             if experiment == 'user' and model_name != '':
-                data_label = (model_name + ' >' + plt_energy[i] + ' MeV')
+                data_label = (model_name + ' >' + plt_energy[i] + ' '
+                            + energy_units)
                 plot_title = 'Threshold crossings for ' + model_name + '\n ' \
                                 + title_mod + ' ' + flux_type + ' Fluxes '
 
             if flux_type == 'differential':
                 data_label = (experiment + ' Estimated >' + plt_energy[i] \
-                                + ' MeV')
+                                + ' ' + energy_units)
                 if experiment == 'user' and model_name != '':
                     data_label = (model_name + ' Estimated >' + plt_energy[i] \
-                                + ' MeV')
+                                + ' ' + energy_units)
 
             if plot_diff_thresh[i]: #differential threshold tacked on to end
-                data_label = (experiment + ' ' + plt_energy[i] + ' MeV')
+                data_label = (experiment + ' ' + plt_energy[i] + ' '
+                                + energy_units)
                 if experiment == 'user' and model_name != '':
-                    data_label = (model_name + ' ' + plt_energy[i] + ' MeV')
+                    data_label = (model_name + ' ' + plt_energy[i] + ' '
+                                + energy_units)
             ax = plt.subplot(nthresh, 1, i+1)
-            #Don't want to plot zero values, particularly in background-subtracted plots
+            #Don't want to plot negative values, particularly in background-subtracted plots
             if doBGSub:
                 maskfluxes = np.ma.masked_where(integral_fluxes[i] <0, \
                                 integral_fluxes[i])
@@ -2163,10 +3095,11 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     plt.plot_date(umasep_times[i][k],umasep_fluxes[i][k],'bo')
 
             plt.xlabel('Date')
-            plt.ylabel('Integral Flux\n 1/[cm^2 s sr]')
+            plt.ylabel('Integral Flux\n' + '[' + flux_units_integral + ']')
             plt.suptitle(plot_title)
             if plot_diff_thresh[i]:
-                plt.ylabel('Differential Flux\n 1/[MeV cm^2 s sr]')
+                plt.ylabel('Differential Flux\n' + '['
+                        + flux_units_differential + ']')
             if sum(integral_fluxes[i]) > 0:
                 plt.yscale("log")
             #ymin = max(1e-6, min(integral_fluxes[i]))
@@ -2197,9 +3130,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             legend_label = ""
             if energy_bins[i][1] != -1:
                 legend_label = str(energy_bins[i][0]) + '-' \
-                               + str(energy_bins[i][1]) + ' MeV'
+                               + str(energy_bins[i][1]) + ' ' + energy_units
             else:
-                legend_label = '>'+ str(energy_bins[i][0]) + ' MeV'
+                legend_label = '>'+ str(energy_bins[i][0]) + ' ' + energy_units
 
             if doBGSub:
                 maskfluxes = np.ma.masked_where(fluxes[i] <0, fluxes[i])
@@ -2207,7 +3140,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
             else:
                 ax.plot_date(dates,fluxes[i],'-',label=legend_label)
 
-        colors = ['black','red','blue','green','cyan','magenta']
+        colors = ['black','red','blue','green','cyan','magenta','violet',\
+                'orange','brown']
         for j in range(len(energy_thresholds)):
             if crossing_time[j] == 0:
                 continue
@@ -2215,19 +3149,19 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                         + plt_flux[j] + ' pfu'
             if plot_diff_thresh[j]: #tacked on to end
                 line_label = (plt_energy[j] + ' MeV, ' + plt_flux[j] + \
-                            '\n1/[MeV cm^2 s sr]')
+                            '\n' + flux_units_differential)
             ax.axvline(crossing_time[j],color=colors[j],linestyle=':',
                         label=line_label)
             ax.axvline(event_end_time[j],color=colors[j],linestyle=':')
         if flux_type == "integral":
-            plt.ylabel('Integral Flux 1/[cm^2 s sr]')
+            plt.ylabel('Integral Flux [' + flux_units_integral + ']')
             plt.title(experiment + ' '+ title_mod + '\n'\
                         + "Integral Energy Bins with Threshold Crossings")
             if experiment == 'user' and model_name != '':
                 plt.title(model_name + ' '+ title_mod + '\n'\
                         + "Integral Energy Bins with Threshold Crossings")
         if flux_type == "differential":
-            plt.ylabel('Flux 1/[MeV cm^2 s sr]')
+            plt.ylabel('Flux [' + flux_units_differential + ']')
             plt.title(experiment + ' ' + title_mod + '\n'\
                         + "Differential Energy Bins with Threshold Crossings")
             if experiment == 'user' and model_name != '':
@@ -2261,11 +3195,11 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         for j in range(len(energy_thresholds)):
             if crossing_time[j] == 0:
                 continue
-            legend_label = '>' + plt_energy[j] + ' MeV, ' \
-                        + plt_flux[j] + ' pfu'
+            legend_label = '>' + plt_energy[j] + ' ' + energy_units + ', '\
+                        + plt_flux[j] + ' ' + flux_units_integral
             if plot_diff_thresh[j]: #tacked on to end
-                legend_label = (plt_energy[j] + ' MeV, ' + plt_flux[j] + \
-                            '\n1/[MeV cm^2 s sr]')
+                legend_label = (plt_energy[j] + ' ' + energy_units + ',\n'
+                            + plt_flux[j] + '\n' + flux_units_differential)
             ax.plot(all_energies[j,:],all_fluence[j,:],markers[j],
                     color=colors[j],mfc='none',label=legend_label)
         plt.grid(which="both", axis="both")
@@ -2274,11 +3208,11 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         if experiment == 'user' and model_name != '':
             plt.title(model_name + ' ' + title_mod + '\n Event-Integrated '
                     'Fluences for All Event Definitions')
-        plt.xlabel('Energy [MeV]')
+        plt.xlabel('Energy [' + energy_units +']')
         if flux_type == "integral":
-            plt.ylabel('Integral Fluxes 1/[cm^2 sr]')
+            plt.ylabel('Integral Fluxes [' + flux_units_integral + ']')
         if flux_type == "differential":
-            plt.ylabel('Flux 1/[MeV cm^2 sr]')
+            plt.ylabel('Flux [' + flux_units_differential + ']')
         plt.xscale("log")
         plt.yscale("log")
         ax.legend(loc='upper right')
@@ -2287,8 +3221,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         if not showplot:
             plt.close(fig)
 
-    return FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-            sep_day, jsonfname
+    return sep_year, sep_month, sep_day, jsonfname
 
 
 if __name__ == "__main__":
@@ -2315,9 +3248,8 @@ if __name__ == "__main__":
             'SEPEM', 'SEPEMv3', 'EPHIN', 'EPHIN_REleASE', 'user'],
             default='', help="Enter name of spacecraft or dataset")
     parser.add_argument("--FluxType", type=str, choices=['integral',
-            'differential'], default='differential',
-            help=("Do you want to use integral or differential fluxes?"
-                 " (Default is differential)"))
+            'differential'], default='',
+            help=("Do you want to use integral or differential fluxes?"))
     parser.add_argument("--ModelName", type=str, default='', help=("If you "
             "chose user for experiment, specify the name of the model or "
             "experiment that you are analyzing (no spaces)."))
@@ -2325,7 +3257,9 @@ if __name__ == "__main__":
             "you chose user for experiment, specify the filename containing "
             "the fluxes. Specify energy bins and delimeter in code at top. "
             "Default is tmp.txt."))
-    parser.add_argument("--Threshold", type=str, default="100,1",
+    parser.add_argument("--spase_id", type=str, default='', help=("If your "
+            "model or data source has an associated Spase ID, specify here."))
+    parser.add_argument("--Threshold", type=str, default="",
             help=("Additional energy and flux threshold which will be used to "
                     "define the event. To define an integral flux threshold: "
                     "write 100,1 with no spaces; e.g. 100,1 indicates >100 MeV "
@@ -2335,8 +3269,7 @@ if __name__ == "__main__":
                     "low edge-high edge,threshold (1/[MeV/n cm^2 s sr])). "
                     "Multiple thresholds may be entered separated by a "
                     "semi-colon with no spaces and surrounded by quotes, "
-                    "e.g. \"30,1;50,1;25-40.9,0.001\""
-                    "Default = '100,1'"))
+                    "e.g. \"30,1;50,1;25-40.9,0.001\""))
     parser.add_argument("--options", type=str, default='', help=("You "
             "may specify a series of options as a semi-colon separated list "
             "surrounded by quotations.\n"
@@ -2393,6 +3326,7 @@ if __name__ == "__main__":
     flux_type = args.FluxType
     model_name = args.ModelName
     user_file = args.UserFile
+    spase_id = args.spase_id
     str_thresh = args.Threshold
     doBGSub = args.SubtractBG
     str_bgstartdate = args.BGStartDate
@@ -2407,10 +3341,10 @@ if __name__ == "__main__":
 
 
 
-    FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-    sep_day, jsonfname = run_all(str_startdate, str_enddate, experiment, flux_type,
-        model_name,user_file, showplot, saveplot, detect_prev_event, two_peaks,
-        umasep, str_thresh, options, doBGSub, str_bgstartdate, str_bgenddate,
-        nointerp)
+    sep_year, sep_month, sep_day, jsonfname = run_all(str_startdate,
+        str_enddate, experiment,
+        flux_type, model_name, user_file, spase_id, showplot, saveplot,
+        detect_prev_event, two_peaks, umasep, str_thresh, options, doBGSub,
+        str_bgstartdate, str_bgenddate, nointerp)
 
     if showplot: plt.show()

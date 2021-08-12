@@ -573,6 +573,8 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
         corrected or uncorrected GOES fluxes.
     """
     NFILES = len(filenames1)
+    all_dates = []
+    all_fluxes = []
     west_detector = [] #place holder, will be filled if needed
 
     if (experiment == "GOES-08" or experiment == "GOES-10" or
@@ -685,7 +687,10 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
         else:
             all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
             all_dates = all_dates + dates
-
+    
+    if all_dates == []:
+        print("read_in_goes: Did not find the data you were looking for.")
+        
     return all_dates, all_fluxes, west_detector
 
 
@@ -919,6 +924,14 @@ def read_in_user_files(filenames1):
                     #print("Read in flux for column " + str(user_col[j]) + ': '\
                     #    + str(date)) #+ ' ' + row[user_col[j]])
                     #print(row)
+                    if user_col_mod ==[] or j >= len(user_col_mod) \
+                        or user_col_mod[j] >= len(row):
+                        sys.exit("read_datasets: read_in_user_files: Something is "
+                            "wrong with reading in the user files (mismatch in "
+                            "number of columns). Did you set "
+                            "the correct information in library/read_datasets.py, "
+                            "including the delimeter?")
+                    row[user_col_mod[j]] = row[user_col_mod[j]].rstrip()
                     if row[user_col_mod[j]] == 'n/a': #REleASE
                         flux = None
                     else:
@@ -1064,8 +1077,8 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
                 if dointerp:
                     print()
                     print('There is a data gap for time ' + str(dates[j])
-                            + ' and energy ' + str(energy_bins[i][0]) + ' - '
-                            + str(energy_bins[i][1]) + ' MeV.'
+                            + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
+                            + str(energy_bins[i][1]) + '.'
                             + ' Filling in missing value with linear '
                             + 'interpolation in time.')
                     interp_flux = do_interpolation(j,dates,fluxes[i,:])
@@ -1073,8 +1086,8 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
                 else:
                     print()
                     print('There is a data gap for time ' + str(dates[j])
-                            + ' and energy ' + str(energy_bins[i][0]) + ' - '
-                            + str(energy_bins[i][1]) + ' MeV.'
+                            + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
+                            + str(energy_bins[i][1]) + '.'
                             + ' Filling in missing value with None ')
                     fluxes[i,j] = None
 
@@ -1083,8 +1096,8 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
                 if dointerp:
                     print()
                     print('There is a data gap for time ' + str(dates[j])
-                            + ' and energy ' + str(energy_bins[i][0]) + ' - '
-                            + str(energy_bins[i][1]) + ' MeV.'
+                            + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
+                            + str(energy_bins[i][1]) + '.'
                             + ' Filling in missing value with linear '
                             + 'interpolation in time.')
                     interp_flux = do_interpolation(j,dates,fluxes[i,:])
@@ -1092,8 +1105,8 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
                 else:
                     print()
                     print('There is a data gap for time ' + str(dates[j])
-                            + ' and energy ' + str(energy_bins[i][0]) + ' - '
-                            + str(energy_bins[i][1]) + ' MeV.'
+                            + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
+                            + str(energy_bins[i][1]) + '.'
                             + ' Filling in missing value with None ')
                     fluxes[i,j] = None
 

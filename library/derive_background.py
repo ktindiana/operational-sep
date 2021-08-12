@@ -395,6 +395,7 @@ def derive_background(str_startdate, str_enddate, str_bgstartdate, \
     #Check and prepare the data
     filenames1, filenames2, filenames_orien = datasets.check_data(bgstartdate,
                                     enddate, experiment, flux_type, user_file)
+
     #read in flux files
     if experiment != "user":
         all_dates, all_fluxes, west_detector =datasets.read_in_files(experiment,

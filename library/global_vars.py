@@ -8,8 +8,8 @@ outpath = 'output'
 plotpath = 'plots'
 listpath = 'lists'
 badval = -1 #bad data points will be set to this value; must be negative
+endfac = 0.85 #factor multiplied by flux threshold to determine end of event
 
-email = "kathryn.whitman@nasa.gov"  #Your email for output JSON files
 
 ###FOR BACKGROUND SUBTRACTION###
 #derive_background.py calculates the mean background plus an expected level
@@ -24,9 +24,9 @@ nsigma = 2.0
 
 
 ########FOR USER DATA SETS#######
-version = "vTestSetB" #Enter the version number of your model or data set
+version = "" #Enter the version number of your model or data set
 
-#(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
+#####(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
 user_col = arr.array('i',[1,2,3,4,5,6,7,8])
 
@@ -35,11 +35,12 @@ user_col = arr.array('i',[1,2,3,4,5,6,7,8])
 #   REleASE-90 [10,11,12,13]
 #   SPARX [1,2]
 #   SEPMOD [1,2,3,4,5,6,7,8]
+#   GOES-16 [1,2,3,4,5,6,7,8]
 
-#DELIMETER between columns; for whitespace separating columns, use ""
+#####DELIMETER between columns; for whitespace separating columns, use ""
 user_delim = ""
 
-#DEFINE ENERGY BINS associated with user file and columns specified above as:
+#####DEFINE ENERGY BINS associated with user file and columns specified above as:
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
@@ -57,4 +58,21 @@ user_energy_bins = [[750,-1],[500,-1],[300,-1],[100,-1],\
 #   SPARX [[10,-1],[60,-1]]
 #   ASPECS [[10,-1],[30,-1]]
 #   RELeASE [[4,9],[9,15.8],[15.8,39.6],[20.0,35.5]]
+#   GOES-16 [[1.-1],[5,-1],[10,-1],[30,-1],[50,-1],[60,-1],[100,-1],[500,-1]]
+
+
+#####UNITS
+#Set the units associated with your data
+#Make sure that fluence units = flux units*s*sr
+#If your data set is in units other than pfu or
+#MeV^-1*cm^-2*s^-1*sr^-1, the two operational thresholds
+#will not be equivalent to >10 MeV, 10 pfu and >100 MeV, 1 pfu
+#--energy
+energy_units = "MeV"
+#--integral
+flux_units_integral = "pfu" #pfu = cm^-2*s^-1*sr^-1
+fluence_units_integral = "cm^-2"
+#--differential
+flux_units_differential = "MeV^-1*cm^-2*s^-1*sr^-1"
+fluence_units_differential = "MeV^-1*cm^-2"
 ################################

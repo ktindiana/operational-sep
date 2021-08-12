@@ -365,8 +365,7 @@ if __name__ == "__main__":
 
     #Prepare output file listing events and flags
     fout = open(outfname,"w+")
-    fout.write('#Experiment,SEP Date,FirstStart,LastEnd,ShortEvent,LateHundred,'
-                + 'Exception\n')
+    fout.write('#Experiment,SEP Date,Exception\n')
 
     #---RUN ALL SEP EVENTS---
     Nsep = len(start_dates)
@@ -382,11 +381,14 @@ if __name__ == "__main__":
         option = options[i]
         bgstartdate = bgstart[i]
         bgenddate = bgend[i]
+        
+        spase_id = ''
 
         flag = flag.split(';')
         detect_prev_event = detect_prev_event_default
         two_peaks = two_peaks_default
         doBGSub = False
+        nointerp = False #if true, will not do interpolation in time
         if "DetectPreviousEvent" in flag:
             detect_prev_event = True
         if "TwoPeak" in flag:
@@ -397,11 +399,11 @@ if __name__ == "__main__":
         print('\n-------RUNNING SEP ' + start_date + '---------')
         #CALCULATE SEP INFO AND OUTPUT RESULTS TO FILE
         try:
-            FirstStart, LastEnd, ShortEvent, LateHundred, sep_year, sep_month, \
-            sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type,
-                model_name, user_file, showplot, saveplot, detect_prev_event,
+            sep_year, sep_month, \
+            sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file,
+                spase_id, showplot, saveplot, detect_prev_event,
                 two_peaks, umasep, threshold, option, doBGSub, bgstartdate,
-                bgenddate)
+                bgenddate, nointerp)
 
             sep_date = datetime.datetime(year=sep_year, month=sep_month,
                             day=sep_day)
@@ -409,9 +411,8 @@ if __name__ == "__main__":
                 fout.write(model_name + ',')
             if experiment != 'user':
                 fout.write(experiment + ',')
-            fout.write(str(sep_date)+','+ str(FirstStart)+',' +str(LastEnd)\
-                        +','+str(ShortEvent) + ',' + str(LateHundred) + ', ')
-            fout.write('\n')
+            fout.write(str(sep_date) + ', ')
+            fout.write('Success\n')
 
             #COMPILE QUANTITIES FROM ALL SEP EVENTS INTO A SINGLE LIST FOR
             #EACH THRESHOLD
@@ -430,7 +431,11 @@ if __name__ == "__main__":
             logger.exception('operational_sep_quantities failed with exception')
             # this log will just include content in sys.exit
             logger.error(str(e))
-            fout.write(str(start_date) +', , , , ,' + '\"' + str(e) + '\"' )
+            if experiment == 'user' and model_name != '':
+                fout.write(model_name + ',')
+            if experiment != 'user':
+                fout.write(experiment + ',')
+            fout.write(str(start_date) +',' + '\"' + str(e) + '\"' )
             fout.write('\n')
             sep = reload(sep)
             gl = reload(gl)
