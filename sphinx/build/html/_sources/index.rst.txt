@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to operational_sep_quantities's documentation!
-======================================================
+Welcome to operational_sep_quantities's documentation
+=====================================================
 
 operational_sep_quantities CURRENT VERSION 3.0
 
@@ -27,6 +27,7 @@ This project is under active development.
    :maxdepth: 2
    :caption: Contents:
    
+   repository
    usage
    overall_description
    modules
