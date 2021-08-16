@@ -1,7 +1,7 @@
 # operational-sep
 
 **operational_sep_quantities.py CURRENT VERSION 3.0**
-Complete documentation in docs/build/html/index.html
+Complete documentation at <a href="https://ktindiana.github.io/operational-sep/index.html" target="_blank">https://ktindiana.github.io/operational-sep/index.html</a>.
 
 **All files needed to run operational_sep_quantities.py:**\
 operational_sep_quantities.py\
@@ -44,7 +44,9 @@ The code calculates:
 - Plots of time profiles for >10 MeV, >100 MeV, any user defined-thresholds and fluence spectrum
 - Plots of time profiles and their derivatives as part of the identification of the onset peak
 
-## Run code from command line (more info in docs/build/html/usage.html):
+## Run code from command line: 
+More info in <a href="https://ktindiana.github.io/operational-sep/usage.html" target="_blank">https://ktindiana.github.io/operational-sep/usage.html</a>
+
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment GOES-13 --FluxType integral --showplot
 
 **For a start time other than midnight:**\
