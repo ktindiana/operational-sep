@@ -13,6 +13,7 @@ __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
+
 #2021-01-12 changes in v0.2: Added fluence to json file. Added threshold
 #   crossing entry for end of event.
 #2021-02-11 changes in 0.3: Changed logic so that if integral flux was
@@ -53,9 +54,36 @@ __email__ = "kathryn.whitman@nasa.gov"
 
 version = vars.version
 
+def about_ccmc_json_handler():
+    """ ABOUT ccmc_json_handler.py
+    
+        This module places all derived information into json and supporting
+        files that follow the format specified for CCMC's SEP Scoreboard.
+        https://ccmc.gsfc.nasa.gov/challenges/sep.php#format
+        
+        Reads in templates and fills in SEP event quantities organized
+        by one block for each energy channel. If multiple thresholds
+        were applied to the same energy channel, the derived information
+        will be stored in a single block.
+        
+        Template for observations: observations_template.json
+        
+        Template for model output: model_template.json
+        
+    """
+
+
 def read_in_json_template(type):
     """Read in appropriate json file template for model or observations.
-        type = model or observations
+        
+        INPUTS:
+        
+        :type: (string) = "model" or "observations"
+        
+        OUTPUTS:
+        
+        :template: (dict) - appropiate template is read in and returned
+        
     """
     if type != "model" and type != "observations":
         sys.exit("json_handler: read_in_template: type may be \"model\" "
@@ -73,7 +101,17 @@ def read_in_json_template(type):
 
 
 def make_ccmc_zulu_time(dt):
-    """Make a datetime string in the format YYYY-MM-DDTHH:MM:SSZ"""
+    """ Make a datetime string in the format YYYY-MM-DDTHH:MM:SSZ
+        
+        INPUTS:
+        
+        :dt: (datetime)
+        
+        OUTPUTS:
+        
+        :zuludate: (string) in the format YYYY-MM-DDTHH:MM:SSZ
+    
+    """
     if dt == None:
         return None
     if dt == 0:
@@ -87,7 +125,17 @@ def make_ccmc_zulu_time(dt):
  
  
 def zulu_to_time(zt):
-    """Convert Zulu time to datetime"""
+    """ Convert Zulu time to datetime
+    
+        INPUTS:
+        
+        :zt: (string) - date in the format "YYYY-MM-DDTHH:MM:SSZ"
+        
+        OUTPUTS:
+        
+        :dt: (datetime)
+        
+    """
     #Time e.g. 2014-01-08T05:05:00Z or 2012-07-12T22:25Z
     if zt == '':
         return ''
@@ -109,7 +157,18 @@ def zulu_to_time(zt):
 
 
 def find_energy_bin(lowedge, energy_bins):
-    """Identify the energy bin and return low and high edges."""
+    """ Identify the energy bin and return low and high edges.
+    
+        INPUTS:
+        
+        :lowedge: (float) - low edge of an energy bin
+        :energy_bins: (float 2xn array) - energy bins
+        
+        OUTPUTS:
+        
+        :bin: (float 2x1 array) - single energy bin
+    
+    """
     bin = []
     for i in range(len(energy_bins)):
         if lowedge == energy_bins[i][0]:
@@ -125,17 +184,23 @@ def find_energy_bin(lowedge, energy_bins):
 def id_unique_energy_channels(energy_thresholds):
     """ There may be multiple energy channel - flux threshold
         combinations. Identify the number of unique energy
-        channels.
-        e.g. >10 MeV, 10 pfu (operations) and
-             >10 MeV, 0.001 pfu (SEPMOD testing)
+        channels, e.g.
         
-        input:
-        energy_thresholds (float array)- array containing
+            * >10 MeV, 10 pfu (operations) and
+            * >10 MeV, 0.001 pfu (SEPMOD testing)
+        
+        INPUTS:
+        
+        :energy_thresholds: (float 1xn array)- array containing
             all the energy channels for which a threshold
             has been applied
         
-        output:
-        (integer) - number of unique energy channels
+        OUTPUTS:
+        
+        :len(unique): (integer) - number of unique energy channels
+        :unique: (float 1xm array) - the m unique energy channels to
+            which a threshold was applied
+        
     """
     unique = []
     for energy in energy_thresholds:
@@ -154,8 +219,11 @@ def fill_json(template, issue_time, experiment, flux_type, energy_bins,
                 umasep, umasep_times, umasep_fluxes, profile_filenames,
                 energy_units, flux_units_integral, fluence_units_integral,
                 flux_units_differential, fluence_units_differential):
-    """Add all the appropriate values to the json template for model or
+    """ Add all the appropriate values to the json template for model or
         observations.
+        
+        The inputs here are mainly the same as the outputs in
+        operational_sep_quantities.append_differential_thresholds()
     """
     #For now, assume a user-input file is model output
     #This is not generic and should be modified in the future

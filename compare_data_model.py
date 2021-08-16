@@ -27,6 +27,21 @@ badval = -1
 outpath = "output"
 plotpath = "plots"
 
+def about_compare_data_model():
+    """ Code written to compare time profiles, fluence spectra,
+        and timing produced by models with measurements from data.
+        
+        This code was written to support SHINE 2019 and may
+        not be working any more. It will not necessarily be supported
+        in the future.
+        
+        A full validation framework is being developed in a separate
+        repository for a community SEP model validation effort.
+        
+        Contact Katie Whitman at kathryn.whitman@nasa.gov for more
+        information.
+    """
+
 def check_path():
     """Check that the paths that hold the data and output exist. If not, create.
     """

@@ -88,6 +88,7 @@
             
             
               <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="overall_description.html">Overall Description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">operational-sep all modules</a><ul class="current">
@@ -173,6 +174,35 @@
   <div class="section" id="module-read_datasets">
 <span id="read-datasets-module"></span><h1>read_datasets module<a class="headerlink" href="#module-read_datasets" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
+<dt class="sig sig-object py" id="read_datasets.about_read_datasets">
+<span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">about_read_datasets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.about_read_datasets" title="Permalink to this definition">¶</a></dt>
+<dd><p>About read_datasets.py</p>
+<p>Subroutines that are required to read in the data sets
+native to this code or the user-specified data set.</p>
+<p>Reads GOES-08 to GOES-15, SOHO/EPHIN Level 3 data,
+SOHO/EPHIN data from the REleASE website, SEPEM RDSv2
+and SEPEM RDSv3 (if the user downloads and unzips the
+files into the data directory).</p>
+<p>When possible, data is pulled from online databases and
+saved on your computer in the directory specified by
+datapath in global_vars.py. The default path is “data”.</p>
+<p>Data files will be stored in subdirectories named as:</p>
+<ul class="simple">
+<li><p>data/GOES/</p></li>
+<li><p>data/SEPEM/  (user must make this directory and put data inside)</p></li>
+<li><p>data/SEPEMv3/ (user must make this directory and put data inside)</p></li>
+<li><p>data/EPHIN</p></li>
+<li><p>data/EPHIN_REleASE</p></li>
+</ul>
+<p>Users may make their own directories in data for their
+own files,e.g.:</p>
+<ul class="simple">
+<li><p>data/SEPMOD/</p></li>
+<li><p>data/MyDataSet/</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="read_datasets.check_data">
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">check_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">startdate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enddate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">user_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.check_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check that the files containing the data are in the data directory. If
@@ -183,6 +213,39 @@ unzipped manually.
 The RSDv2 data set is very large and takes a long time to read as a
 single file. This program will generate files containing fluxes for
 each year for faster reading.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) start of time period specified by user</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) end of time period entered by user</p>
+</dd>
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) name of native experiment or “user”</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) “integral” or “differential”</p>
+</dd>
+<dt class="field-odd">User_file</dt>
+<dd class="field-odd"><p>(string) name of file containing user-input data
+(if applicable)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) the files containing the data that
+span the desired time range (monthly files)</p>
+</dd>
+<dt class="field-even">Filenames2</dt>
+<dd class="field-even"><p>(string array) if GOES, files containing HEPAD data</p>
+</dd>
+<dt class="field-odd">Filenames_orien</dt>
+<dd class="field-odd"><p>(string array if GOES, files containing
+satellite orientation</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -194,6 +257,29 @@ download from <a class="reference external" href="http://ulysses.physik.uni-kiel
 (cm^2 s sr mev/nuc)^-1
 First available date is 1995 12 8 (DOY = 342).
 The files are available in daily or yearly format.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) start of time period specified by user</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) end of time period entered by user</p>
+</dd>
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) name of native experiment or “user”</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) “integral” or “differential”</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) the files containing the SOHO
+EPHIN Level 3 data that span the desired time range
+(yearly files)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -201,18 +287,38 @@ The files are available in daily or yearly format.</p>
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">check_ephin_release_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">startdate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enddate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.check_ephin_release_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check for SOHO/COSTEP/EPHIN data on your computer provided by the
 HESPERIA collaboration on the website
-<a class="reference external" href="https://www.hesperia.astro.noa.gr/index.php/results/">https://www.hesperia.astro.noa.gr/index.php/results/</a>
-real-time-prediction-tools/data-retrieval-tool
+<a class="reference external" href="https://www.hesperia.astro.noa.gr/index.php/results/real-time-prediction-tools/data-retrieval-tool">https://www.hesperia.astro.noa.gr/index.php/results/real-time-prediction-tools/data-retrieval-tool</a>
 (one long URL). Monthly files of this data set are provided in the
 public git containing these codes. Otherwise, users may go to the URL
 above, download the data sets, and use the file naming convention
 adopted here:</p>
-<blockquote>
-<div><p>data/EPHIN_REleASE/HESPERIA_SOHO_PROTON_YYYY.txt</p>
-</div></blockquote>
+<p>data/EPHIN_REleASE/HESPERIA_SOHO_PROTON_YYYY.txt</p>
 <p>Intensities are in units of (cm^2 s sr mev/nuc)^-1
 First available date is 1995 12 8 (DOY = 342).
 The files are saved in yearly format.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) start of time period specified by user</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) end of time period entered by user</p>
+</dd>
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) name of native experiment or “user”</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) “integral” or “differential”</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) the files containing the SOHO
+EPHIN data from the REleASE website that span the desired
+time range (yearly files)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -221,6 +327,31 @@ The files are saved in yearly format.</p>
 <dd><p>Search the data for bad values (flux &lt; 0) and fill the missing data with
 an estimate flux found by performing a linear interpolation with time,
 using the good flux values immediately surrounding the data gap.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xp array) dates for p time points within
+the date range specified by startdate and enddate</p>
+</dd>
+<dt class="field-even">Fluxes</dt>
+<dd class="field-even"><p>(float nxp array) flux time profiles for n energy channels
+and p time points</p>
+</dd>
+<dt class="field-odd">Energy_bins</dt>
+<dd class="field-odd"><p>(float nx2 array) energy bins associated with fluxes</p>
+</dd>
+<dt class="field-even">Dointerp</dt>
+<dd class="field-even"><p>(bool) Set True to perform linear interpolation in time,
+otherwise will fill bad data points with None values</p>
+</dd>
+</dl>
+<p>OUTPUT:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fluxes</dt>
+<dd class="field-odd"><p>(float 1xp array) flux time profile with any negative
+flux values replaced with linear interpolated of None values</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -228,6 +359,38 @@ using the good flux values immediately surrounding the data gap.</p>
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">check_goes_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">startdate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enddate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.check_goes_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check that GOES data is on your computer or download it from the NOAA
 website. Return the filenames associated with the correct GOES data.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) start of time period specified by user</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) end of time period entered by user</p>
+</dd>
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) name of native experiment or “user”</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) “integral” or “differential”</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) the files containing the GOES
+EPS or EPEAD data that span the desired time range
+(monthly files)</p>
+</dd>
+<dt class="field-even">Filenames2</dt>
+<dd class="field-even"><p>(string array) the files containing the GOES
+HEPAD data that span the desired time range</p>
+</dd>
+<dt class="field-odd">Filenames_orien</dt>
+<dd class="field-odd"><p>(string array) the files
+that indicate the orientation of the GOES EPS or
+EPEAD detector (so can choose westward facing detector)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -241,6 +404,28 @@ website. Return the filenames associated with the correct GOES data.</p>
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">check_sepem_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">startdate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enddate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.check_sepem_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check if SEPEM data is present on the computer. Break into yearly
 files if needed. Return SEPEM filenames for analysis.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) start of time period specified by user</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) end of time period entered by user</p>
+</dd>
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) name of native experiment or “user”</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) “integral” or “differential”</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) the files containing the SEPEM
+data that span the desired time range (yearly files)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -253,6 +438,29 @@ User may select options to apply Sandberg et al. (2014) effective
 energies for GOES EPS by specifying “S14” and/or apply Bruno (2017)
 effective energies for GOES-13 or -15 P6, P7 and HEPAD by specifying
 “Bruno2017”</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) name of experiment or “user”</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) integral or differential</p>
+</dd>
+<dt class="field-odd">West_detector</dt>
+<dd class="field-odd"><p>(string 1xp array) array indicating which GOES detector
+is facing westward for each time point</p>
+</dd>
+<dt class="field-even">Options</dt>
+<dd class="field-even"><p>(string array) possible options to apply to data (GOES)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_bins</dt>
+<dd class="field-odd"><p>(float nx2 array) appropriate energy bins for the
+experiment specified by the user</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -261,17 +469,64 @@ effective energies for GOES-13 or -15 P6, P7 and HEPAD by specifying
 <dd><p>If bad fluxes (flux &lt; 0) are found in the data, find the first prior
 data point and the first following data point that have good flux values.
 Perform linear interpolation in time:</p>
-<blockquote>
-<div><p>F(t) = F1 + (t - t1)*(F2 - F1)/(t2 - t1)</p>
-</div></blockquote>
+<p>F(t) = F1 + (t - t1)*(F2 - F1)/(t2 - t1)</p>
 <p>This subroutine does the calculation for a single instance of bad data
 that corresponds to array index i.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">I</dt>
+<dd class="field-odd"><p>(integer) index of time point to interpolate</p>
+</dd>
+<dt class="field-even">Dates</dt>
+<dd class="field-even"><p>(datetime 1xp array) dates for p time points within
+the date range specified by startdate and enddate</p>
+</dd>
+<dt class="field-odd">Fluxes</dt>
+<dd class="field-odd"><p>(float 1xp array) flux time profiles for n energy channels
+and p time points</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Interp_flux</dt>
+<dd class="field-odd"><p>(float 1xp array) flux time profile with any negative
+flux values replaced with linear interpolation with time</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="read_datasets.extract_date_range">
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">extract_date_range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">startdate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enddate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_dates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_fluxes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.extract_date_range" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extract fluxes only for the dates in the range specified by the user.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) start of desired time period</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) end of desired time period</p>
+</dd>
+<dt class="field-odd">All_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) time points for every time in
+all the data points in the files contained in filenames1</p>
+</dd>
+<dt class="field-even">All_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) fluxes for n energy channels and m
+time points</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xp array) dates for p time points within
+the date range specified by startdate and enddate</p>
+</dd>
+<dt class="field-even">Fluxes</dt>
+<dd class="field-even"><p>(float nxp array) flux time profiles for n energy channels
+and p time points</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -280,6 +535,21 @@ that corresponds to array index i.</p>
 <dd><p>Input open csv file of GOES data. Identifies the start of the data by
 searching for the string ‘data:’, then returns the number of header
 rows and data rows present in the file.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filename</dt>
+<dd class="field-odd"><p>(string) name of GOES file containing data</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Nhead</dt>
+<dd class="field-odd"><p>(int) number of header rows</p>
+</dd>
+<dt class="field-even">Nrow</dt>
+<dd class="field-even"><p>(int) number of rows of data</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -289,24 +559,103 @@ rows and data rows present in the file.</p>
 orientation flag files. Get an orientation for each data point.
 EPEAD orientation flag. 0: A/W faces East and B/E faces West.
 1: A/W faces West and B/E faces East. 2: yaw-flip in progress.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filename</dt>
+<dd class="field-odd"><p>(string) file containing satellite orientation</p>
+</dd>
+<dt class="field-even">Dates</dt>
+<dd class="field-even"><p>(datetime 1xn array) n dates during user specified
+time period</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">West_detector</dt>
+<dd class="field-odd"><p>(string 1xn array) detector (A or B) identified
+as facing westward for each time point</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="read_datasets.make_yearly_files">
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">make_yearly_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.make_yearly_files" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert a large data set into yearly files.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filename</dt>
+<dd class="field-odd"><p>(string) filename of the SEPEM or
+SEPEMv3 full data file (1974 - 2015 or 2017)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<p>No output except that yearly files are created
+with _YYYY.csv appended at the end.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="read_datasets.read_in_ephin">
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">read_in_ephin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filenames1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.read_in_ephin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read in EPHIN files from your computer.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) experiment name</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) integral or differential</p>
+</dd>
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) names of files containing
+EPHIN data in desired time range (yearly files)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) time points for every time in
+all the data points in the files contained in filenames1</p>
+</dd>
+<dt class="field-even">All_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) fluxes for n energy channels and m
+time points</p>
+</dd>
+</dl>
+<p>Note that all_dates and all_fluxes will be trimmed down to the
+user time period of interest.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="read_datasets.read_in_ephin_release">
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">read_in_ephin_release</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filenames1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.read_in_ephin_release" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read in EPHIN files from your computer.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) experiment name</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) integral or differential</p>
+</dd>
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) names of files containing
+EPHIN REleASE data in desired time range (yearly files)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) time points for every time in
+all the data points in the files contained in filenames1</p>
+</dd>
+<dt class="field-even">All_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) fluxes for n energy channels and m
+time points</p>
+</dd>
+</dl>
+<p>Note that all_dates and all_fluxes will be trimmed down to the
+user time period of interest.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -322,6 +671,50 @@ provided in the associated orientation file. Data taken during a yaw
 flip (orientation flag = 2) are excluded and fluxes are set to -1.
 Note that the EPS detectors on GOES-08 and -12 face westward. The
 EPS detector on GOES-10 faces eastward. GOES-11 is a spinning satellite.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) name of native experiment or “user”</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) “integral” or “differential”</p>
+</dd>
+<dt class="field-odd">User_file</dt>
+<dd class="field-odd"><p>(string) name of file containing user-input data
+(if applicable)</p>
+</dd>
+<dt class="field-even">Filenames1</dt>
+<dd class="field-even"><p>(string array) the files containing the data that
+span the desired time range</p>
+</dd>
+<dt class="field-odd">Filenames2</dt>
+<dd class="field-odd"><p>(string array) if GOES, files containing HEPAD data</p>
+</dd>
+<dt class="field-even">Filenames_orien</dt>
+<dd class="field-even"><p>(string array if GOES, files containing
+satellite orientation</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) options that may be applied to GOES data</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) time points for every time in
+all the data points in the files contained in filenames1</p>
+</dd>
+<dt class="field-even">All_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) fluxes for n energy channels and m
+time points</p>
+</dd>
+<dt class="field-odd">West_detector</dt>
+<dd class="field-odd"><p>(string 1xm array) if GOES, indicates which detector
+is westward facing for every time point</p>
+</dd>
+</dl>
+<p>Note that all_dates and all_fluxes will be trimmed down to the
+user time period of interest.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -329,12 +722,73 @@ EPS detector on GOES-10 faces eastward. GOES-11 is a spinning satellite.</p>
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">read_in_goes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filenames1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filenames2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filenames_orien</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.read_in_goes" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read in GOES data from your computer. User may specify option to choose
 corrected or uncorrected GOES fluxes.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) experiment name</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) integral or differential</p>
+</dd>
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) the files containing the GOES
+EPS or EPEAD data that span the desired time range</p>
+</dd>
+<dt class="field-even">Filenames2</dt>
+<dd class="field-even"><p>(string array) the files containing the GOES
+HEPAD data that span the desired time range</p>
+</dd>
+<dt class="field-odd">Filenames_orien</dt>
+<dd class="field-odd"><p>(string array) the files
+that indicate the orientation of the GOES EPS or
+EPEAD detector (so can choose westward facing detector)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) time points for every time in
+all the data points in the files contained in filenames1</p>
+</dd>
+<dt class="field-even">All_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) fluxes for n energy channels and m
+time points</p>
+</dd>
+</dl>
+<p>Note that all_dates and all_fluxes will be trimmed down to the
+user time period of interest.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="read_datasets.read_in_sepem">
 <span class="sig-prename descclassname"><span class="pre">read_datasets.</span></span><span class="sig-name descname"><span class="pre">read_in_sepem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filenames1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#read_datasets.read_in_sepem" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read in SEPEM data files from the computer.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) experiment name</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) integral or differential</p>
+</dd>
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) names of files containing
+SEPEM data in desired time range (yearly files)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) time points for every time in
+all the data points in the files contained in filenames1</p>
+</dd>
+<dt class="field-even">All_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) fluxes for n energy channels and m
+time points</p>
+</dd>
+</dl>
+<p>Note that all_dates and all_fluxes will be trimmed down to the
+user time period of interest.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -352,6 +806,24 @@ Any number of header lines are allowed, but they must be indicated by #
 at the very beginning, including empty lines.
 Be sure to add the energy bins associated with your flux columns in the
 subroutine define_energy_bins under the “user” is statement.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filenames1</dt>
+<dd class="field-odd"><p>(string array) the user files containing the data that
+span the desired time range</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) time points for every time in
+all the data points in the files contained in filenames1</p>
+</dd>
+<dt class="field-even">All_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) fluxes for n energy channels and m
+time points</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>

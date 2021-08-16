@@ -19,6 +19,7 @@ __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
+
 #2021-01-06, Changes in 0.2: Added SEPEMv3 data set and made changes to
 #   necessary subroutines to accomodate the new data set.
 #2021-02-25, Changes 0.3: Changed GOES-13, 14, 15 S14 option to include
@@ -34,6 +35,36 @@ user_col = gl.user_col
 user_delim = gl.user_delim
 user_energy_bins = gl.user_energy_bins
 
+def about_read_datasets():
+    """ About read_datasets.py
+        
+        Subroutines that are required to read in the data sets
+        native to this code or the user-specified data set.
+        
+        Reads GOES-08 to GOES-15, SOHO/EPHIN Level 3 data,
+        SOHO/EPHIN data from the REleASE website, SEPEM RDSv2
+        and SEPEM RDSv3 (if the user downloads and unzips the
+        files into the data directory).
+        
+        When possible, data is pulled from online databases and
+        saved on your computer in the directory specified by
+        datapath in global_vars.py. The default path is "data".
+        
+        Data files will be stored in subdirectories named as:
+        
+        * data/GOES/
+        * data/SEPEM/  (user must make this directory and put data inside)
+        * data/SEPEMv3/ (user must make this directory and put data inside)
+        * data/EPHIN
+        * data/EPHIN_REleASE
+        
+        Users may make their own directories in data for their
+        own files,e.g.:
+        
+        * data/SEPMOD/
+        * data/MyDataSet/
+        
+    """
 
 def check_paths():
     """Check that the paths that hold the data and output exist. If not, create.
@@ -69,7 +100,18 @@ def check_paths():
 
 
 def make_yearly_files(filename):
-    """Convert a large data set into yearly files."""
+    """ Convert a large data set into yearly files.
+        
+        INPUTS:
+        
+        :filename: (string) filename of the SEPEM or
+            SEPEMv3 full data file (1974 - 2015 or 2017)
+            
+        OUTPUTS:
+        
+        No output except that yearly files are created
+        with _YYYY.csv appended at the end.
+    """
     print('Breaking up the SEPEM data into yearly data files. (This could '
             + 'take a while, but you will not have to do it again.)')
     fnamebase = filename.replace('.csv','')  #if csv file
@@ -115,6 +157,19 @@ def make_yearly_files(filename):
 def check_sepem_data(startdate, enddate, experiment, flux_type):
     """Check if SEPEM data is present on the computer. Break into yearly
         files if needed. Return SEPEM filenames for analysis.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the SEPEM
+            data that span the desired time range (yearly files)
+        
     """
     styear = startdate.year
     stmonth = startdate.month
@@ -169,6 +224,25 @@ def check_sepem_data(startdate, enddate, experiment, flux_type):
 def check_goes_data(startdate, enddate, experiment, flux_type):
     """Check that GOES data is on your computer or download it from the NOAA
         website. Return the filenames associated with the correct GOES data.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the GOES
+            EPS or EPEAD data that span the desired time range
+            (monthly files)
+        :filenames2: (string array) the files containing the GOES
+            HEPAD data that span the desired time range
+        :filenames_orien: (string array) the files
+            that indicate the orientation of the GOES EPS or
+            EPEAD detector (so can choose westward facing detector)
+        
     """
     styear = startdate.year
     stmonth = startdate.month
@@ -314,6 +388,20 @@ def check_ephin_data(startdate, enddate, experiment, flux_type):
         (cm^2 s sr mev/nuc)^-1
         First available date is 1995 12 8 (DOY = 342).
         The files are available in daily or yearly format.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the SOHO
+            EPHIN Level 3 data that span the desired time range
+            (yearly files)
+        
     """
     styear = startdate.year
     stmonth = startdate.month
@@ -348,16 +436,31 @@ def check_ephin_data(startdate, enddate, experiment, flux_type):
 def check_ephin_release_data(startdate, enddate, experiment, flux_type):
     """Check for SOHO/COSTEP/EPHIN data on your computer provided by the
         HESPERIA collaboration on the website
-        https://www.hesperia.astro.noa.gr/index.php/results/
-        real-time-prediction-tools/data-retrieval-tool
+        https://www.hesperia.astro.noa.gr/index.php/results/real-time-prediction-tools/data-retrieval-tool
         (one long URL). Monthly files of this data set are provided in the
         public git containing these codes. Otherwise, users may go to the URL
         above, download the data sets, and use the file naming convention
         adopted here:
-            data/EPHIN_REleASE/HESPERIA_SOHO_PROTON_YYYY.txt
+            
+        data/EPHIN_REleASE/HESPERIA_SOHO_PROTON_YYYY.txt
+        
         Intensities are in units of (cm^2 s sr mev/nuc)^-1
         First available date is 1995 12 8 (DOY = 342).
         The files are saved in yearly format.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the SOHO
+            EPHIN data from the REleASE website that span the desired
+            time range (yearly files)
+        
     """
     styear = startdate.year
     stmonth = startdate.month
@@ -392,6 +495,24 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
         The RSDv2 data set is very large and takes a long time to read as a
         single file. This program will generate files containing fluxes for
         each year for faster reading.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        :user_file: (string) name of file containing user-input data
+            (if applicable)
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the data that
+            span the desired time range (monthly files)
+        :filenames2: (string array) if GOES, files containing HEPAD data
+        :filenames_orien: (string array if GOES, files containing
+            satellite orientation
+        
     """
     print('Checking that the requested data is present on your computer.')
     styear = startdate.year
@@ -448,9 +569,19 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
 
 
 def find_goes_data_dimensions(filename):
-    """Input open csv file of GOES data. Identifies the start of the data by
-       searching for the string 'data:', then returns the number of header
-       rows and data rows present in the file.
+    """ Input open csv file of GOES data. Identifies the start of the data by
+        searching for the string 'data:', then returns the number of header
+        rows and data rows present in the file.
+        
+        INPUTS:
+        
+        :filename: (string) name of GOES file containing data
+        
+        OUTPUTS:
+        
+        :nhead: (int) number of header rows
+        :nrow: (int) number of rows of data
+        
     """
     with open(datapath + '/' + filename) as csvfile:
         #GOES data has very large headers; figure out where the data
@@ -472,10 +603,22 @@ def find_goes_data_dimensions(filename):
 
 
 def get_west_detector(filename, dates):
-    """For GOES-13+, identify which detector is facing west from the
-       orientation flag files. Get an orientation for each data point.
-       EPEAD orientation flag. 0: A/W faces East and B/E faces West.
-       1: A/W faces West and B/E faces East. 2: yaw-flip in progress.
+    """ For GOES-13+, identify which detector is facing west from the
+        orientation flag files. Get an orientation for each data point.
+        EPEAD orientation flag. 0: A/W faces East and B/E faces West.
+        1: A/W faces West and B/E faces East. 2: yaw-flip in progress.
+        
+        INPUTS:
+        
+        :filename: (string) file containing satellite orientation
+        :dates: (datetime 1xn array) n dates during user specified
+            time period
+            
+        OUTPUTS:
+        
+        :west_detector: (string 1xn array) detector (A or B) identified
+            as facing westward for each time point
+       
     """
     nhead, nrow = find_goes_data_dimensions(filename)
     orien_dates = []
@@ -519,7 +662,25 @@ def get_west_detector(filename, dates):
 
 
 def read_in_sepem(experiment, flux_type, filenames1):
-    """Read in SEPEM data files from the computer."""
+    """ Read in SEPEM data files from the computer.
+        
+        INPUTS:
+        
+        :experiment: (string) experiment name
+        :flux_type: (string) integral or differential
+        :filenames1: (string array) names of files containing
+            SEPEM data in desired time range (yearly files)
+            
+        OUTPUTS:
+        
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+    
+        Note that all_dates and all_fluxes will be trimmed down to the
+        user time period of interest.
+    """
     NFILES = len(filenames1)
     for i in range(NFILES):
         print('Reading in file ' + datapath + '/' + filenames1[i])
@@ -571,6 +732,29 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
                 filenames_orien, options):
     """Read in GOES data from your computer. User may specify option to choose
         corrected or uncorrected GOES fluxes.
+        
+        INPUTS:
+        
+        :experiment: (string) experiment name
+        :flux_type: (string) integral or differential
+        :filenames1: (string array) the files containing the GOES
+            EPS or EPEAD data that span the desired time range
+        :filenames2: (string array) the files containing the GOES
+            HEPAD data that span the desired time range
+        :filenames_orien: (string array) the files
+            that indicate the orientation of the GOES EPS or
+            EPEAD detector (so can choose westward facing detector)
+            
+        OUTPUTS:
+        
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+    
+        Note that all_dates and all_fluxes will be trimmed down to the
+        user time period of interest.
+        
     """
     NFILES = len(filenames1)
     all_dates = []
@@ -695,7 +879,26 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
 
 
 def read_in_ephin(experiment, flux_type, filenames1):
-    """Read in EPHIN files from your computer."""
+    """ Read in EPHIN files from your computer.
+        
+        INPUTS:
+        
+        :experiment: (string) experiment name
+        :flux_type: (string) integral or differential
+        :filenames1: (string array) names of files containing
+            EPHIN data in desired time range (yearly files)
+            
+        OUTPUTS:
+        
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+    
+        Note that all_dates and all_fluxes will be trimmed down to the
+        user time period of interest.
+    
+    """
     NFILES = len(filenames1)
 
     datecols = [0,1,2,4,5] #yr, mth, dy, hr, min
@@ -756,7 +959,26 @@ def read_in_ephin(experiment, flux_type, filenames1):
 
 
 def read_in_ephin_release(experiment, flux_type, filenames1):
-    """Read in EPHIN files from your computer."""
+    """ Read in EPHIN files from your computer.
+        
+        INPUTS:
+        
+        :experiment: (string) experiment name
+        :flux_type: (string) integral or differential
+        :filenames1: (string array) names of files containing
+            EPHIN REleASE data in desired time range (yearly files)
+            
+        OUTPUTS:
+        
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+    
+        Note that all_dates and all_fluxes will be trimmed down to the
+        user time period of interest.
+    
+    """
     NFILES = len(filenames1)
 
     datecols = [0] #yr, mth, dy, hr, min
@@ -817,16 +1039,42 @@ def read_in_ephin_release(experiment, flux_type, filenames1):
 
 def read_in_files(experiment, flux_type, filenames1, filenames2,
                 filenames_orien, options):
-    """Read in the appropriate data files with the correct format. Return an
-       array with dates and fluxes. Bad flux values (any negative flux) are set
-       to -1. Format is defined to work with the files downloaded directly from
-       NOAA or the RSDv2 (SEPEM) website as is.
-       The fluxes output for the GOES-13+ satellites are always from the
-       westward-facing detector (A or B) by referring to the orientation flags
-       provided in the associated orientation file. Data taken during a yaw
-       flip (orientation flag = 2) are excluded and fluxes are set to -1.
-       Note that the EPS detectors on GOES-08 and -12 face westward. The
-       EPS detector on GOES-10 faces eastward. GOES-11 is a spinning satellite.
+    """ Read in the appropriate data files with the correct format. Return an
+        array with dates and fluxes. Bad flux values (any negative flux) are set
+        to -1. Format is defined to work with the files downloaded directly from
+        NOAA or the RSDv2 (SEPEM) website as is.
+        The fluxes output for the GOES-13+ satellites are always from the
+        westward-facing detector (A or B) by referring to the orientation flags
+        provided in the associated orientation file. Data taken during a yaw
+        flip (orientation flag = 2) are excluded and fluxes are set to -1.
+        Note that the EPS detectors on GOES-08 and -12 face westward. The
+        EPS detector on GOES-10 faces eastward. GOES-11 is a spinning satellite.
+        
+        INPUTS:
+        
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        :user_file: (string) name of file containing user-input data
+            (if applicable)
+        :filenames1: (string array) the files containing the data that
+            span the desired time range
+        :filenames2: (string array) if GOES, files containing HEPAD data
+        :filenames_orien: (string array if GOES, files containing
+            satellite orientation
+        :options: (string array) options that may be applied to GOES data
+        
+        OUTPUTS:
+        
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+        :west_detector: (string 1xm array) if GOES, indicates which detector
+            is westward facing for every time point
+    
+        Note that all_dates and all_fluxes will be trimmed down to the
+        user time period of interest.
+       
     """
     print('Reading in data files for ' + experiment + '.')
     all_dates = []
@@ -856,18 +1104,31 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
 
 
 def read_in_user_files(filenames1):
-    """Read in file containing flux time profile information that was
-       specified by the user.
-       The first column MUST contain the date in YYYY-MM-DD HH:MM:SS
-       format. The remaining flux columns to be read in are specified by the
-       user in the variable user_col at the very beginning of this program.
-       The date column should always be considered column 0, even if you used
-       whitespace as your delimeter. The code will consider the date format
-       YYYY-MM-DD HH:MM:SS as one column even though it contains whitespace.
-       Any number of header lines are allowed, but they must be indicated by #
-       at the very beginning, including empty lines.
-       Be sure to add the energy bins associated with your flux columns in the
-       subroutine define_energy_bins under the "user" is statement.
+    """ Read in file containing flux time profile information that was
+        specified by the user.
+        The first column MUST contain the date in YYYY-MM-DD HH:MM:SS
+        format. The remaining flux columns to be read in are specified by the
+        user in the variable user_col at the very beginning of this program.
+        The date column should always be considered column 0, even if you used
+        whitespace as your delimeter. The code will consider the date format
+        YYYY-MM-DD HH:MM:SS as one column even though it contains whitespace.
+        Any number of header lines are allowed, but they must be indicated by #
+        at the very beginning, including empty lines.
+        Be sure to add the energy bins associated with your flux columns in the
+        subroutine define_energy_bins under the "user" is statement.
+        
+        INPUTS:
+    
+        :filenames1: (string array) the user files containing the data that
+            span the desired time range
+       
+        OUTPUTS:
+       
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+       
     """
     print('Reading in user-specified files.')
     NFILES = len(filenames1)
@@ -960,7 +1221,25 @@ def read_in_user_files(filenames1):
 
 
 def extract_date_range(startdate,enddate,all_dates,all_fluxes):
-    """Extract fluxes only for the dates in the range specified by the user."""
+    """ Extract fluxes only for the dates in the range specified by the user.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of desired time period
+        :enddate: (datetime) end of desired time period
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+        
+        OUTPUTS:
+        
+        :dates: (datetime 1xp array) dates for p time points within
+            the date range specified by startdate and enddate
+        :fluxes: (float nxp array) flux time profiles for n energy channels
+            and p time points
+        
+    """
     #print('Extracting fluxes for dates: ' + str(startdate) + ' to '
     #    + str(enddate))
     ndates = len(all_dates)
@@ -979,12 +1258,28 @@ def extract_date_range(startdate,enddate,all_dates,all_fluxes):
 
 
 def do_interpolation(i,dates,flux):
-    """If bad fluxes (flux < 0) are found in the data, find the first prior
-       data point and the first following data point that have good flux values.
-       Perform linear interpolation in time:
-            F(t) = F1 + (t - t1)*(F2 - F1)/(t2 - t1)
-       This subroutine does the calculation for a single instance of bad data
-       that corresponds to array index i.
+    """ If bad fluxes (flux < 0) are found in the data, find the first prior
+        data point and the first following data point that have good flux values.
+        Perform linear interpolation in time:
+        
+        F(t) = F1 + (t - t1)*(F2 - F1)/(t2 - t1)
+        
+        This subroutine does the calculation for a single instance of bad data
+        that corresponds to array index i.
+        
+        INPUTS:
+        
+        :i: (integer) index of time point to interpolate
+        :dates: (datetime 1xp array) dates for p time points within
+            the date range specified by startdate and enddate
+        :fluxes: (float 1xp array) flux time profiles for n energy channels
+            and p time points
+            
+        OUTPUTS:
+        
+        :interp_flux: (float 1xp array) flux time profile with any negative
+            flux values replaced with linear interpolation with time
+       
     """
     ndates = len(dates)
 
@@ -1057,9 +1352,25 @@ def do_interpolation(i,dates,flux):
 
 
 def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
-    """Search the data for bad values (flux < 0) and fill the missing data with
-       an estimate flux found by performing a linear interpolation with time,
-       using the good flux values immediately surrounding the data gap.
+    """ Search the data for bad values (flux < 0) and fill the missing data with
+        an estimate flux found by performing a linear interpolation with time,
+        using the good flux values immediately surrounding the data gap.
+        
+        INPUTS:
+        
+        :dates: (datetime 1xp array) dates for p time points within
+            the date range specified by startdate and enddate
+        :fluxes: (float nxp array) flux time profiles for n energy channels
+            and p time points
+        :energy_bins: (float nx2 array) energy bins associated with fluxes
+        :dointerp: (bool) Set True to perform linear interpolation in time,
+            otherwise will fill bad data points with None values
+            
+        OUTPUT:
+        
+        :fluxes: (float 1xp array) flux time profile with any negative
+            flux values replaced with linear interpolated of None values
+       
     """
     if dointerp:
         print('Checking for bad data values and filling with linear '
@@ -1119,13 +1430,27 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
 
 
 def define_energy_bins(experiment,flux_type,west_detector,options):
-    """Define the energy bins for the selected spacecraft or data set.
-       If the user inputs their own file, they must set the user_energy_bins
-       variable in library/global_vars.py.
-       User may select options to apply Sandberg et al. (2014) effective
-       energies for GOES EPS by specifying "S14" and/or apply Bruno (2017)
-       effective energies for GOES-13 or -15 P6, P7 and HEPAD by specifying
-       "Bruno2017"
+    """ Define the energy bins for the selected spacecraft or data set.
+        If the user inputs their own file, they must set the user_energy_bins
+        variable in library/global_vars.py.
+        User may select options to apply Sandberg et al. (2014) effective
+        energies for GOES EPS by specifying "S14" and/or apply Bruno (2017)
+        effective energies for GOES-13 or -15 P6, P7 and HEPAD by specifying
+        "Bruno2017"
+        
+        INPUTS:
+        
+        :experiment: (string) name of experiment or "user"
+        :flux_type: (string) integral or differential
+        :west_detector: (string 1xp array) array indicating which GOES detector
+            is facing westward for each time point
+        :options: (string array) possible options to apply to data (GOES)
+        
+        OUTPUTS:
+        
+        :energy_bins: (float nx2 array) appropriate energy bins for the
+            experiment specified by the user
+       
     """
     #use corrected proton flux for GOES eps or epead; include hepad
     #-1 indicates infinity ([700, -1] means all particles above 700 MeV)

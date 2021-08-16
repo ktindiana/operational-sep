@@ -88,6 +88,7 @@
             
             
               <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="overall_description.html">Overall Description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">operational-sep all modules</a><ul class="current">
@@ -176,14 +177,19 @@
 <dt class="sig sig-object py" id="operational_sep_quantities.all_program_info">
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">all_program_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.all_program_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Program description for operational_sep_quantities.py v3.0.</p>
+<p>Formatting for Sphinx web-based documentation, which can be viewed
+within the docs/index.html directory or online at:
+<a class="reference external" href="https://ktindiana.github.io/operational-sep/index.html">https://ktindiana.github.io/operational-sep/index.html</a></p>
 <p>This program will calculate various useful pieces of operational
 information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
 data and the SEPEM (RSDv2 and RSDv3) dataset.</p>
-<dl class="simple">
-<dt>SEP event values are always calculated for threshold definitions:</dt><dd><p>&gt;10 MeV exceeds 10 pfu
-&gt;100 MeV exceed 1 pfu</p>
-</dd>
-</dl>
+<p>SEP event values are always calculated for threshold definitions:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>&gt;10 MeV exceeds 10 pfu</p></li>
+<li><p>&gt;100 MeV exceed 1 pfu</p></li>
+</ul>
+</div></blockquote>
 <p>The user may add multiple additional thresholds through the command line.
 This program will check if data is already present in a ‘data’ directory. If
 not, GOES or EPHIN data will be automatically downloaded from the web. SEPEM
@@ -205,19 +211,21 @@ If there are gaps in the time steps, the code does NOT try to
 fill in the gaps. It will ONLY perform interpolation for time
 steps present in the input data set. i.e. gaps in time are not
 interpolated, only time steps with negative or None flux values.</p>
-<dl class="simple">
-<dt>The values calculated here are important for space radiation operations:</dt><dd><p>Onset time, i.e. time to cross thresholds
-Onset peak intensity
-Onset peak time
-Maximum intensity
-Time of maximum intensity
-Rise time (onset to peak)
-End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
-Duration
-Event-integrated fluences
-Proton fluxes at various times after threshold crossing (UMASEP option)</p>
-</dd>
-</dl>
+<p>The values calculated here are important for space radiation operations:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Onset time, i.e. time to cross thresholds</p></li>
+<li><p>Onset peak intensity</p></li>
+<li><p>Onset peak time</p></li>
+<li><p>Maximum intensity</p></li>
+<li><p>Time of maximum intensity</p></li>
+<li><p>Rise time (onset to peak)</p></li>
+<li><p>End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)</p></li>
+<li><p>Duration</p></li>
+<li><p>Event-integrated fluences</p></li>
+<li><p>Proton fluxes at various times after threshold crossing (UMASEP option)</p></li>
+</ul>
+</div></blockquote>
 <p>UNITS: User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1)
 or integral fluxes (e.g. [s sr cm^2]^-1 or pfu). Default units are:
 MeV, cm, s, sr
@@ -231,16 +239,22 @@ about units in the USER INPUT DATA section below.</p>
 <p>OPTIONS: User may specify various options, that currently only apply to
 GOES data:</p>
 <blockquote>
-<div><p>Choose corrected or uncorrected GOES fluxes.
-Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
-energies to GOES uncorrected data.</p>
+<div><ul class="simple">
+<li><p>Choose corrected or uncorrected GOES fluxes.</p></li>
+<li><p>Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
+energies to GOES uncorrected data.</p></li>
+</ul>
 </div></blockquote>
-<p>–options uncorrected
-–options uncorrected,S14,Bruno2017 (recommend using background subtraction)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">options</span> <span class="n">uncorrected</span>
+<span class="o">--</span><span class="n">options</span> <span class="n">uncorrected</span><span class="p">,</span><span class="n">S14</span><span class="p">,</span><span class="n">Bruno2017</span> <span class="p">(</span><span class="n">recommend</span> <span class="n">using</span> <span class="n">background</span> <span class="n">subtraction</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>BACKGROUND SUBTRACTION: Users may choose to perform a background
-subtraction by specifying:
-–SubtractBG –BGStartDate YYYY-MM-DD –BGEndDate YYYY-MM-DD
-The user should look at the data and select an appropriate time frame
+subtraction by specifying:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--</span><span class="n">SubtractBG</span> <span class="o">--</span><span class="n">BGStartDate</span> <span class="n">YYYY</span><span class="o">-</span><span class="n">MM</span><span class="o">-</span><span class="n">DD</span> <span class="o">--</span><span class="n">BGEndDate</span> <span class="n">YYYY</span><span class="o">-</span><span class="n">MM</span><span class="o">-</span><span class="n">DD</span>
+</pre></div>
+</div>
+<p>The user should look at the data and select an appropriate time frame
 prior to the event when the background is calm and well-defined. If
 performing background subtraction, the mean background will be subtracted
 from the fluxes in the SEP time frame (StartDate to EndDate). Plots
@@ -266,10 +280,12 @@ thresholds used by UMASEP: &gt;10 MeV, 10 pfu; &gt;100 MeV, 1 pfu; &gt;30 MeV, 1
 multiple times after threshold crossing (Ts). The applied time delays are
 as follows:</p>
 <blockquote>
-<div><p>&gt;10 MeV - Ts + 3, 4, 5, 6, 7 hours
-&gt;30 MeV - Ts + 3, 4, 5, 6, 7 hours
-&gt;50 MeV - Ts + 3, 4, 5, 6, 7 hours
-&gt;100 MeV - Ts + 3, 4, 5, 6, 7 hours</p>
+<div><ul class="simple">
+<li><p>&gt;10 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+<li><p>&gt;30 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+<li><p>&gt;50 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+<li><p>&gt;100 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+</ul>
 </div></blockquote>
 <p>–spase_id: If you know the appropriate spase_id for the your model or
 experiment, you may specify it here to be filled in to the json file
@@ -281,48 +297,51 @@ library/global_vars.py.
 Mimicking a SRAG code, endfac is set to 0.85 (85% of threshold). This
 may be changed in the future to update this to more NOAA SWPC-like logic
 to define the end of an SEP event.</p>
-<p>RUN CODE FROM COMMAND LINE (put on one line), e.g.:
-python3 operational_sep_quantities.py –StartDate 2012-05-17</p>
-<blockquote>
-<div><p>–EndDate “2012-05-19 12:00:00” –Experiment GOES-13
-–FluxType integral –showplot –saveplot</p>
-</div></blockquote>
-<p>RUN CODE FROM COMMAND FOR USER DATA SET (put on one line), e.g.:
-python3 operational_sep_quantities.py –StartDate 2012-05-17</p>
-<blockquote>
-<div><p>–EndDate ‘2012-05-19 12:00:00’ –Experiment user –ModelName MyModel
-–UserFile MyFluxes.txt –FluxType integral –showplot</p>
-</div></blockquote>
+<p>RUN CODE FROM COMMAND LINE (put on one line), e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">operational_sep_quantities</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">StartDate</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">17</span>
+<span class="o">--</span><span class="n">EndDate</span> <span class="s2">&quot;2012-05-19 12:00:00&quot;</span> <span class="o">--</span><span class="n">Experiment</span> <span class="n">GOES</span><span class="o">-</span><span class="mi">13</span>
+<span class="o">--</span><span class="n">FluxType</span> <span class="n">integral</span> <span class="o">--</span><span class="n">showplot</span> <span class="o">--</span><span class="n">saveplot</span>
+</pre></div>
+</div>
+<p>RUN CODE FROM COMMAND FOR USER DATA SET (put on one line), e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">operational_sep_quantities</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">StartDate</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">17</span>
+<span class="o">--</span><span class="n">EndDate</span> <span class="s1">&#39;2012-05-19 12:00:00&#39;</span> <span class="o">--</span><span class="n">Experiment</span> <span class="n">user</span> <span class="o">--</span><span class="n">ModelName</span> <span class="n">MyModel</span>
+<span class="o">--</span><span class="n">UserFile</span> <span class="n">MyFluxes</span><span class="o">.</span><span class="n">txt</span> <span class="o">--</span><span class="n">FluxType</span> <span class="n">integral</span> <span class="o">--</span><span class="n">showplot</span>
+</pre></div>
+</div>
 <p>RUN CODE FROM COMMAND LINE AND PERFORM BACKGROUND SUBTRACTION AND APPLY
 Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins.
-(note: cannot bg-subtract GOES integral fluxes), e.g.:
-python3 operational_sep_quantities.py –StartDate 2012-05-17</p>
-<blockquote>
-<div><p>–EndDate ‘2012-05-19 12:00:00’ –Experiment GOES-13
-–FluxType differential  –showplot –options uncorrected,S14,Bruno2017
-–SubtractBG –BGStartDate 2012-05-10 –BGEndDate –2012-05-17</p>
-</div></blockquote>
-<p>RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
-import operational_sep_quantities as sep
-start_date = ‘2012-05-17’
-end_date = ‘2012-05-19 12:00:00’
-experiment = ‘GOES-13’
-flux_type = ‘integral’
-spase_id = ‘’
-model_name = ‘’ #if experiment is user, set model_name to describe data set
-user_file = ‘’ #if experiment is user, specify filename containing fluxes
-showplot = True  #Turn to False if don’t want to see plots
-saveplot = False #turn to true if you want to save plots to file
-options = ‘’ #various options: S14, Bruno2017, uncorrected
-doBGSub = False #Set true if want to perform background subtraction
-bgstart_date = “2012-05-10” #Dates used to estimate mean background if
-bgend_date = “2012-05-17”   #doBGSub is set to True
-detect_prev_event = True  #Helps if previous event causes high intensities
-two_peaks = False  #Helps if two increases above threshold in one event
-umasep = False #Set to true if want UMASEP values (see explanation above)
-threshold = ‘’ #Add a threshold to 10,10 and 100,1: ‘30,1’ or ‘4.9-7.3,0.01’
-nointerp = False #Default False; set to True to stop linear interpolatin in time</p>
-<p>sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date,         end_date, experiment, flux_type, model_name, user_file,        spase_id, showplot, saveplot, detect_prev_event,          two_peaks, umasep, threshold, options, doBGSub, bgstart_date,         bgend_date,nointerp)</p>
+(note: cannot bg-subtract GOES integral fluxes), e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">operational_sep_quantities</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">StartDate</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">17</span>
+<span class="o">--</span><span class="n">EndDate</span> <span class="s1">&#39;2012-05-19 12:00:00&#39;</span> <span class="o">--</span><span class="n">Experiment</span> <span class="n">GOES</span><span class="o">-</span><span class="mi">13</span>
+<span class="o">--</span><span class="n">FluxType</span> <span class="n">differential</span>  <span class="o">--</span><span class="n">showplot</span> <span class="o">--</span><span class="n">options</span> <span class="n">uncorrected</span><span class="p">,</span><span class="n">S14</span><span class="p">,</span><span class="n">Bruno2017</span>
+<span class="o">--</span><span class="n">SubtractBG</span> <span class="o">--</span><span class="n">BGStartDate</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">10</span> <span class="o">--</span><span class="n">BGEndDate</span> <span class="o">--</span><span class="mi">2012</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">17</span>
+</pre></div>
+</div>
+<p>RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">operational_sep_quantities</span> <span class="k">as</span> <span class="nn">sep</span>
+<span class="n">start_date</span> <span class="o">=</span> <span class="s1">&#39;2012-05-17&#39;</span>
+<span class="n">end_date</span> <span class="o">=</span> <span class="s1">&#39;2012-05-19 12:00:00&#39;</span>
+<span class="n">experiment</span> <span class="o">=</span> <span class="s1">&#39;GOES-13&#39;</span>
+<span class="n">flux_type</span> <span class="o">=</span> <span class="s1">&#39;integral&#39;</span>
+<span class="n">spase_id</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+<span class="n">model_name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="c1">#if experiment is user, set model_name to describe data set</span>
+<span class="n">user_file</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="c1">#if experiment is user, specify filename containing fluxes</span>
+<span class="n">showplot</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1">#Turn to False if don&#39;t want to see plots</span>
+<span class="n">saveplot</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1">#turn to true if you want to save plots to file</span>
+<span class="n">options</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="c1">#various options: S14, Bruno2017, uncorrected</span>
+<span class="n">doBGSub</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1">#Set true if want to perform background subtraction</span>
+<span class="n">bgstart_date</span> <span class="o">=</span> <span class="s2">&quot;2012-05-10&quot;</span> <span class="c1">#Dates used to estimate mean background if</span>
+<span class="n">bgend_date</span> <span class="o">=</span> <span class="s2">&quot;2012-05-17&quot;</span>   <span class="c1">#doBGSub is set to True</span>
+<span class="n">detect_prev_event</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1">#Helps if previous event causes high intensities</span>
+<span class="n">two_peaks</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1">#Helps if two increases above threshold in one event</span>
+<span class="n">umasep</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1">#Set to true if want UMASEP values (see explanation above)</span>
+<span class="n">threshold</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span> <span class="c1">#Add a threshold to 10,10 and 100,1: &#39;30,1&#39; or &#39;4.9-7.3,0.01&#39;</span>
+<span class="n">nointerp</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1">#Default False; set to True to stop linear interpolatin in time</span>
+
+<span class="n">sep_year</span><span class="p">,</span> <span class="n">sep_month</span><span class="p">,</span><span class="n">sep_day</span><span class="p">,</span> <span class="n">jsonfname</span> <span class="o">=</span> <span class="n">sep</span><span class="o">.</span><span class="n">run_all</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span>             <span class="n">end_date</span><span class="p">,</span> <span class="n">experiment</span><span class="p">,</span> <span class="n">flux_type</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">user_file</span><span class="p">,</span>            <span class="n">spase_id</span><span class="p">,</span> <span class="n">showplot</span><span class="p">,</span> <span class="n">saveplot</span><span class="p">,</span> <span class="n">detect_prev_event</span><span class="p">,</span>              <span class="n">two_peaks</span><span class="p">,</span> <span class="n">umasep</span><span class="p">,</span> <span class="n">threshold</span><span class="p">,</span> <span class="n">options</span><span class="p">,</span> <span class="n">doBGSub</span><span class="p">,</span> <span class="n">bgstart_date</span><span class="p">,</span>             <span class="n">bgend_date</span><span class="p">,</span><span class="n">nointerp</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>Set the desired directory locations for the data and output at the beginning
 of the program in datapath and outpath. Defaults are ‘data’ and ‘output’.</p>
 <p>In order to calculate the fluence, the program determines time_resolution
@@ -354,23 +373,25 @@ file that contains most of the same values recorded in the json file.</p>
 SEP event with additional threshold &gt;10, 0.001 pfu, &gt;100, 0.0001 pfu,
 &gt;30 MeV, 1 pfu, &gt;50 MeV, 1 pfu, and &gt;60 MeV, 0.079 pfu. Some of the files
 below are only created if a threshold was crossed. A default run would produce
-only 10 and 100 MeV files, sep_values_*.csv and json file:
-fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv
-fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv
-fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv
-fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv
-fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv
-fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv
-integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv
-sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt
-SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json</p>
+only 10 and 100 MeV files, sep_values_*.csv and json file:</p>
+<ul class="simple">
+<li><p>fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv</p></li>
+<li><p>fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv</p></li>
+<li><p>fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv</p></li>
+<li><p>fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv</p></li>
+<li><p>fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv</p></li>
+<li><p>fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv</p></li>
+<li><p>integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv</p></li>
+<li><p>sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt</p></li>
+<li><p>SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json</p></li>
+</ul>
 <p>The json and txt files listed above would be the ones that would be appropriate
 to read into the CCMC SEP Scoreboard or to pass to the SEP validation code
 being developed in conjunction with the SEP Scoreboard. The csv files are legacy
@@ -388,8 +409,10 @@ VALUES TO REFLECT YOUR UNITS. If you want to use different units, but
 still have the correct operational definitions, you need to modify these
 lines in define_thresholds() below:</p>
 <blockquote>
-<div><p>energy_thresholds = [10,100] #MeV; flux for particles of &gt; this MeV
-flux_thresholds = [10,1] #pfu; exceed this level of intensity</p>
+<div><ul class="simple">
+<li><p>energy_thresholds = [10,100] #MeV; flux for particles of &gt; this MeV</p></li>
+<li><p>flux_thresholds = [10,1] #pfu; exceed this level of intensity</p></li>
+</ul>
 </div></blockquote>
 <p>NOTE: The first column in your flux file is assumed to be time in format
 YYYY-MM-DD HH:MM:SS. IMPORTANT FORMATTING!!
@@ -405,19 +428,29 @@ bin along with lower differential channels.</p>
 <p>USER VARIABLES: The user must modify the following variables in
 library/global_vars.py:</p>
 <blockquote>
-<div><dl class="simple">
-<dt>user_col - identify columns in your file containing fluxes to analyze;</dt><dd><p>even if your delimeter is white space, consider the date-time
+<div><dl class="field-list simple">
+<dt class="field-odd">user_col</dt>
+<dd class="field-odd"><p>identify columns in your file containing fluxes to analyze;
+even if your delimeter is white space, consider the date-time
 column as one single column. SET IN library/global_vars.py.</p>
 </dd>
-<dt>user_delim - delimeter between columns, e.g. ” ” or “,”   Use ” ” for</dt><dd><p>any amount of whitespace. SET IN library/global_vars.py.</p>
+<dt class="field-even">user_delim</dt>
+<dd class="field-even"><p>delimeter between columns, e.g. ” ” or “,”   Use ” ” for
+any amount of whitespace. SET IN library/global_vars.py.</p>
 </dd>
-<dt>user_energy_bins - define your energy bins at the top of the code in the</dt><dd><p>variable user_energy_bins. Follow the format in the subroutine
+<dt class="field-odd">user_energy_bins</dt>
+<dd class="field-odd"><p>define your energy bins at the top of the code in the
+variable user_energy_bins. Follow the format in the subroutine
 define_energy_bins. SET IN library/global_vars.py.</p>
 </dd>
-<dt>user_fname - specify the name of the file containing the fluxes</dt><dd><p>through an argument in the command line. –UserFile  The
+<dt class="field-even">user_fname</dt>
+<dd class="field-even"><p>specify the name of the file containing the fluxes
+through an argument in the command line. –UserFile  The
 user_fname variable will be updated with that filename. ARGUMENT</p>
 </dd>
-<dt>time_resolution - the program determines time_resolution</dt><dd><p>(seconds) by finding the difference between every consecutive
+<dt class="field-odd">time_resolution</dt>
+<dd class="field-odd"><p>the program determines time_resolution
+(seconds) by finding the difference between every consecutive
 set of time points in the data set. The most common difference
 is identified as the time resolution. This method should find
 an accurate time resolution even if there are gaps in the
@@ -427,43 +460,71 @@ time steps.. AUTOMATICALLY DETERMINED.</p>
 </div></blockquote>
 <p>Running the code for a user-input file may look like the example below.
 Note that the –UserFile location is with respect to the “data” directory
-inside the operational-sep directory:
-python3 operational_sep_quantities.py –StartDate 2021-05-29 –EndDate 2021-06-05 –Experiment user –UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt –ModelName SEPMOD_RT_60min –showplot –Threshold “10,0.001;100,0.0001;30,1;50,1;60,0.079” –spase_id “spase://CCMC/SimulationModel/SEPMOD” –FluxType integral</p>
-<dl>
-<dt>VALUES SPECIFIED IN library/global_vars.py:</dt><dd><p>datapath - directory containing data, ‘data’
-outpath - directory for program output, ‘output’
-plotpath - directory for saving plots, ‘plots’
-listpath - directory for lists (for run_multi_sep.py)
-badval - will set any bad data points to this value
-endfac - multiplicative factor to define threshold for</p>
+inside the operational-sep directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">operational_sep_quantities</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">StartDate</span> <span class="mi">2021</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">29</span> <span class="o">--</span><span class="n">EndDate</span> <span class="mi">2021</span><span class="o">-</span><span class="mi">06</span><span class="o">-</span><span class="mi">05</span> <span class="o">--</span><span class="n">Experiment</span> <span class="n">user</span> <span class="o">--</span><span class="n">UserFile</span> <span class="n">SEPMOD</span><span class="o">/</span><span class="n">Scoreboard</span><span class="o">/</span><span class="n">SEPMOD</span><span class="mf">.20210529_000000.20210529_165133.20210529_133005</span><span class="n">_geo_integral_tseries_timestamped_60min</span><span class="o">.</span><span class="n">txt</span> <span class="o">--</span><span class="n">ModelName</span> <span class="n">SEPMOD_RT_60min</span> <span class="o">--</span><span class="n">showplot</span> <span class="o">--</span><span class="n">Threshold</span> <span class="s2">&quot;10,0.001;100,0.0001;30,1;50,1;60,0.079&quot;</span> <span class="o">--</span><span class="n">spase_id</span> <span class="s2">&quot;spase://CCMC/SimulationModel/SEPMOD&quot;</span> <span class="o">--</span><span class="n">FluxType</span> <span class="n">integral</span>
+</pre></div>
+</div>
+<p>VALUES SPECIFIED IN library/global_vars.py:</p>
 <blockquote>
-<div><p>end of event; threshold*endfac (default 0.85)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>nsigma - number of sigma to define SEP versus background</dt><dd><p>flux in background subtraction routine</p>
+<div><dl class="field-list simple">
+<dt class="field-odd">datapath</dt>
+<dd class="field-odd"><p>directory containing data, ‘data’</p>
 </dd>
-<dt>version - if you are running a model or data set, allows you</dt><dd><p>to enter a version number</p>
+<dt class="field-even">outpath</dt>
+<dd class="field-even"><p>directory for program output, ‘output’</p>
+</dd>
+<dt class="field-odd">plotpath</dt>
+<dd class="field-odd"><p>directory for saving plots, ‘plots’</p>
+</dd>
+<dt class="field-even">listpath</dt>
+<dd class="field-even"><p>directory for lists (for run_multi_sep.py)</p>
+</dd>
+<dt class="field-odd">badval</dt>
+<dd class="field-odd"><p>will set any bad data points to this value</p>
+</dd>
+<dt class="field-even">endfac</dt>
+<dd class="field-even"><p>multiplicative factor to define threshold for
+end of event; threshold*endfac (default 0.85)</p>
+</dd>
+<dt class="field-odd">nsigma</dt>
+<dd class="field-odd"><p>number of sigma to define SEP versus background
+flux in background subtraction routine</p>
+</dd>
+<dt class="field-even">version</dt>
+<dd class="field-even"><p>if you are running a model or data set, allows you
+to enter a version number</p>
+</dd>
+<dt class="field-odd">user_col</dt>
+<dd class="field-odd"><p>array defining flux columns (0 is always datetime)</p>
+</dd>
+<dt class="field-even">user_delim</dt>
+<dd class="field-even"><p>delimeter used to separate the columns in the time
+profile file that you will read in</p>
+</dd>
+<dt class="field-odd">user_energy_bins</dt>
+<dd class="field-odd"><p>energy bins associated with the columns
+specified in user_col</p>
+</dd>
+<dt class="field-even">energy_units</dt>
+<dd class="field-even"><p>e.g. “MeV’</p>
+</dd>
+<dt class="field-odd">flux_units_integral</dt>
+<dd class="field-odd"><p>e.g. “pfu”</p>
+</dd>
+<dt class="field-even">fluence_units_integral</dt>
+<dd class="field-even"><p>e.g. “cm^-2”</p>
+</dd>
+<dt class="field-odd">flux_units_differential</dt>
+<dd class="field-odd"><p>e.g. “MeV^-1*cm^-2*s^-1*sr^-1” (CCMC format)</p>
+</dd>
+<dt class="field-even">fluence_units_differential</dt>
+<dd class="field-even"><p>e.g. “MeV^-1*cm^-2” (CCMC format)</p>
 </dd>
 </dl>
-<p>user_col - array defining flux columns (0 is always datetime)
-user_delim - delimeter used to separate the columns in the time</p>
-<blockquote>
-<div><p>profile file that you will read in</p>
-</div></blockquote>
-<dl class="simple">
-<dt>user_energy_bins - energy bins associated with the columns</dt><dd><p>specified in user_col</p>
-</dd>
-</dl>
-<p>energy_units - e.g. “MeV’
-flux_units_integral - e.g. “pfu”
-fluence_units_integral - e.g. “cm^-2”
-flux_units_differential - e.g. “MeV^-1*cm^-2*s^-1*sr^-1” (CCMC format)
-fluence_units_differential - e.g. “MeV^-1*cm^-2” (CCMC format)</p>
 <p>(setting the units here will make correct units on plots and in json
 file, but doesn’t change operational threshold values; must be done
 accordingly by hand)</p>
-</dd>
-</dl>
+</div></blockquote>
 </dd></dl>
 
 <dl class="py function">
@@ -471,123 +532,193 @@ accordingly by hand)</p>
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">append_differential_thresholds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_thresholds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_thresholds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">str_thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_diff_thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plt_energy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plt_flux</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fluxes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detect_prev_event</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_peaks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umasep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umasep_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umasep_fluxes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_threshold_fluences</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_fluence</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_energies</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crossing_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_flux</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rise_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_end_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_peak</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integral_fluxes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.append_differential_thresholds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Add the threshold crossing information for differential channels
 as specified by the user.</p>
-<p>Definitions:
-n integral energy thresholds (&gt;10, &gt;100 + user input integral</p>
-<blockquote>
-<div><p>thresholds)</p>
-</div></blockquote>
-<p>m energy bins associated with the input flux files
-p user input thresholds (integral + differential, define</p>
-<blockquote>
-<div><p>d differential channels for which a threshold is applied
-n-2 = integral channels, (n-2)+d = p)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>q time points in the flux time profiles (between user input</dt><dd><p>start and end dates)</p>
+<p>Definitions:</p>
+<ul class="simple">
+<li><p>n integral energy thresholds (&gt;10, &gt;100 + user input integral thresholds)</p></li>
+<li><p>m energy bins associated with the input flux files</p></li>
+<li><p>p user input thresholds (integral + differential, define d differential channels for which a threshold is applied n-2 = integral channels, (n-2)+d = p)</p></li>
+<li><p>q time points in the flux time profiles (between user input start and end dates)</p></li>
+</ul>
+<p>INPUTS (filled in up to thresholds applied to integral channels):</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1xn array) - energy channels for which a
+threshold is applied (at this point, only the integral ones)</p>
 </dd>
-</dl>
-<p>INPUTS (filled in up to thresholds applied to integral channels):
-energy_thresholds (float 1xn array) - energy channels for which a</p>
-<blockquote>
-<div><p>threshold is applied (at this point, only the integral ones)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>flux_thresholds (float 1xn array) - flux thresholds applied to</dt><dd><p>the energy channels in energy_thresholds</p>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - flux thresholds applied to
+the energy channels in energy_thresholds</p>
 </dd>
-<dt>str_thresh (string 1xp array) - p user input thresholds broken into</dt><dd><p>an array (need for generating plot labels)</p>
+<dt class="field-odd">Str_thresh</dt>
+<dd class="field-odd"><p>(string 1xp array) - p user input thresholds broken into
+an array (need for generating plot labels)</p>
 </dd>
-<dt>is_diff_thresh (bool 1xp array) - indicates which of the user</dt><dd><p>thresholds are applied to differential channels</p>
+<dt class="field-even">Is_diff_thresh</dt>
+<dd class="field-even"><p>(bool 1xp array) - indicates which of the user
+thresholds are applied to differential channels</p>
 </dd>
-<dt>plt_energy (float 1xn array) - holds energy thresholds for the</dt><dd><p>integral channels at this point</p>
+<dt class="field-odd">Plt_energy</dt>
+<dd class="field-odd"><p>(float 1xn array) - holds energy thresholds for the
+integral channels at this point</p>
 </dd>
-<dt>plt_flux (float 1xn array) - hold the flux thresholds for the</dt><dd><p>integral channels at this point</p>
+<dt class="field-even">Plt_flux</dt>
+<dd class="field-even"><p>(float 1xn array) - hold the flux thresholds for the
+integral channels at this point</p>
 </dd>
-<dt>input_threshold (float 2xp array) - p input thresholds in form</dt><dd><p>[binlowedge, flux threshold]</p>
+<dt class="field-odd">Input_threshold</dt>
+<dd class="field-odd"><p>(float 2xp array) - p input thresholds in form
+[binlowedge, flux threshold]</p>
 </dd>
-<dt>energy_bins (float 2xm array) - m energy bins for each input</dt><dd><p>flux channel</p>
+<dt class="field-even">Energy_bins</dt>
+<dd class="field-even"><p>(float 2xm array) - m energy bins for each input
+flux channel</p>
 </dd>
-</dl>
-<p>dates (datetime 1xq array) - q time points for the flux time profile
-fluxes (float mxq array) - flux time profiles for m energy bins and</p>
-<blockquote>
-<div><p>q time points</p>
-</div></blockquote>
-<p>detect_prev_event (bool) - option for finding start of event
-two_peaks (bool) - option for extending event length
-umasep (boolean) - indicate if user called UMASEP flag
-umasep_times (datetime 5xn array) - times 3, 4, 5, 7, 9 hours after</p>
-<blockquote>
-<div><p>crossing time for each applied threshold</p>
-</div></blockquote>
-<dl class="simple">
-<dt>umasep_fluxes (float 5xn) - fluxes at each of those times for each</dt><dd><p>applied threshold</p>
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xq array) - q time points for the flux time profile</p>
 </dd>
-<dt>all_threshold_fluences (float 1xn array) - fluence values for integral</dt><dd><p>or estimated integral fluxes in the n energy channels for which
+<dt class="field-even">Fluxes</dt>
+<dd class="field-even"><p>(float mxq array) - flux time profiles for m energy bins and
+q time points</p>
+</dd>
+<dt class="field-odd">Detect_prev_event</dt>
+<dd class="field-odd"><p>(bool) - option for finding start of event</p>
+</dd>
+<dt class="field-even">Two_peaks</dt>
+<dd class="field-even"><p>(bool) - option for extending event length</p>
+</dd>
+<dt class="field-odd">Umasep</dt>
+<dd class="field-odd"><p>(boolean) - indicate if user called UMASEP flag</p>
+</dd>
+<dt class="field-even">Umasep_times</dt>
+<dd class="field-even"><p>(datetime 5xn array) - times 3, 4, 5, 7, 9 hours after
+crossing time for each applied threshold</p>
+</dd>
+<dt class="field-odd">Umasep_fluxes</dt>
+<dd class="field-odd"><p>(float 5xn) - fluxes at each of those times for each
+applied threshold</p>
+</dd>
+<dt class="field-even">All_threshold_fluences</dt>
+<dd class="field-even"><p>(float 1xn array) - fluence values for integral
+or estimated integral fluxes in the n energy channels for which
 thresholds were applied</p>
 </dd>
-<dt>all_fluence (float nxm array) - fluence spectrum in the original</dt><dd><p>integral or differential energy channels associated with
+<dt class="field-odd">All_fluence</dt>
+<dd class="field-odd"><p>(float nxm array) - fluence spectrum in the original
+integral or differential energy channels associated with
 energy_bins. Fluence calculated between crossing_time and
 event_end_time, so this is the fluence spectrum associated with
 the events defined by the thresholds applied to each energy channel</p>
 </dd>
-<dt>all_energies (float 1xm array) - effective energies for energy_bins,</dt><dd><p>defined by sqrt(low bin edge*high bin edge)</p>
+<dt class="field-even">All_energies</dt>
+<dd class="field-even"><p>(float 1xm array) - effective energies for energy_bins,
+defined by sqrt(low bin edge*high bin edge)</p>
 </dd>
-<dt>crossing_time (datetime 1xn array) - SEP event start time for each</dt><dd><p>applied threshold</p>
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - SEP event start time for each
+applied threshold</p>
+</dd>
+<dt class="field-even">Peak_flux</dt>
+<dd class="field-even"><p>(float 1xn array) - maximum flux for each applied threshold</p>
+</dd>
+<dt class="field-odd">Peak_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - time of maximum flux for each applied
+threshold</p>
+</dd>
+<dt class="field-even">Rise_time</dt>
+<dd class="field-even"><p>(timedelta 1xn array) - start time to max flux</p>
+</dd>
+<dt class="field-odd">Event_end_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - end time for each applied threshold</p>
+</dd>
+<dt class="field-even">Duration</dt>
+<dd class="field-even"><p>(timedelta 1xn array) - end time minus start time</p>
+</dd>
+<dt class="field-odd">Onset_peak</dt>
+<dd class="field-odd"><p>(float 1xn array) - onset peak for each applied threshold</p>
+</dd>
+<dt class="field-even">Onset_date</dt>
+<dd class="field-even"><p>(datetime 1xn array) - onset peak time for each applied
+threshold</p>
+</dd>
+<dt class="field-odd">Integral_fluxes</dt>
+<dd class="field-odd"><p>(float nxq array) - flux time profiles of integral
+or estimated integral fluxes for n energy channels and m time steps</p>
 </dd>
 </dl>
-<p>peak_flux (float 1xn array) - maximum flux for each applied threshold
-peak_time (datetime 1xn array) - time of maximum flux for each applied</p>
-<blockquote>
-<div><p>threshold</p>
-</div></blockquote>
-<p>rise_time (timedelta 1xn array) - start time to max flux
-event_end_time (datetime 1xn array) - end time for each applied threshold
-duration (timedelta 1xn array) - end time minus start time
-onset_peak (float 1xn array) - onset peak for each applied threshold
-onset_date (datetime 1xn array) - onset peak time for each applied</p>
-<blockquote>
-<div><p>threshold</p>
-</div></blockquote>
-<dl class="simple">
-<dt>integral_fluxes (float nxq array) - flux time profiles of integral</dt><dd><p>or estimated integral fluxes for n energy channels and m time steps</p>
-</dd>
-</dl>
-<p>OUTPUTS:
-(thresholds applied to differential channels have been
+<p>OUTPUTS:</p>
+<p>(thresholds applied to differential channels have been
 appended; define d as the number of differential channels for
 which the user applied a threshold.
 n+d = total number of thresholds applied to energy channels):</p>
-<p>energy_thresholds (float 1x(n+d) array)
-flux_thresholds (float 1x(n+d) array)
-plot_diff_thresh (bool 1x(n+d) array)
-plt_energy (float 1x(n+d) array)
-plt_flux (float 1x(n+d) array)
-all_threshold_fluences (float 1x(n+d) array)
-all_fluence (float (n+d)xm array)
-all_energies (float 1xm array)
-crossing_time (datetime 1x(n+d) array)
-peak_flux (float 1x(n+d) array)
-peak_time (datetime 1x(n+d) array)
-rise_time (timedelta 1x(n+d) array)
-event_end_time (datetime 1x(n+d) array)
-duration (timedelta 1x(n+d) array)
-onset_date (datetime 1x(n+d) array)
-onset_peak (float 1x(n+d) array)
-integral_fluxes (float (n+d)xq array)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1x(n+d) array)</p>
+</dd>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1x(n+d) array)</p>
+</dd>
+<dt class="field-odd">Plot_diff_thresh</dt>
+<dd class="field-odd"><p>(bool 1x(n+d) array)</p>
+</dd>
+<dt class="field-even">Plt_energy</dt>
+<dd class="field-even"><p>(float 1x(n+d) array)</p>
+</dd>
+<dt class="field-odd">Plt_flux</dt>
+<dd class="field-odd"><p>(float 1x(n+d) array)</p>
+</dd>
+<dt class="field-even">All_threshold_fluences</dt>
+<dd class="field-even"><p>(float 1x(n+d) array)</p>
+</dd>
+<dt class="field-odd">All_fluence</dt>
+<dd class="field-odd"><p>(float (n+d)xm array)</p>
+</dd>
+<dt class="field-even">All_energies</dt>
+<dd class="field-even"><p>(float 1xm array)</p>
+</dd>
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1x(n+d) array)</p>
+</dd>
+<dt class="field-even">Peak_flux</dt>
+<dd class="field-even"><p>(float 1x(n+d) array)</p>
+</dd>
+<dt class="field-odd">Peak_time</dt>
+<dd class="field-odd"><p>(datetime 1x(n+d) array)</p>
+</dd>
+<dt class="field-even">Rise_time</dt>
+<dd class="field-even"><p>(timedelta 1x(n+d) array)</p>
+</dd>
+<dt class="field-odd">Event_end_time</dt>
+<dd class="field-odd"><p>(datetime 1x(n+d) array)</p>
+</dd>
+<dt class="field-even">Duration</dt>
+<dd class="field-even"><p>(timedelta 1x(n+d) array)</p>
+</dd>
+<dt class="field-odd">Onset_date</dt>
+<dd class="field-odd"><p>(datetime 1x(n+d) array)</p>
+</dd>
+<dt class="field-even">Onset_peak</dt>
+<dd class="field-even"><p>(float 1x(n+d) array)</p>
+</dd>
+<dt class="field-odd">Integral_fluxes</dt>
+<dd class="field-odd"><p>(float (n+d)xq array)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="operational_sep_quantities.calculate_event_info">
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">calculate_event_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_thresholds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_thresholds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integral_fluxes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detect_prev_event</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_peaks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diff_thresh</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.calculate_event_info" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="simple">
-<dt>Applies energy and flux thresholds to calculate SEP event quantities:</dt><dd><p>Threshold crossing time (onset)
-Peak Flux in date range specified by user
-Time of Peak Flux
-Rise Time (onset to peak flux)
-Event End Time (below 0.85*threshold for 3 data points, e.g 15 min)
-Duration (onset to end)</p>
-</dd>
-</dl>
+<dd><p>Applies energy and flux thresholds to calculate SEP event quantities:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Threshold crossing time (onset)</p></li>
+<li><p>Peak Flux in date range specified by user</p></li>
+<li><p>Time of Peak Flux</p></li>
+<li><p>Rise Time (onset to peak flux)</p></li>
+<li><p>Event End Time (below 0.85*threshold for 3 data points, e.g 15 min)</p></li>
+<li><p>Duration (onset to end)</p></li>
+</ul>
+</div></blockquote>
 <p>If the detect_prev_event flag is set to true and the threshold is crossed
 on the first time in the specified date range, this indicates that fluxes
 were already high due to a previous event. The code will look for the
@@ -605,30 +736,54 @@ crossing time.</p>
 <p>NOTE: integral_fluxes is a “historic” name and may actual contain
 integral or differential fluxes. They correspond to the flux channels
 for which a threshold has been applied.</p>
-<p>INPUTS:
-energy_thresholds (float 1xn array) - energy channels for which a</p>
-<blockquote>
-<div><p>threshold is applied</p>
-</div></blockquote>
-<p>flux_thresholds (float 1xn array) - flux thresholds to apply
-dates (datetime 1xm array)
-integral_fluxes (float nxm array) - fluxes only associated with the</p>
-<blockquote>
-<div><p>energy channels in energy_thresholds</p>
-</div></blockquote>
-<p>detect_prev_event (boolean)
-two_peaks (boolean)
-diff_thresh (boolean) - indicates if the energy_threshold and</p>
-<blockquote>
-<div><p>flux_threshold refer to a differential channel (True)</p>
-</div></blockquote>
-<p>OUTPUTS:
-crossing_time (datetime 1xn array) - crossing times for n applied thresholds
-peak_flux (float 1xn array) - max flux value between start and end time
-peak_time (datetime 1xn array)
-rise_time (timedelta 1xn array) - (peak_time - crossing_time)
-event_end_time (datetime 1xn array)
-duration (timedelta 1xn arrat) - (event_end_time - crossing_time)</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1xn array) - energy channels for which a
+threshold is applied</p>
+</dd>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - flux thresholds to apply</p>
+</dd>
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array)</p>
+</dd>
+<dt class="field-even">Integral_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) - fluxes only associated with the
+energy channels in energy_thresholds</p>
+</dd>
+<dt class="field-odd">Detect_prev_event</dt>
+<dd class="field-odd"><p>(boolean)</p>
+</dd>
+<dt class="field-even">Two_peaks</dt>
+<dd class="field-even"><p>(boolean)</p>
+</dd>
+<dt class="field-odd">Diff_thresh</dt>
+<dd class="field-odd"><p>(boolean) - indicates if the energy_threshold and
+flux_threshold refer to a differential channel (True)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - crossing times for n applied thresholds</p>
+</dd>
+<dt class="field-even">Peak_flux</dt>
+<dd class="field-even"><p>(float 1xn array) - max flux value between start and end time</p>
+</dd>
+<dt class="field-odd">Peak_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array)</p>
+</dd>
+<dt class="field-even">Rise_time</dt>
+<dd class="field-even"><p>(timedelta 1xn array) - (peak_time - crossing_time)</p>
+</dd>
+<dt class="field-odd">Event_end_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array)</p>
+</dd>
+<dt class="field-even">Duration</dt>
+<dd class="field-even"><p>(timedelta 1xn arrat) - (event_end_time - crossing_time)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -652,14 +807,22 @@ if there are enough consecutive time points in the observational
 or model output, the correct time resolution should be identified.</p>
 <p>Fluence units will be 1/[MeV cm^2] for GOES or SEPEM differential
 fluxes or 1/[cm^2] for integral fluxes.</p>
-<p>INPUTS:
-flux (float 1xn array) - intensity time series for a single energy bin</p>
-<blockquote>
-<div><p>or single integral channel (1D array).</p>
-</div></blockquote>
-<p>dates (datetime 1xn array) - datetimes that correspond to the fluxes</p>
-<p>OUTPUTS:
-fluence (float) - sum of all the flux values in flux</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Flux</dt>
+<dd class="field-odd"><p>(float 1xn array) - intensity time series for a single energy bin
+or single integral channel (1D array).</p>
+</dd>
+<dt class="field-even">Dates</dt>
+<dd class="field-even"><p>(datetime 1xn array) - datetimes that correspond to the fluxes</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fluence</dt>
+<dd class="field-odd"><p>(float) - sum of all the flux values in flux</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -669,60 +832,94 @@ fluence (float) - sum of all the flux values in flux</p>
 between start and end times determined in each channel.
 This subroutine is only called for the thresholds applied
 to integral channels.</p>
-<p>INPUTS:
-experiment (string)
-flux_type (string) - integral, differential
-options (string array) - options that could be applied
-model_name (string) - model name or experiment if experiment = “user”
-doBGSub (bool) - indicate if background subtraction to be performed
-startdate (datetime) - start date of time period entered by user
-enddate (datetime) - end date of time period entered by user
-energy_bins (float 2xp array) - energy bins for all of the flux channels
-energy_thresholds (float 1xn array) - energy channels for which a</p>
-<blockquote>
-<div><p>threshold is applied (at this point, only the integral ones)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>flux_thresholds (float 1xn array) - flux thresholds applied to</dt><dd><p>the energy channels in energy_thresholds</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
 </dd>
-</dl>
-<p>dates (datetime 1xm array) - time points for the flux time profiles
-fluxes (float pxm array) - flux time profiles for p energy bins and m</p>
-<blockquote>
-<div><p>time steps</p>
-</div></blockquote>
-<dl class="simple">
-<dt>integral_fluxes (float nxm array) - flux time profiles of integral</dt><dd><p>or estimated integral fluxes for n energy channels and m time steps</p>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral, differential</p>
 </dd>
-<dt>crossing_time (datetime 1xn array) - SEP event start times for each</dt><dd><p>energy channel with an applied threshold</p>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - options that could be applied</p>
 </dd>
-<dt>event_end_time (datetime 1xn array) - SEP event end times for each</dt><dd><p>energy channel with an applied threshold</p>
+<dt class="field-even">Model_name</dt>
+<dd class="field-even"><p>(string) - model name or experiment if experiment = “user”</p>
 </dd>
-<dt>all_threshold_fluences (float 1xn array) - fluence values for integral</dt><dd><p>or estimated integral fluxes in the n energy channels for which
+<dt class="field-odd">DoBGSub</dt>
+<dd class="field-odd"><p>(bool) - indicate if background subtraction to be performed</p>
+</dd>
+<dt class="field-even">Startdate</dt>
+<dd class="field-even"><p>(datetime) - start date of time period entered by user</p>
+</dd>
+<dt class="field-odd">Enddate</dt>
+<dd class="field-odd"><p>(datetime) - end date of time period entered by user</p>
+</dd>
+<dt class="field-even">Energy_bins</dt>
+<dd class="field-even"><p>(float 2xp array) - energy bins for all of the flux channels</p>
+</dd>
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1xn array) - energy channels for which a
+threshold is applied (at this point, only the integral ones)</p>
+</dd>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - flux thresholds applied to
+the energy channels in energy_thresholds</p>
+</dd>
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) - time points for the flux time profiles</p>
+</dd>
+<dt class="field-even">Fluxes</dt>
+<dd class="field-even"><p>(float pxm array) - flux time profiles for p energy bins and m
+time steps</p>
+</dd>
+<dt class="field-odd">Integral_fluxes</dt>
+<dd class="field-odd"><p>(float nxm array) - flux time profiles of integral
+or estimated integral fluxes for n energy channels and m time steps</p>
+</dd>
+<dt class="field-even">Crossing_time</dt>
+<dd class="field-even"><p>(datetime 1xn array) - SEP event start times for each
+energy channel with an applied threshold</p>
+</dd>
+<dt class="field-odd">Event_end_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - SEP event end times for each
+energy channel with an applied threshold</p>
+</dd>
+<dt class="field-even">All_threshold_fluences</dt>
+<dd class="field-even"><p>(float 1xn array) - fluence values for integral
+or estimated integral fluxes in the n energy channels for which
 thresholds were applied</p>
 </dd>
-<dt>all_fluence (float nxp array) - fluence spectrum in the original</dt><dd><p>integral or differential energy channels associated with
+<dt class="field-odd">All_fluence</dt>
+<dd class="field-odd"><p>(float nxp array) - fluence spectrum in the original
+integral or differential energy channels associated with
 energy_bins. Fluence calculated between crossing_time and
 event_end_time, so this is the fluence spectrum associated with
 the events defined by the thresholds applied to each energy channel</p>
 </dd>
-<dt>all_energies (float 1xp array) - effective energies for energy_bins,</dt><dd><p>defined by sqrt(low bin edge*high bin edge)</p>
+<dt class="field-even">All_energies</dt>
+<dd class="field-even"><p>(float 1xp array) - effective energies for energy_bins,
+defined by sqrt(low bin edge*high bin edge)</p>
 </dd>
 </dl>
-<p>OUTPUTS:
-Arrays filled in for the integral thresholds:
-all_threshold_fluences (float 1xn array) - fluence values for integral</p>
-<blockquote>
-<div><p>or estimated integral fluxes in the n energy channels for which
+<p>OUTPUTS:</p>
+<p>Arrays filled in for the integral thresholds:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_threshold_fluences</dt>
+<dd class="field-odd"><p>(float 1xn array) - fluence values for integral
+or estimated integral fluxes in the n energy channels for which
 thresholds were applied</p>
-</div></blockquote>
-<dl class="simple">
-<dt>all_fluence (float nxp array) - fluence spectrum in the original</dt><dd><p>integral or differential energy channels associated with
+</dd>
+<dt class="field-even">All_fluence</dt>
+<dd class="field-even"><p>(float nxp array) - fluence spectrum in the original
+integral or differential energy channels associated with
 energy_bins. Fluence calculated between crossing_time and
 event_end_time, so this is the fluence spectrum associated with
 the events defined by the thresholds applied to each energy channel</p>
 </dd>
-<dt>all_energies (float 1xp array) - effective energies for energy_bins,</dt><dd><p>defined by sqrt(low bin edge*high bin edge)</p>
+<dt class="field-odd">All_energies</dt>
+<dd class="field-odd"><p>(float 1xp array) - effective energies for energy_bins,
+defined by sqrt(low bin edge*high bin edge)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -747,27 +944,43 @@ The onset peak may provide a more physically appropriate comparison
 with models.
 If code cannot identify onset peak, it will return a value of 0 on
 the date None.</p>
-<p>INPUTS:
-experiment (string) e.g. GOES-13
-energy_thresholds (float 1xn array) - energy channels for which thresholds</p>
-<blockquote>
-<div><p>are applied</p>
-</div></blockquote>
-<p>dates (datetime 1xm array) - dates associated with flux time profile
-integral_fluxes (float nxm array) - fluxes for each energy channel for</p>
-<blockquote>
-<div><p>which a threshold is applied; each is the same length as dates</p>
-</div></blockquote>
-<dl class="simple">
-<dt>crossing_time (datetime 1xn array) - threshold crossing times for each energy</dt><dd><p>channel for which a threshold is applied</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) e.g. GOES-13</p>
 </dd>
-<dt>event_end_time (datetime 1xn array) - end times for each energy channel for which</dt><dd><p>a threshold is applied</p>
+<dt class="field-even">Energy_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - energy channels for which thresholds
+are applied</p>
+</dd>
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) - dates associated with flux time profile</p>
+</dd>
+<dt class="field-even">Integral_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) - fluxes for each energy channel for
+which a threshold is applied; each is the same length as dates</p>
+</dd>
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - threshold crossing times for each energy
+channel for which a threshold is applied</p>
+</dd>
+<dt class="field-even">Event_end_time</dt>
+<dd class="field-even"><p>(datetime 1xn array) - end times for each energy channel for which
+a threshold is applied</p>
+</dd>
+<dt class="field-odd">Showplot</dt>
+<dd class="field-odd"><p>(bool)</p>
 </dd>
 </dl>
-<p>showplot (bool)</p>
-<p>OUTPUTS:
-onset_date (datetime 1xn array) - time of onset peak
-onset_peak (float 1xn array) - flux value of onset peak</p>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Onset_date</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - time of onset peak</p>
+</dd>
+<dt class="field-even">Onset_peak</dt>
+<dd class="field-even"><p>(float 1xn array) - flux value of onset peak</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -777,8 +990,10 @@ onset_peak (float 1xn array) - flux value of onset peak</p>
 Operational thresholds used by the NASA JSC Space Radiation Analysis
 Group to determine actions that should be taken during an SEP event are:</p>
 <blockquote>
-<div><p>&gt;10 MeV proton flux exceeds 10 pfu (1/[cm^2 s sr])
-&gt;100 MeV proton flux exceeds 1 pfu (1/[cm^2 s sr])</p>
+<div><ul class="simple">
+<li><p>&gt;10 MeV proton flux exceeds 10 pfu (1/[cm^2 s sr])</p></li>
+<li><p>&gt;100 MeV proton flux exceeds 1 pfu (1/[cm^2 s sr])</p></li>
+</ul>
 </div></blockquote>
 <p>An SEP event is considered to start if 3 consecutive points are
 above threshold. The start time is set to the first point that crossed
@@ -802,24 +1017,44 @@ below 0.85*threshold, then the event_end_time is set to the last time
 in the specified time range. The program will give a message indicating
 that the user may want to extend the requested time frame in order to
 better-capture the end of the event.</p>
-<p>INPUTS:
-energy_threshold (float) - energy channel for which the</p>
-<blockquote>
-<div><p>flux threshold value should be applied</p>
-</div></blockquote>
-<p>flux_threshold (float) - flux threshold value
-dates (datetime 1xn array) - dates associated with the flux time profile
-fluxes (float 1xn array) - flux with time for the single energy channel</p>
-<blockquote>
-<div><p>associated with energy_threshold</p>
-</div></blockquote>
-<p>OUTPUTS:
-crossing_time (datetime)
-peak_flux (float) - maximum flux value between start and end time
-peak_time (datetime)
-rise_time (timedelta) - (peak_time - crossing_time)
-event_end_time (datetime)
-duration (timedelta) - (event_end_time - crossing_time)</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_threshold</dt>
+<dd class="field-odd"><p>(float) - energy channel for which the
+flux threshold value should be applied</p>
+</dd>
+<dt class="field-even">Flux_threshold</dt>
+<dd class="field-even"><p>(float) - flux threshold value</p>
+</dd>
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - dates associated with the flux time profile</p>
+</dd>
+<dt class="field-even">Fluxes</dt>
+<dd class="field-even"><p>(float 1xn array) - flux with time for the single energy channel
+associated with energy_threshold</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime)</p>
+</dd>
+<dt class="field-even">Peak_flux</dt>
+<dd class="field-even"><p>(float) - maximum flux value between start and end time</p>
+</dd>
+<dt class="field-odd">Peak_time</dt>
+<dd class="field-odd"><p>(datetime)</p>
+</dd>
+<dt class="field-even">Rise_time</dt>
+<dd class="field-even"><p>(timedelta) - (peak_time - crossing_time)</p>
+</dd>
+<dt class="field-odd">Event_end_time</dt>
+<dd class="field-odd"><p>(datetime)</p>
+</dd>
+<dt class="field-even">Duration</dt>
+<dd class="field-even"><p>(timedelta) - (event_end_time - crossing_time)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -831,28 +1066,36 @@ to calculate SEP event quantities specific to the UMASEP model.</p>
 <blockquote>
 <div><p>Flux at threshold crossing time + 3, 4, 5, 6, 7 hours</p>
 </div></blockquote>
-<p>INPUTS:
-energy_thresholds (float 1xn array) - energy channels for which thresholds</p>
-<blockquote>
-<div><p>are applied</p>
-</div></blockquote>
-<p>flux_thresholds (float 1xn array) - flux thresholds that are applied
-dates (datetime 1xm array) - dates associated with flux time profile
-integral_fluxes (float nxm array) - fluxes for each energy channel for</p>
-<blockquote>
-<div><p>which a threshold is applied; each is the same length as dates</p>
-</div></blockquote>
-<dl class="simple">
-<dt>crossing_time (datetime 1xn array) - threshold crossing times for each energy</dt><dd><p>channel for which a threshold is applied</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1xn array) - energy channels for which thresholds
+are applied</p>
+</dd>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - flux thresholds that are applied</p>
+</dd>
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) - dates associated with flux time profile</p>
+</dd>
+<dt class="field-even">Integral_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) - fluxes for each energy channel for
+which a threshold is applied; each is the same length as dates</p>
+</dd>
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - threshold crossing times for each energy
+channel for which a threshold is applied</p>
 </dd>
 </dl>
-<p>OUTPUTS:
-proton_delay_times (datetime nx5 array) - times 3, 4, 5, 6, 7 hours</p>
-<blockquote>
-<div><p>after crossing time for n thresholds</p>
-</div></blockquote>
-<dl class="simple">
-<dt>proton_flux (float nx5 array) - value of flux at each delay time and for</dt><dd><p>each threshold</p>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Proton_delay_times</dt>
+<dd class="field-odd"><p>(datetime nx5 array) - times 3, 4, 5, 6, 7 hours
+after crossing time for n thresholds</p>
+</dd>
+<dt class="field-even">Proton_flux</dt>
+<dd class="field-even"><p>(float nx5 array) - value of flux at each delay time and for
+each threshold</p>
 </dd>
 </dl>
 </dd></dl>
@@ -864,11 +1107,21 @@ proton_delay_times (datetime nx5 array) - times 3, 4, 5, 6, 7 hours</p>
 to see that the energy bin is in the requested data set.
 threshold is a list of strings.
 Expect threshold[0] = lowedge-highedge, threshold[1] = flux value</p>
-<p>INPUTS:
-threshold (string) - threshold input by user in string format
-energy_bins (float 2xn array) - energy bins for n energy channels</p>
-<p>OUTPUTS:
-Boolean indicating specified bins exist, or exit</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Threshold</dt>
+<dd class="field-odd"><p>(string) - threshold input by user in string format</p>
+</dd>
+<dt class="field-even">Energy_bins</dt>
+<dd class="field-even"><p>(float 2xn array) - energy bins for n energy channels</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Boolean</dt>
+<dd class="field-odd"><p>indicating specified bins exist, or exit</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -879,29 +1132,43 @@ as zero and the onset peak is saved as the maximum value
 in the time range considered. This is technically
 not correct.
 Swapping the two values to more correct.</p>
-<p>INPUTS (for n SEP events):
-crossing_time (datetime 1xn array) - value will be zero</p>
-<blockquote>
-<div><p>if no threshold was crossed</p>
-</div></blockquote>
-<dl class="simple">
-<dt>onset_peak (float 1xn array) - value of onset peak for each</dt><dd><p>SEP event, max flux if no thresholds crossed</p>
+<p>INPUTS (for n SEP events):</p>
+<dl class="field-list simple">
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - value will be zero
+if no threshold was crossed</p>
+</dd>
+<dt class="field-even">Onset_peak</dt>
+<dd class="field-even"><p>(float 1xn array) - value of onset peak for each
+SEP event, max flux if no thresholds crossed</p>
+</dd>
+<dt class="field-odd">Onset_date</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - time of onset peaks</p>
+</dd>
+<dt class="field-even">Peak_flux</dt>
+<dd class="field-even"><p>(float 1xn array) - values of maximum flux for
+each SEP event, zero if no threshold crossed</p>
+</dd>
+<dt class="field-odd">Peak_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - value of peak flux, zero if
+threshold not crossed</p>
 </dd>
 </dl>
-<p>onset_date (datetime 1xn array) - time of onset peaks
-peak_flux (float 1xn array) - values of maximum flux for</p>
-<blockquote>
-<div><p>each SEP event, zero if no threshold crossed</p>
-</div></blockquote>
-<dl class="simple">
-<dt>peak_time (datetime 1xn array) - value of peak flux, zero if</dt><dd><p>threshold not crossed</p>
+<p>OUTPUTS (same as above, but values switched around):</p>
+<dl class="field-list simple">
+<dt class="field-odd">Onset_peak</dt>
+<dd class="field-odd"><p>value set to zero if no threshold crossed</p>
+</dd>
+<dt class="field-even">Onset_date</dt>
+<dd class="field-even"><p>value set to zero if no threshold crossed</p>
+</dd>
+<dt class="field-odd">Peak_flux</dt>
+<dd class="field-odd"><p>value of max flux during time period</p>
+</dd>
+<dt class="field-even">Peak_time</dt>
+<dd class="field-even"><p>time of max flux</p>
 </dd>
 </dl>
-<p>OUTPUTS (same as above, but values switched around):
-onset_peak - value set to zero if no threshold crossed
-onset_date - value set to zero if no threshold crossed
-peak_flux - value of max flux during time period
-peak_time - time of max flux</p>
 </dd></dl>
 
 <dl class="py function">
@@ -909,26 +1176,32 @@ peak_time - time of max flux</p>
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">define_thresholds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_diff_thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">str_thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_bins</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.define_thresholds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Two operational thresholds plus any thresholds
 specified by the user.</p>
-<p>INPUTS:
-input_threshold (float 2xn array) - thresholds specified by user e.g.</p>
-<blockquote>
-<div><p>[[30,1],[50,1]]</p>
-</div></blockquote>
-<dl class="simple">
-<dt>is_diff_thresh (bool 1xn array) - indicates whether the input threshold</dt><dd><p>is a differential channel</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Input_threshold</dt>
+<dd class="field-odd"><p>(float 2xn array) - thresholds specified by user e.g.
+[[30,1],[50,1]]</p>
 </dd>
-<dt>str_thresh (string) - threshold as input by user in command line e.g.</dt><dd><p>“30,1;50,1;4.9-8.3,10”</p>
+<dt class="field-even">Is_diff_thresh</dt>
+<dd class="field-even"><p>(bool 1xn array) - indicates whether the input threshold
+is a differential channel</p>
+</dd>
+<dt class="field-odd">Str_thresh</dt>
+<dd class="field-odd"><p>(string) - threshold as input by user in command line e.g.
+“30,1;50,1;4.9-8.3,10”</p>
 </dd>
 </dl>
-<p>OUTPUTS:
-energy_thresholds (float 1x(n+2) array) - e.g. [10,100,30,50,4.9]</p>
-<blockquote>
-<div><p>energy channels for which a threshold will be applied. Includes
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1x(n+2) array) - e.g. [10,100,30,50,4.9]
+energy channels for which a threshold will be applied. Includes
 the two operational thresholds plus any thresholds entered by
 the user</p>
-</div></blockquote>
-<dl class="simple">
-<dt>flux_thresholds (float 1x(n+2) array) - e.g. [10,1,1,1,10]</dt><dd><p>flux thresholds to be applied to the energy channels in
+</dd>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1x(n+2) array) - e.g. [10,1,1,1,10]
+flux thresholds to be applied to the energy channels in
 energy_thresholds. Includes the two operational thresholds
 plus any thresholds entered by the user</p>
 </dd>
@@ -943,45 +1216,71 @@ every consecutive data point. The most common difference is
 taken as the time resolution. Even if the data set has gaps,
 if there are enough consecutive time points in the observational
 or model output, the correct time resolution should be identified.</p>
-<p>INPUTS:
-dates (datetime 1xm array) - dates associated with flux time profile</p>
-<p>OUTPUTS:
-time_resolution (time delta object)</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) - dates associated with flux time profile</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Time_resolution</dt>
+<dd class="field-odd"><p>(time delta object)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="operational_sep_quantities.error_check_inputs">
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">error_check_inputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">startdate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enddate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_diff_thresh</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.error_check_inputs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Check that all of the user inputs make sense and fall within bounds.</p>
-<p>INPUTS:
-startdate (datetime) - start of time period entered by user
-enddate (datetime) - end of time period entered by user
-experiment (string) - name of experiment specifed by user
-flux_type (string) - integral or differential
-is_diff_thresh (bool 1xn array) - where n indicates the number of</p>
-<blockquote>
-<div><p>thresholds input by the user, e.g. “30,1;50,1” n=2
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) - start of time period entered by user</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) - end of time period entered by user</p>
+</dd>
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) - name of experiment specifed by user</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral or differential</p>
+</dd>
+<dt class="field-odd">Is_diff_thresh</dt>
+<dd class="field-odd"><p>(bool 1xn array) - where n indicates the number of
+thresholds input by the user, e.g. “30,1;50,1” n=2
 Indicates if the user-input thresholds apply to integral or
 differential channels</p>
-</div></blockquote>
-<p>OUTPUTS:
-None, but system exit if error found</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<p>None, but system exit if error found</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="operational_sep_quantities.error_check_options">
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">error_check_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">doBGSub</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.error_check_options" title="Permalink to this definition">¶</a></dt>
-<dd><p>Make sure the selected options make sense for the experiment.
-INPUTS:
-experiment (string)
-flux_type (string) - integral or differential
-options (string array) - various options applied to GOES data
-doBGSub (boolean) - indicates if background subtraction to be</p>
-<blockquote>
-<div><p>performed</p>
-</div></blockquote>
-<p>OUTPUTS:
-no outputs by system exit if error found</p>
+<dd><p>Make sure the selected options make sense for the experiment.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral or differential</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - various options applied to GOES data</p>
+</dd>
+<dt class="field-even">DoBGSub</dt>
+<dd class="field-even"><p>(boolean) - indicates if background subtraction to be
+performed</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<p>no outputs by system exit if error found</p>
 </dd></dl>
 
 <dl class="py function">
@@ -999,25 +1298,39 @@ None value for the integral fluxes, and remove that threshold in
 run_all. (e.g. if &gt;100 MeV fluxes were not in the data or model
 fluxes, return a None value for integral fluxes and remove the
 &gt;100 MeV, 1 pfu threshold.)</p>
-<p>INPUTS:
-fluxes (float nxm array) - flux time profile for each energy channel
-experiment (string)
-flux_type (string) - integral or differential
-flux_thresholds (float 1xp array) - flux threshold values
-energy_thresholds (float 1xp array) - energy channels to which the</p>
-<blockquote>
-<div><p>flux threshold values are applied</p>
-</div></blockquote>
-<p>energy_bins (float 1xn array) - bins for each energy channel in fluxes
-options (string array) - bg subtraction, effective energies for</p>
-<blockquote>
-<div><p>GOES channels</p>
-</div></blockquote>
-<p>OUTPUTS:
-integral_fluxes (float array) - integral fluxes associated with each</p>
-<blockquote>
-<div><p>energy channel in energy_thresholds; &gt;energy_thresholds[i]</p>
-</div></blockquote>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fluxes</dt>
+<dd class="field-odd"><p>(float nxm array) - flux time profile for each energy channel</p>
+</dd>
+<dt class="field-even">Experiment</dt>
+<dd class="field-even"><p>(string)</p>
+</dd>
+<dt class="field-odd">Flux_type</dt>
+<dd class="field-odd"><p>(string) - integral or differential</p>
+</dd>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1xp array) - flux threshold values</p>
+</dd>
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1xp array) - energy channels to which the
+flux threshold values are applied</p>
+</dd>
+<dt class="field-even">Energy_bins</dt>
+<dd class="field-even"><p>(float 1xn array) - bins for each energy channel in fluxes</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - bg subtraction, effective energies for
+GOES channels</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Integral_fluxes</dt>
+<dd class="field-odd"><p>(float array) - integral fluxes associated with each
+energy channel in energy_thresholds; &gt;energy_thresholds[i]</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1032,17 +1345,31 @@ above user input min_energy.
 The intent is to calculate &gt;10 MeV and &gt;100 MeV fluxes, but leaving
 flexibility for user to define the minimum energy for the integral flux.
 An integral flux will be provided for each timestamp (e.g. every 5 mins).</p>
-<p>INPUTS:
-experiment (string)
-min_energy (float) - bottom energy for integral flux calculation
-energy_bins (float 1xn array) - bins for each energy channel
-fluxes (float nxm array) - fluxes with time for each energy channel
-options (string array) - effective energies for GOES channels</p>
-<p>OUTPUTS:
-integral_fluxes (float 1xm array) - estimate integral flux for &gt;min_energy</p>
-<blockquote>
-<div><p>(Returns all zero values if no energy bins above min_energy)</p>
-</div></blockquote>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
+</dd>
+<dt class="field-even">Min_energy</dt>
+<dd class="field-even"><p>(float) - bottom energy for integral flux calculation</p>
+</dd>
+<dt class="field-odd">Energy_bins</dt>
+<dd class="field-odd"><p>(float 1xn array) - bins for each energy channel</p>
+</dd>
+<dt class="field-even">Fluxes</dt>
+<dd class="field-even"><p>(float nxm array) - fluxes with time for each energy channel</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - effective energies for GOES channels</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Integral_fluxes</dt>
+<dd class="field-odd"><p>(float 1xm array) - estimate integral flux for &gt;min_energy
+(Returns all zero values if no energy bins above min_energy)</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1053,18 +1380,32 @@ to see that the energy bin is in the requested data set.
 threshold is a list of strings.
 For integral, expect:</p>
 <blockquote>
-<div><p>energy_threshold = lowedge</p>
+<div><ul class="simple">
+<li><p>energy_threshold = lowedge</p></li>
+</ul>
 </div></blockquote>
-<dl class="simple">
-<dt>For differential, expect:</dt><dd><p>energy_threshold[0] = lowedge
-energy_threshold[1] = highedge</p>
+<p>For differential, expect:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>energy_threshold[0] = lowedge</p></li>
+<li><p>energy_threshold[1] = highedge</p></li>
+</ul>
+</div></blockquote>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_threshold</dt>
+<dd class="field-odd"><p>(float or 1x2 array)</p>
+</dd>
+<dt class="field-even">Energy_bins</dt>
+<dd class="field-even"><p>(float 2xn array) - energy bins for n energy channels</p>
 </dd>
 </dl>
-<p>INPUTS:
-energy_threshold (float or 1x2 array)
-energy_bins (float 2xn array) - energy bins for n energy channels</p>
-<p>OUTPUTS:
-index (integer) - index of energy bin associated with energy_threshold</p>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Index</dt>
+<dd class="field-odd"><p>(integer) - index of energy bin associated with energy_threshold</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1077,57 +1418,81 @@ integral fluxes, then the fluence values correspond to each integral bin.
 Writes fluence values to file according to boolean save_file.
 If the user input a threshold for a differential energy bin,
 is_diff_thresh will be true and the filename will not contain “gt”.</p>
-<p>INPUTS:
-experiment (string)
-flux_type (string) - integral or differential
-options (string array) - bg subtraction, effective energies for</p>
-<blockquote>
-<div><p>GOES channels</p>
-</div></blockquote>
-<p>model_name (string) - name of model or user experiment, if relevant
-energy_threshold (float) - energy channel to which the</p>
-<blockquote>
-<div><p>flux threshold value is applied</p>
-</div></blockquote>
-<p>flux_threshold (float) - flux threshold value
-sep_dates (datetime 1xm array) - dates trimmed between SEP start and</p>
-<blockquote>
-<div><p>end times</p>
-</div></blockquote>
-<dl class="simple">
-<dt>sep_fluxes (float nxm array) - flux time profiles for each energy channel</dt><dd><p>trimmed between SEP start and end times</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral or differential</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - bg subtraction, effective energies for
+GOES channels</p>
+</dd>
+<dt class="field-even">Model_name</dt>
+<dd class="field-even"><p>(string) - name of model or user experiment, if relevant</p>
+</dd>
+<dt class="field-odd">Energy_threshold</dt>
+<dd class="field-odd"><p>(float) - energy channel to which the
+flux threshold value is applied</p>
+</dd>
+<dt class="field-even">Flux_threshold</dt>
+<dd class="field-even"><p>(float) - flux threshold value</p>
+</dd>
+<dt class="field-odd">Sep_dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) - dates trimmed between SEP start and
+end times</p>
+</dd>
+<dt class="field-even">Sep_fluxes</dt>
+<dd class="field-even"><p>(float nxm array) - flux time profiles for each energy channel
+trimmed between SEP start and end times</p>
+</dd>
+<dt class="field-odd">Energy_bins</dt>
+<dd class="field-odd"><p>(float 1xn array) - bins for each energy channel</p>
+</dd>
+<dt class="field-even">Diff_thresh</dt>
+<dd class="field-even"><p>(boolean) - indicates if the energy_threshold and
+flux_threshold refer to a differential channel (True)</p>
+</dd>
+<dt class="field-odd">Save_file</dt>
+<dd class="field-odd"><p>(boolean) - set True to save fluence values to file</p>
 </dd>
 </dl>
-<p>energy_bins (float 1xn array) - bins for each energy channel
-diff_thresh (boolean) - indicates if the energy_threshold and</p>
-<blockquote>
-<div><p>flux_threshold refer to a differential channel (True)</p>
-</div></blockquote>
-<p>save_file (boolean) - set True to save fluence values to file</p>
-<p>OUTPUTS:
-fluence (float 1xn array) - fluence value in each energy bin
-energies (float 1xn array) - bin centers for each energy bin</p>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Fluence</dt>
+<dd class="field-odd"><p>(float 1xn array) - fluence value in each energy bin</p>
+</dd>
+<dt class="field-even">Energies</dt>
+<dd class="field-even"><p>(float 1xn array) - bin centers for each energy bin</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="operational_sep_quantities.get_input_thresholds">
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">get_input_thresholds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">str_thresh</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.get_input_thresholds" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get user specified input thresholds,
-INPUTS:
-str_thresh (string) input by user with thresholds</p>
+<dd><p>Get user specified input thresholds,</p>
+<p>INPUTS:
+:str_thresh: (string) input by user with thresholds</p>
 <blockquote>
 <div><p>separated by semi-colons</p>
 </div></blockquote>
-<p>OUTPUTS:
-input_threshold (2xn floats) array as</p>
+<p>OUTPUTS:</p>
+<dl class="field-list">
+<dt class="field-odd">Input_threshold</dt>
+<dd class="field-odd"><p>(2xn floats) array as
+[[binLow, flux threshold],</p>
 <blockquote>
-<div><dl class="simple">
-<dt>[[binLow, flux threshold],</dt><dd><p>[bin Low, fluxthreshold],
+<div><p>[bin Low, fluxthreshold],
 …]</p>
+</div></blockquote>
+</dd>
+<dt class="field-even">Is_diff_thresh</dt>
+<dd class="field-even"><p>(bool array)</p>
 </dd>
 </dl>
-</div></blockquote>
-<p>is_diff_thresh (bool array)</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1144,68 +1509,100 @@ threshold. If so, the user threshold bin(s) will refer to differential
 fluxes.</p>
 <p>Writes all values out to a csv file. These values and more are also
 written out to json file in a different subroutine.</p>
-<p>INPUTS:
-experiment (string)
-flux_type (string) - integral or differential
-options (string array) - can be S14, Bruno2017, uncorrected and apply</p>
-<blockquote>
-<div><p>to GOES data</p>
-</div></blockquote>
-<p>doBGSub (boolean) - indicates if background subtraction performed
-model_name (string) - model or experiment name if experiment = “user”
-startdate (datetime) - start date of time period entered by user
-energy_thresholds (float 1xn array) - all energy channels for which</p>
-<blockquote>
-<div><p>a flux threshold was applied (both integral and differential)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>flux_thresholds (float 1xn array) - flux thresholds for each of the</dt><dd><p>energy channels in energy_thresholds</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
 </dd>
-<dt>crossing_time (datetime 1xn array) - SEP event start time for each</dt><dd><p>applied threshold</p>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral or differential</p>
 </dd>
-</dl>
-<p>onset_peak (float 1xn array) - onset peak for each applied threshold
-onset_date (datetime 1xn array) - onset peak time for each applied</p>
-<blockquote>
-<div><p>threshold</p>
-</div></blockquote>
-<p>peak_flux (float 1xn array) - maximum flux for each applied threshold
-peak_time (datetime 1xn array) - time of maximum flux for each applied</p>
-<blockquote>
-<div><p>threshold</p>
-</div></blockquote>
-<p>rise_time (timedelta 1xn array) - start time to max flux
-event_end_time (datetime 1xn array) - end time for each applied threshold
-duration (timedelta 1xn array) - end time minus start time
-threshold_fluences (float 1xn array) - event fluence for each energy</p>
-<blockquote>
-<div><p>channel in energy_thresholds</p>
-</div></blockquote>
-<dl class="simple">
-<dt>is_diff_thresh (bool 1xn array) - indicates if threshold applied to</dt><dd><p>integral or differential channel, e.g. if channel in energy_thresholds
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - can be S14, Bruno2017, uncorrected and apply
+to GOES data</p>
+</dd>
+<dt class="field-even">DoBGSub</dt>
+<dd class="field-even"><p>(boolean) - indicates if background subtraction performed</p>
+</dd>
+<dt class="field-odd">Model_name</dt>
+<dd class="field-odd"><p>(string) - model or experiment name if experiment = “user”</p>
+</dd>
+<dt class="field-even">Startdate</dt>
+<dd class="field-even"><p>(datetime) - start date of time period entered by user</p>
+</dd>
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1xn array) - all energy channels for which
+a flux threshold was applied (both integral and differential)</p>
+</dd>
+<dt class="field-even">Flux_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - flux thresholds for each of the
+energy channels in energy_thresholds</p>
+</dd>
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - SEP event start time for each
+applied threshold</p>
+</dd>
+<dt class="field-even">Onset_peak</dt>
+<dd class="field-even"><p>(float 1xn array) - onset peak for each applied threshold</p>
+</dd>
+<dt class="field-odd">Onset_date</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - onset peak time for each applied
+threshold</p>
+</dd>
+<dt class="field-even">Peak_flux</dt>
+<dd class="field-even"><p>(float 1xn array) - maximum flux for each applied threshold</p>
+</dd>
+<dt class="field-odd">Peak_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - time of maximum flux for each applied
+threshold</p>
+</dd>
+<dt class="field-even">Rise_time</dt>
+<dd class="field-even"><p>(timedelta 1xn array) - start time to max flux</p>
+</dd>
+<dt class="field-odd">Event_end_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - end time for each applied threshold</p>
+</dd>
+<dt class="field-even">Duration</dt>
+<dd class="field-even"><p>(timedelta 1xn array) - end time minus start time</p>
+</dd>
+<dt class="field-odd">Threshold_fluences</dt>
+<dd class="field-odd"><p>(float 1xn array) - event fluence for each energy
+channel in energy_thresholds</p>
+</dd>
+<dt class="field-even">Is_diff_thresh</dt>
+<dd class="field-even"><p>(bool 1xn array) - indicates if threshold applied to
+integral or differential channel, e.g. if channel in energy_thresholds
 is an integral or differential channel</p>
 </dd>
-</dl>
-<p>umasep (boolean) - indicate if user called UMASEP flag
-umasep_times (datetime 5xn array) - times 3, 4, 5, 6, 7, 9 hours after</p>
-<blockquote>
-<div><p>crossing time for each applied threshold</p>
-</div></blockquote>
-<dl class="simple">
-<dt>umasep_fluxes (float 5xn) - fluxes at each of those times for each</dt><dd><p>applied threshold</p>
+<dt class="field-odd">Umasep</dt>
+<dd class="field-odd"><p>(boolean) - indicate if user called UMASEP flag</p>
+</dd>
+<dt class="field-even">Umasep_times</dt>
+<dd class="field-even"><p>(datetime 5xn array) - times 3, 4, 5, 6, 7, 9 hours after
+crossing time for each applied threshold</p>
+</dd>
+<dt class="field-odd">Umasep_fluxes</dt>
+<dd class="field-odd"><p>(float 5xn) - fluxes at each of those times for each
+applied threshold</p>
 </dd>
 </dl>
-<p>OUTPUTS:
-year (integer) - year of either SEP event or startdate (if no</p>
-<blockquote>
-<div><p>thresholds crossed)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>month (integer) - month of either SEP event or startdate (if no</dt><dd><p>thresholds crossed)</p>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Year</dt>
+<dd class="field-odd"><p>(integer) - year of either SEP event or startdate (if no
+thresholds crossed)</p>
 </dd>
-<dt>day (integer) - day of either SEP event or startdate (if no</dt><dd><p>thresholds crossed)</p>
+<dt class="field-even">Month</dt>
+<dd class="field-even"><p>(integer) - month of either SEP event or startdate (if no
+thresholds crossed)</p>
 </dd>
-<dt>Output file named e.g.</dt><dd><p>output/sep_values_experiment_fluxtype_YYYY_M_D.csv</p>
+<dt class="field-odd">Day</dt>
+<dd class="field-odd"><p>(integer) - day of either SEP event or startdate (if no
+thresholds crossed)</p>
+</dd>
+<dt class="field-even">Output file</dt>
+<dd class="field-even"><p>named e.g.
+output/sep_values_experiment_fluxtype_YYYY_M_D.csv</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1217,42 +1614,72 @@ year (integer) - year of either SEP event or startdate (if no</p>
 background subtraction, if requested. Trims to dates
 between start time and end time. Interpolates bad
 points with linear interpolation in time.</p>
-<p>INPUTS:
-experiment (string)
-flux_type (string) - integral, differential
-user_file (string) - file containing user’s flux time profiles
-model_name (string) - model name or experiment if experiment = “user”
-startdate (datetime) - start date of time period entered by user
-enddate (datetime) - end date of time period entered by user
-str_startdate (string) - start date in string form
-str_enddate (string) - end date in string form
-str_bgstartdate (string) - start date of time period to be used for</p>
-<blockquote>
-<div><p>background subtraction</p>
-</div></blockquote>
-<dl class="simple">
-<dt>str_bgenddate (string) - end date of time period to be used or</dt><dd><p>background subtraction</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral, differential</p>
+</dd>
+<dt class="field-odd">User_file</dt>
+<dd class="field-odd"><p>(string) - file containing user’s flux time profiles</p>
+</dd>
+<dt class="field-even">Model_name</dt>
+<dd class="field-even"><p>(string) - model name or experiment if experiment = “user”</p>
+</dd>
+<dt class="field-odd">Startdate</dt>
+<dd class="field-odd"><p>(datetime) - start date of time period entered by user</p>
+</dd>
+<dt class="field-even">Enddate</dt>
+<dd class="field-even"><p>(datetime) - end date of time period entered by user</p>
+</dd>
+<dt class="field-odd">Str_startdate</dt>
+<dd class="field-odd"><p>(string) - start date in string form</p>
+</dd>
+<dt class="field-even">Str_enddate</dt>
+<dd class="field-even"><p>(string) - end date in string form</p>
+</dd>
+<dt class="field-odd">Str_bgstartdate</dt>
+<dd class="field-odd"><p>(string) - start date of time period to be used for
+background subtraction</p>
+</dd>
+<dt class="field-even">Str_bgenddate</dt>
+<dd class="field-even"><p>(string) - end date of time period to be used or
+background subtraction</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - options that could be applied</p>
+</dd>
+<dt class="field-even">DoBGSub</dt>
+<dd class="field-even"><p>(bool) - indicate if background subtraction to be performed</p>
+</dd>
+<dt class="field-odd">Nointerp</dt>
+<dd class="field-odd"><p>(bool) - indicates if user doesn’t want to do linear
+interpolation in time for negative of bad flux values</p>
+</dd>
+<dt class="field-even">Showplot</dt>
+<dd class="field-even"><p>(bool)</p>
+</dd>
+<dt class="field-odd">Saveplot</dt>
+<dd class="field-odd"><p>(bool) - save plots automatically to “plots” directory</p>
 </dd>
 </dl>
-<p>options (string array) - options that could be applied
-doBGSub (bool) - indicate if background subtraction to be performed
-nointerp (bool) - indicates if user doesn’t want to do linear</p>
-<blockquote>
-<div><p>interpolation in time for negative of bad flux values</p>
-</div></blockquote>
-<p>showplot (bool)
-saveplot (bool) - save plots automatically to “plots” directory</p>
-<p>OUTPUTS:
-dates (datetime 1xm array) - times in flux time profile trimmed</p>
-<blockquote>
-<div><p>between startdate and enddate</p>
-</div></blockquote>
-<dl class="simple">
-<dt>fluxes (numpy float nxm array) - fluxes for n energy channels and m</dt><dd><p>time steps; these are background subtracted fluxes if background
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Dates</dt>
+<dd class="field-odd"><p>(datetime 1xm array) - times in flux time profile trimmed
+between startdate and enddate</p>
+</dd>
+<dt class="field-even">Fluxes</dt>
+<dd class="field-even"><p>(numpy float nxm array) - fluxes for n energy channels and m
+time steps; these are background subtracted fluxes if background
 subtraction was selected.</p>
 </dd>
+<dt class="field-odd">Energy_bins</dt>
+<dd class="field-odd"><p>(array nx2 for n thresholds)</p>
+</dd>
 </dl>
-<p>energy_bins (array nx2 for n thresholds)</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1268,28 +1695,40 @@ fluxes for each energy channel in energy_thresholds.
 If the input fluxes were differential, then this subroutine only
 works correctly for integral energy_thresholds and matching sep_fluxes
 that were estimated for each integral channel in energy_thresholds.</p>
-<p>INPUTS:
-experiment (string)
-flux_type (string) - integral or differential
-model_name (string) - name of model or experiment if experiment = “user”
-energy_thresholds (float 1xn array) - integral energy channels for</p>
-<blockquote>
-<div><p>which a threshold has been applied</p>
-</div></blockquote>
-<p>energy_bins (float 2xm array) - energy bins for input fluxes
-sep_dates (datetime 1xp array) - time profile dates trimmed to</p>
-<blockquote>
-<div><p>start and stop of SEP event</p>
-</div></blockquote>
-<dl class="simple">
-<dt>sep_fluxes (float mxp array) - flux time profiles for each energy</dt><dd><p>channel trimmed to start and end dates</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral or differential</p>
+</dd>
+<dt class="field-odd">Model_name</dt>
+<dd class="field-odd"><p>(string) - name of model or experiment if experiment = “user”</p>
+</dd>
+<dt class="field-even">Energy_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - integral energy channels for
+which a threshold has been applied</p>
+</dd>
+<dt class="field-odd">Energy_bins</dt>
+<dd class="field-odd"><p>(float 2xm array) - energy bins for input fluxes</p>
+</dd>
+<dt class="field-even">Sep_dates</dt>
+<dd class="field-even"><p>(datetime 1xp array) - time profile dates trimmed to
+start and stop of SEP event</p>
+</dd>
+<dt class="field-odd">Sep_fluxes</dt>
+<dd class="field-odd"><p>(float mxp array) - flux time profiles for each energy
+channel trimmed to start and end dates</p>
 </dd>
 </dl>
-<p>OUTPUTS:
-integral_fluence (float 1xn array) - event fluence for all</p>
-<blockquote>
-<div><p>integral energy channels for which a threshold was applied</p>
-</div></blockquote>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Integral_fluence</dt>
+<dd class="field-odd"><p>(float 1xn array) - event fluence for all
+integral energy channels for which a threshold was applied</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1298,59 +1737,86 @@ integral_fluence (float 1xn array) - event fluence for all</p>
 <dd><p>“Runs all subroutines and gets all needed values. Takes the command line
 arguments as input. Code may be imported into other python scripts and
 run using this routine.</p>
-<p>INPUTS:
-str_startdate (string) - user input start date “YYYY-MM-DD” or</p>
-<blockquote>
-<div><p>“YYYY-MM-DD HH:MM:SS”</p>
-</div></blockquote>
-<dl class="simple">
-<dt>str_enddate (string) - user input end date “YYYY-MM-DD” or</dt><dd><p>“YYYY-MM-DD HH:MM:SS”</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Str_startdate</dt>
+<dd class="field-odd"><p>(string) - user input start date “YYYY-MM-DD” or
+“YYYY-MM-DD HH:MM:SS”</p>
 </dd>
-<dt>experiment (string) - “GOES-08” up to “GOES-15”, “SEPEM”, “SEPEMv3”,</dt><dd><p>“EPHIN”, “EPHIN_REleASE”, or “user”</p>
+<dt class="field-even">Str_enddate</dt>
+<dd class="field-even"><p>(string) - user input end date “YYYY-MM-DD” or
+“YYYY-MM-DD HH:MM:SS”</p>
 </dd>
-<dt>flux_type (string) - “integral” or “differential” indicates the type</dt><dd><p>of flux to read in</p>
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string) - “GOES-08” up to “GOES-15”, “SEPEM”, “SEPEMv3”,
+“EPHIN”, “EPHIN_REleASE”, or “user”</p>
 </dd>
-<dt>model_name (string) - If model is “user”, set model_name to describe</dt><dd><p>your model or data set (e.g. MyModel), otherwise set to ‘’.</p>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - “integral” or “differential” indicates the type
+of flux to read in</p>
 </dd>
-<dt>user_file (string) - Default is ‘’. If “user” is selected for experiment,</dt><dd><p>specify name of flux file.</p>
+<dt class="field-odd">Model_name</dt>
+<dd class="field-odd"><p>(string) - If model is “user”, set model_name to describe
+your model or data set (e.g. MyModel), otherwise set to ‘’.</p>
 </dd>
-<dt>spase_id (string) - Default is ‘’. If you know the spase_id of you</dt><dd><p>model or experiment, enter it here for the json file</p>
+<dt class="field-even">User_file</dt>
+<dd class="field-even"><p>(string) - Default is ‘’. If “user” is selected for experiment,
+specify name of flux file.</p>
 </dd>
-</dl>
-<p>showplot (bool) - Set to True to show plots when run
-saveplot (bool) - Set to True to automatically save plots to the</p>
-<blockquote>
-<div><p>plots directory when run</p>
-</div></blockquote>
-<p>detect_prev_event (bool) - option for finding start of event
-two_peaks (bool) - option for extending event length
-umasep (boolean) - call flag to run code for specific time related</p>
-<blockquote>
-<div><p>to the UMASEP model</p>
-</div></blockquote>
-<dl class="simple">
-<dt>str_thresh (string) - user-input thresholds in the format “30,1”</dt><dd><p>for &gt;30 MeV exceeds 1 pfu, “4-7,0.01” for 4-7 MeV differential
+<dt class="field-odd">Spase_id</dt>
+<dd class="field-odd"><p>(string) - Default is ‘’. If you know the spase_id of you
+model or experiment, enter it here for the json file</p>
+</dd>
+<dt class="field-even">Showplot</dt>
+<dd class="field-even"><p>(bool) - Set to True to show plots when run</p>
+</dd>
+<dt class="field-odd">Saveplot</dt>
+<dd class="field-odd"><p>(bool) - Set to True to automatically save plots to the
+plots directory when run</p>
+</dd>
+<dt class="field-even">Detect_prev_event</dt>
+<dd class="field-even"><p>(bool) - option for finding start of event</p>
+</dd>
+<dt class="field-odd">Two_peaks</dt>
+<dd class="field-odd"><p>(bool) - option for extending event length</p>
+</dd>
+<dt class="field-even">Umasep</dt>
+<dd class="field-even"><p>(boolean) - call flag to run code for specific time related
+to the UMASEP model</p>
+</dd>
+<dt class="field-odd">Str_thresh</dt>
+<dd class="field-odd"><p>(string) - user-input thresholds in the format “30,1”
+for &gt;30 MeV exceeds 1 pfu, “4-7,0.01” for 4-7 MeV differential
 channel exceeds 0.01.  “30,1;4-7,0.01” multiple thresholds
 separated by semi-colon.</p>
 </dd>
-<dt>nointerp (boolean) - set to true to fill in negative fluxes with None</dt><dd><p>value rather than filling in via linear interpolation in time</p>
+<dt class="field-even">Nointerp</dt>
+<dd class="field-even"><p>(boolean) - set to true to fill in negative fluxes with None
+value rather than filling in via linear interpolation in time</p>
 </dd>
 </dl>
-<p>OUTPUTS:
-sep_year (integer) - year of start of SEP event or year of beginning</p>
-<blockquote>
-<div><p>of user-input time period (if no threshold crossed)</p>
-</div></blockquote>
-<dl class="simple">
-<dt>ep_month (integer) - month of start of SEP event or year of beginning</dt><dd><p>of user-input time period (if no threshold crossed)</p>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sep_year</dt>
+<dd class="field-odd"><p>(integer) - year of start of SEP event or year of beginning
+of user-input time period (if no threshold crossed)</p>
 </dd>
-<dt>sep_day (integer) - day of start of SEP event or year of beginning</dt><dd><p>of user-input time period (if no threshold crossed)</p>
+<dt class="field-even">Sep_month</dt>
+<dd class="field-even"><p>(integer) - month of start of SEP event or year of beginning
+of user-input time period (if no threshold crossed)</p>
 </dd>
-<dt>jsonfname (string) - name of saved json file (could include issue time,</dt><dd><p>which is the time that the program is run, so absolutely
+<dt class="field-odd">Sep_day</dt>
+<dd class="field-odd"><p>(integer) - day of start of SEP event or year of beginning
+of user-input time period (if no threshold crossed)</p>
+</dd>
+<dt class="field-even">Jsonfname</dt>
+<dd class="field-even"><p>(string) - name of saved json file (could include issue time,
+which is the time that the program is run, so absolutely
 need to pass file name back as argument)</p>
 </dd>
+<dt class="field-odd">And generates multiple plots</dt>
+<dd class="field-odd"><p></p></dd>
 </dl>
-<p>and generates multiple plots</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1366,30 +1832,44 @@ for which a threshold was applied in the remaining columns. Writes
 fluxes for full time period specified by user.
 Any differential channels for which a threshold was applied are not
 included in this file.</p>
-<p>INPUTS:
-experiment (string)
-flux_type (string) - integral or differential
-options (string array) - S14, Bruno2017, uncorrected options for GOES data
-doBGSub (boolean) - indicates if background subtration is performed
-model_name (string) - name of model or user experiment, if relevant
-energy_thresholds (float 1xn array) - energy channels for which</p>
-<blockquote>
-<div><p>flux thresholds are applied</p>
-</div></blockquote>
-<dl class="simple">
-<dt>crossing_time (datetime 1xn array) - start times of sep event for each</dt><dd><p>energy channel (energy_thresolds) for which a threshold was applied</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Experiment</dt>
+<dd class="field-odd"><p>(string)</p>
+</dd>
+<dt class="field-even">Flux_type</dt>
+<dd class="field-even"><p>(string) - integral or differential</p>
+</dd>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string array) - S14, Bruno2017, uncorrected options for GOES data</p>
+</dd>
+<dt class="field-even">DoBGSub</dt>
+<dd class="field-even"><p>(boolean) - indicates if background subtration is performed</p>
+</dd>
+<dt class="field-odd">Model_name</dt>
+<dd class="field-odd"><p>(string) - name of model or user experiment, if relevant</p>
+</dd>
+<dt class="field-even">Energy_thresholds</dt>
+<dd class="field-even"><p>(float 1xn array) - energy channels for which
+flux thresholds are applied</p>
+</dd>
+<dt class="field-odd">Crossing_time</dt>
+<dd class="field-odd"><p>(datetime 1xn array) - start times of sep event for each
+energy channel (energy_thresolds) for which a threshold was applied</p>
+</dd>
+<dt class="field-even">Dates</dt>
+<dd class="field-even"><p>(datetime 1xm array) - dates for flux time profile</p>
+</dd>
+<dt class="field-odd">Integral_fluxes</dt>
+<dd class="field-odd"><p>(float nxm array) - flux time profiles for each energy channel
+for which a threshold was applied; assumed to be (estimated)integral fluxes</p>
 </dd>
 </dl>
-<p>dates (datetime 1xm array) - dates for flux time profile
-integral_fluxes (float nxm array) - flux time profiles for each energy channel</p>
-<blockquote>
-<div><p>for which a threshold was applied; assumed to be (estimated)integral fluxes</p>
-</div></blockquote>
-<p>OUTPUTS:
-No outputs except output file named e.g.</p>
-<blockquote>
-<div><p>integral_fluxes_GOES-13_differential_2012_3_7.csv</p>
-</div></blockquote>
+<p>OUTPUTS:</p>
+<dl class="simple">
+<dt>No outputs except output file named e.g.</dt><dd><p>integral_fluxes_GOES-13_differential_2012_3_7.csv</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1405,31 +1885,45 @@ But user may instead input files with fluxes in order of:
 to go in increasing order. If differential fluxes were input,
 this reordering will ensure that integral fluxes are
 estimated properly.</p>
-<p>INPUTS:
-all_fluxes (float nxm array) - fluxes for n energy channels</p>
-<blockquote>
-<div><p>and m time points</p>
-</div></blockquote>
-<dl class="simple">
-<dt>energy_bins (float 2xn array) - energy bins for each of the</dt><dd><p>energy channels</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">All_fluxes</dt>
+<dd class="field-odd"><p>(float nxm array) - fluxes for n energy channels
+and m time points</p>
+</dd>
+<dt class="field-even">Energy_bins</dt>
+<dd class="field-even"><p>(float 2xn array) - energy bins for each of the
+energy channels</p>
 </dd>
 </dl>
-<p>OUTPUTS:
-sort_fluxes (float nxm array) - same as above, but sorted so</p>
-<blockquote>
-<div><p>that the lowest energy channel is first and highest is last</p>
-</div></blockquote>
-<p>sort_bins (float 2xn array) - same as above, but sorted</p>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sort_fluxes</dt>
+<dd class="field-odd"><p>(float nxm array) - same as above, but sorted so
+that the lowest energy channel is first and highest is last</p>
+</dd>
+<dt class="field-even">Sort_bins</dt>
+<dd class="field-even"><p>(float 2xn array) - same as above, but sorted</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="operational_sep_quantities.str_to_datetime">
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">str_to_datetime</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">date</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.str_to_datetime" title="Permalink to this definition">¶</a></dt>
-<dd><p>String date to datetime
-INPUTS:
-date (string) - date as “YYYY-MM-DD” or “YYYY-MM-DD HH:MM:SS”</p>
-<p>OUTPUTS:
-dt (datetime) - datetime conversion of date</p>
+<dd><p>String date to datetime</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Date</dt>
+<dd class="field-odd"><p>(string) - date as “YYYY-MM-DD” or “YYYY-MM-DD HH:MM:SS”</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Dt</dt>
+<dd class="field-odd"><p>(datetime) - datetime conversion of date</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -1438,24 +1932,20 @@ dt (datetime) - datetime conversion of date</p>
 <dd><p>Write information to csv and json file.
 Writes all of the derived information for all the
 energy-threshold combinations to file.</p>
-<p>INPUTS:
-The inputs here are the same as the outputs produced by
+<p>INPUTS:</p>
+<p>The inputs here are the same as the outputs produced by
 append_differential_thresholds(). Please see the list
 of those outputs for detailed explanations of these inputs.</p>
-<p>OUTPUTS:
-No outputs except files are written:</p>
+<p>OUTPUTS:</p>
+<p>No outputs except files are written:</p>
 <blockquote>
-<div><dl class="simple">
-<dt>-fluence spectra files for each energy channel for which a</dt><dd><p>threshold was applied</p>
-</dd>
-<dt>-integral fluxes in csv file for which a threshold was</dt><dd><p>applied</p>
-</dd>
-<dt>-flux time profiles in txt files for each energy channel for</dt><dd><p>which a threshold was applied</p>
-</dd>
-<dt>-json file in CCMC format containing blocks of information</dt><dd><p>for each energy channel for which a threshold was applied</p>
-</dd>
-</dl>
-<p>-csv file containing all timing and peak flux values</p>
+<div><ul class="simple">
+<li><p>fluence spectra files for each energy channel for which a threshold was applied</p></li>
+<li><p>integral fluxes in csv file for which a threshold was applied</p></li>
+<li><p>flux time profiles in txt files for each energy channel for which a threshold was applied</p></li>
+<li><p>json file in CCMC format containing blocks of information for each energy channel for which a threshold was applied</p></li>
+<li><p>csv file containing all timing and peak flux values</p></li>
+</ul>
 </div></blockquote>
 </dd></dl>
 
@@ -1464,14 +1954,22 @@ No outputs except files are written:</p>
 <span class="sig-prename descclassname"><span class="pre">operational_sep_quantities.</span></span><span class="sig-name descname"><span class="pre">write_zulu_time_profile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fluxes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#operational_sep_quantities.write_zulu_time_profile" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write out the time profile with the date in the
 first column as the ISO standard and flux in the
-second column as:
-YYYY-MM-DDTHH:MM:SSZ    Float</p>
-<p>INPUTS:
-Filename (string) - name of file to write
-date (datetime 1xn array) - list of dates
-fluxes (float 1xn array) - corresponding fluxes</p>
-<p>OUTPUTS:
-None but writes output file with filename</p>
+second column as:</p>
+<p>YYYY-MM-DDTHH:MM:SSZ    Float</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Filename</dt>
+<dd class="field-odd"><p>(string) - name of file to write</p>
+</dd>
+<dt class="field-even">Date</dt>
+<dd class="field-even"><p>(datetime 1xn array) - list of dates</p>
+</dd>
+<dt class="field-odd">Fluxes</dt>
+<dd class="field-odd"><p>(float 1xn array) - corresponding fluxes</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<p>None but writes output file with filename</p>
 </dd></dl>
 
 </div>

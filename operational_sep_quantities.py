@@ -31,6 +31,7 @@ __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
 
+################ CHANGE LOG ####################
 #CHANGES in 0.4: allows users to specify user model or experiment name for
 #output files
 #CHANGES in 0.4: user passes filename through an argument if selects "user" for
@@ -202,6 +203,7 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   starting 12 hours before the flux threshold is crossed.
 #   Onset peak will still only be derived if thresholds
 #   are crossed.
+########################################################################
 
 #See full program description in all_program_info() below
 datapath = vars.datapath
@@ -237,13 +239,18 @@ user_fname = ['tmp.txt']
 def all_program_info(): #only for documentation purposes
     """ Program description for operational_sep_quantities.py v3.0.
     
+    Formatting for Sphinx web-based documentation, which can be viewed
+    within the docs/index.html directory or online at:
+    https://ktindiana.github.io/operational-sep/index.html
+    
     This program will calculate various useful pieces of operational
     information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
     data and the SEPEM (RSDv2 and RSDv3) dataset.
 
     SEP event values are always calculated for threshold definitions:
-        >10 MeV exceeds 10 pfu
-        >100 MeV exceed 1 pfu
+        
+        * >10 MeV exceeds 10 pfu
+        * >100 MeV exceed 1 pfu
 
     The user may add multiple additional thresholds through the command line.
     This program will check if data is already present in a 'data' directory. If
@@ -269,16 +276,17 @@ def all_program_info(): #only for documentation purposes
     interpolated, only time steps with negative or None flux values.
 
     The values calculated here are important for space radiation operations:
-       Onset time, i.e. time to cross thresholds
-       Onset peak intensity
-       Onset peak time
-       Maximum intensity
-       Time of maximum intensity
-       Rise time (onset to peak)
-       End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
-       Duration
-       Event-integrated fluences
-       Proton fluxes at various times after threshold crossing (UMASEP option)
+       
+       * Onset time, i.e. time to cross thresholds
+       * Onset peak intensity
+       * Onset peak time
+       * Maximum intensity
+       * Time of maximum intensity
+       * Rise time (onset to peak)
+       * End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
+       * Duration
+       * Event-integrated fluences
+       * Proton fluxes at various times after threshold crossing (UMASEP option)
 
     UNITS: User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1)
     or integral fluxes (e.g. [s sr cm^2]^-1 or pfu). Default units are:
@@ -293,15 +301,23 @@ def all_program_info(): #only for documentation purposes
 
     OPTIONS: User may specify various options, that currently only apply to
     GOES data:
-        Choose corrected or uncorrected GOES fluxes.
-        Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
-        energies to GOES uncorrected data.
-    --options uncorrected
-    --options uncorrected,S14,Bruno2017 (recommend using background subtraction)
+        
+        * Choose corrected or uncorrected GOES fluxes.
+        * Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
+          energies to GOES uncorrected data.
+    
+    .. code-block::
+    
+        --options uncorrected
+        --options uncorrected,S14,Bruno2017 (recommend using background subtraction)
 
     BACKGROUND SUBTRACTION: Users may choose to perform a background
     subtraction by specifying:
-    --SubtractBG --BGStartDate YYYY-MM-DD --BGEndDate YYYY-MM-DD
+    
+    .. code-block::
+    
+        --SubtractBG --BGStartDate YYYY-MM-DD --BGEndDate YYYY-MM-DD
+    
     The user should look at the data and select an appropriate time frame
     prior to the event when the background is calm and well-defined. If
     performing background subtraction, the mean background will be subtracted
@@ -330,10 +346,11 @@ def all_program_info(): #only for documentation purposes
     >50 MeV, 1 pfu. The proton flux in each of these channels is reported for
     multiple times after threshold crossing (Ts). The applied time delays are
     as follows:
-        >10 MeV - Ts + 3, 4, 5, 6, 7 hours
-        >30 MeV - Ts + 3, 4, 5, 6, 7 hours
-        >50 MeV - Ts + 3, 4, 5, 6, 7 hours
-        >100 MeV - Ts + 3, 4, 5, 6, 7 hours
+        
+        * >10 MeV - Ts + 3, 4, 5, 6, 7 hours
+        * >30 MeV - Ts + 3, 4, 5, 6, 7 hours
+        * >50 MeV - Ts + 3, 4, 5, 6, 7 hours
+        * >100 MeV - Ts + 3, 4, 5, 6, 7 hours
     
     --spase_id: If you know the appropriate spase_id for the your model or
     experiment, you may specify it here to be filled in to the json file
@@ -348,49 +365,61 @@ def all_program_info(): #only for documentation purposes
     to define the end of an SEP event.
     
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
-    python3 operational_sep_quantities.py --StartDate 2012-05-17
+    
+    .. code-block::
+    
+        python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate "2012-05-19 12:00:00" --Experiment GOES-13
         --FluxType integral --showplot --saveplot
 
     RUN CODE FROM COMMAND FOR USER DATA SET (put on one line), e.g.:
-    python3 operational_sep_quantities.py --StartDate 2012-05-17
+    
+    .. code-block::
+    
+        python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel
         --UserFile MyFluxes.txt --FluxType integral --showplot
 
     RUN CODE FROM COMMAND LINE AND PERFORM BACKGROUND SUBTRACTION AND APPLY
     Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins.
     (note: cannot bg-subtract GOES integral fluxes), e.g.:
-    python3 operational_sep_quantities.py --StartDate 2012-05-17
+    
+    .. code-block::
+        
+        python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
         --FluxType differential  --showplot --options uncorrected,S14,Bruno2017
         --SubtractBG --BGStartDate 2012-05-10 --BGEndDate --2012-05-17
 
     RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
-    import operational_sep_quantities as sep
-    start_date = '2012-05-17'
-    end_date = '2012-05-19 12:00:00'
-    experiment = 'GOES-13'
-    flux_type = 'integral'
-    spase_id = ''
-    model_name = '' #if experiment is user, set model_name to describe data set
-    user_file = '' #if experiment is user, specify filename containing fluxes
-    showplot = True  #Turn to False if don't want to see plots
-    saveplot = False #turn to true if you want to save plots to file
-    options = '' #various options: S14, Bruno2017, uncorrected
-    doBGSub = False #Set true if want to perform background subtraction
-    bgstart_date = "2012-05-10" #Dates used to estimate mean background if
-    bgend_date = "2012-05-17"   #doBGSub is set to True
-    detect_prev_event = True  #Helps if previous event causes high intensities
-    two_peaks = False  #Helps if two increases above threshold in one event
-    umasep = False #Set to true if want UMASEP values (see explanation above)
-    threshold = '' #Add a threshold to 10,10 and 100,1: '30,1' or '4.9-7.3,0.01'
-    nointerp = False #Default False; set to True to stop linear interpolatin in time
+    
+    .. code-block::
+    
+        import operational_sep_quantities as sep
+        start_date = '2012-05-17'
+        end_date = '2012-05-19 12:00:00'
+        experiment = 'GOES-13'
+        flux_type = 'integral'
+        spase_id = ''
+        model_name = '' #if experiment is user, set model_name to describe data set
+        user_file = '' #if experiment is user, specify filename containing fluxes
+        showplot = True  #Turn to False if don't want to see plots
+        saveplot = False #turn to true if you want to save plots to file
+        options = '' #various options: S14, Bruno2017, uncorrected
+        doBGSub = False #Set true if want to perform background subtraction
+        bgstart_date = "2012-05-10" #Dates used to estimate mean background if
+        bgend_date = "2012-05-17"   #doBGSub is set to True
+        detect_prev_event = True  #Helps if previous event causes high intensities
+        two_peaks = False  #Helps if two increases above threshold in one event
+        umasep = False #Set to true if want UMASEP values (see explanation above)
+        threshold = '' #Add a threshold to 10,10 and 100,1: '30,1' or '4.9-7.3,0.01'
+        nointerp = False #Default False; set to True to stop linear interpolatin in time
 
-    sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
-        end_date, experiment, flux_type, model_name, user_file,\
-        spase_id, showplot, saveplot, detect_prev_event,  \
-        two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
-        bgend_date,nointerp)
+        sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
+            end_date, experiment, flux_type, model_name, user_file,\
+            spase_id, showplot, saveplot, detect_prev_event,  \
+            two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
+            bgend_date,nointerp)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -429,22 +458,23 @@ def all_program_info(): #only for documentation purposes
     >30 MeV, 1 pfu, >50 MeV, 1 pfu, and >60 MeV, 0.079 pfu. Some of the files
     below are only created if a threshold was crossed. A default run would produce
     only 10 and 100 MeV files, sep_values_*.csv and json file:
-    fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv
-    integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv
-    sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json
+    
+    * fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv
+    * integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv
+    * sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json
     
     The json and txt files listed above would be the ones that would be appropriate
     to read into the CCMC SEP Scoreboard or to pass to the SEP validation code
@@ -465,8 +495,9 @@ def all_program_info(): #only for documentation purposes
     VALUES TO REFLECT YOUR UNITS. If you want to use different units, but
     still have the correct operational definitions, you need to modify these
     lines in define_thresholds() below:
-        energy_thresholds = [10,100] #MeV; flux for particles of > this MeV
-        flux_thresholds = [10,1] #pfu; exceed this level of intensity
+    
+        * energy_thresholds = [10,100] #MeV; flux for particles of > this MeV
+        * flux_thresholds = [10,1] #pfu; exceed this level of intensity
     
     NOTE: The first column in your flux file is assumed to be time in format
     YYYY-MM-DD HH:MM:SS. IMPORTANT FORMATTING!!
@@ -482,18 +513,19 @@ def all_program_info(): #only for documentation purposes
 
     USER VARIABLES: The user must modify the following variables in
     library/global_vars.py:
-        user_col - identify columns in your file containing fluxes to analyze;
+    
+        :user_col: identify columns in your file containing fluxes to analyze;
                 even if your delimeter is white space, consider the date-time
                 column as one single column. SET IN library/global_vars.py.
-        user_delim - delimeter between columns, e.g. " " or ","   Use " " for
+        :user_delim: delimeter between columns, e.g. " " or ","   Use " " for
                 any amount of whitespace. SET IN library/global_vars.py.
-        user_energy_bins - define your energy bins at the top of the code in the
+        :user_energy_bins: define your energy bins at the top of the code in the
                 variable user_energy_bins. Follow the format in the subroutine
                 define_energy_bins. SET IN library/global_vars.py.
-        user_fname - specify the name of the file containing the fluxes
+        :user_fname: specify the name of the file containing the fluxes
                 through an argument in the command line. --UserFile  The
                 user_fname variable will be updated with that filename. ARGUMENT
-        time_resolution - the program determines time_resolution
+        :time_resolution: the program determines time_resolution
                 (seconds) by finding the difference between every consecutive
                 set of time points in the data set. The most common difference
                 is identified as the time resolution. This method should find
@@ -503,30 +535,34 @@ def all_program_info(): #only for documentation purposes
     Running the code for a user-input file may look like the example below.
     Note that the --UserFile location is with respect to the "data" directory
     inside the operational-sep directory:
-    python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
+    
+    .. code-block::
+    
+        python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
     
     VALUES SPECIFIED IN library/global_vars.py:
-        datapath - directory containing data, 'data'
-        outpath - directory for program output, 'output'
-        plotpath - directory for saving plots, 'plots'
-        listpath - directory for lists (for run_multi_sep.py)
-        badval - will set any bad data points to this value
-        endfac - multiplicative factor to define threshold for
+    
+        :datapath: directory containing data, 'data'
+        :outpath: directory for program output, 'output'
+        :plotpath: directory for saving plots, 'plots'
+        :listpath: directory for lists (for run_multi_sep.py)
+        :badval: will set any bad data points to this value
+        :endfac: multiplicative factor to define threshold for
                 end of event; threshold*endfac (default 0.85)
-        nsigma - number of sigma to define SEP versus background
+        :nsigma: number of sigma to define SEP versus background
                 flux in background subtraction routine
-        version - if you are running a model or data set, allows you
+        :version: if you are running a model or data set, allows you
                 to enter a version number
-        user_col - array defining flux columns (0 is always datetime)
-        user_delim - delimeter used to separate the columns in the time
+        :user_col: array defining flux columns (0 is always datetime)
+        :user_delim: delimeter used to separate the columns in the time
                 profile file that you will read in
-        user_energy_bins - energy bins associated with the columns
+        :user_energy_bins: energy bins associated with the columns
                 specified in user_col
-        energy_units - e.g. "MeV'
-        flux_units_integral - e.g. "pfu"
-        fluence_units_integral - e.g. "cm^-2"
-        flux_units_differential - e.g. "MeV^-1*cm^-2*s^-1*sr^-1" (CCMC format)
-        fluence_units_differential - e.g. "MeV^-1*cm^-2" (CCMC format)
+        :energy_units: e.g. "MeV'
+        :flux_units_integral: e.g. "pfu"
+        :fluence_units_integral: e.g. "cm^-2"
+        :flux_units_differential: e.g. "MeV^-1*cm^-2*s^-1*sr^-1" (CCMC format)
+        :fluence_units_differential: e.g. "MeV^-1*cm^-2" (CCMC format)
         
         (setting the units here will make correct units on plots and in json
         file, but doesn't change operational threshold values; must be done
@@ -547,15 +583,18 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
         An integral flux will be provided for each timestamp (e.g. every 5 mins).
        
         INPUTS:
-        experiment (string)
-        min_energy (float) - bottom energy for integral flux calculation
-        energy_bins (float 1xn array) - bins for each energy channel
-        fluxes (float nxm array) - fluxes with time for each energy channel
-        options (string array) - effective energies for GOES channels
+        
+        :experiment: (string)
+        :min_energy: (float) - bottom energy for integral flux calculation
+        :energy_bins: (float 1xn array) - bins for each energy channel
+        :fluxes: (float nxm array) - fluxes with time for each energy channel
+        :options: (string array) - effective energies for GOES channels
         
         OUTPUTS:
-        integral_fluxes (float 1xm array) - estimate integral flux for >min_energy
+        
+        :integral_fluxes: (float 1xm array) - estimate integral flux for >min_energy
             (Returns all zero values if no energy bins above min_energy)
+            
     """
     print('Converting differential flux to integral flux for >'
             + str(min_energy) + 'MeV.')
@@ -698,19 +737,22 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
         >100 MeV, 1 pfu threshold.)
         
         INPUTS:
-        fluxes (float nxm array) - flux time profile for each energy channel
-        experiment (string)
-        flux_type (string) - integral or differential
-        flux_thresholds (float 1xp array) - flux threshold values
-        energy_thresholds (float 1xp array) - energy channels to which the
+        
+        :fluxes: (float nxm array) - flux time profile for each energy channel
+        :experiment: (string)
+        :flux_type: (string) - integral or differential
+        :flux_thresholds: (float 1xp array) - flux threshold values
+        :energy_thresholds: (float 1xp array) - energy channels to which the
             flux threshold values are applied
-        energy_bins (float 1xn array) - bins for each energy channel in fluxes
-        options (string array) - bg subtraction, effective energies for
+        :energy_bins: (float 1xn array) - bins for each energy channel in fluxes
+        :options: (string array) - bg subtraction, effective energies for
             GOES channels
             
         OUTPUTS:
-        integral_fluxes (float array) - integral fluxes associated with each
+        
+        :integral_fluxes: (float array) - integral fluxes associated with each
             energy channel in energy_thresholds; >energy_thresholds[i]
+            
     """
     nthresh = len(flux_thresholds)
     nenergy = len(energy_bins)
@@ -761,8 +803,10 @@ def calculate_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     """ Calculate the time that a threshold is crossed.
         Operational thresholds used by the NASA JSC Space Radiation Analysis
         Group to determine actions that should be taken during an SEP event are:
-            >10 MeV proton flux exceeds 10 pfu (1/[cm^2 s sr])
-            >100 MeV proton flux exceeds 1 pfu (1/[cm^2 s sr])
+        
+            * >10 MeV proton flux exceeds 10 pfu (1/[cm^2 s sr])
+            * >100 MeV proton flux exceeds 1 pfu (1/[cm^2 s sr])
+            
         An SEP event is considered to start if 3 consecutive points are
         above threshold. The start time is set to the first point that crossed
         threshold.
@@ -789,20 +833,23 @@ def calculate_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
         better-capture the end of the event.
         
         INPUTS:
-        energy_threshold (float) - energy channel for which the
+        
+        :energy_threshold: (float) - energy channel for which the
             flux threshold value should be applied
-        flux_threshold (float) - flux threshold value
-        dates (datetime 1xn array) - dates associated with the flux time profile
-        fluxes (float 1xn array) - flux with time for the single energy channel
+        :flux_threshold: (float) - flux threshold value
+        :dates: (datetime 1xn array) - dates associated with the flux time profile
+        :fluxes: (float 1xn array) - flux with time for the single energy channel
                 associated with energy_threshold
         
         OUTPUTS:
-        crossing_time (datetime)
-        peak_flux (float) - maximum flux value between start and end time
-        peak_time (datetime)
-        rise_time (timedelta) - (peak_time - crossing_time)
-        event_end_time (datetime)
-        duration (timedelta) - (event_end_time - crossing_time)
+        
+        :crossing_time: (datetime)
+        :peak_flux: (float) - maximum flux value between start and end time
+        :peak_time: (datetime)
+        :rise_time: (timedelta) - (peak_time - crossing_time)
+        :event_end_time: (datetime)
+        :duration: (timedelta) - (event_end_time - crossing_time)
+        
     """
     #flux_threshold, e.g. 10 pfu (1/[cm^2 s sr])
     #energy_threshold, e.g. 10 MeV --> integral flux for >10 MeV protons
@@ -882,21 +929,24 @@ def consistent_peak_fluxes(crossing_time, onset_peak, onset_date,
         Swapping the two values to more correct.
         
         INPUTS (for n SEP events):
-        crossing_time (datetime 1xn array) - value will be zero
+        
+        :crossing_time: (datetime 1xn array) - value will be zero
             if no threshold was crossed
-        onset_peak (float 1xn array) - value of onset peak for each
+        :onset_peak: (float 1xn array) - value of onset peak for each
             SEP event, max flux if no thresholds crossed
-        onset_date (datetime 1xn array) - time of onset peaks
-        peak_flux (float 1xn array) - values of maximum flux for
+        :onset_date: (datetime 1xn array) - time of onset peaks
+        :peak_flux: (float 1xn array) - values of maximum flux for
             each SEP event, zero if no threshold crossed
-        peak_time (datetime 1xn array) - value of peak flux, zero if
+        :peak_time: (datetime 1xn array) - value of peak flux, zero if
             threshold not crossed
             
         OUTPUTS (same as above, but values switched around):
-        onset_peak - value set to zero if no threshold crossed
-        onset_date - value set to zero if no threshold crossed
-        peak_flux - value of max flux during time period
-        peak_time - time of max flux
+        
+        :onset_peak: value set to zero if no threshold crossed
+        :onset_date: value set to zero if no threshold crossed
+        :peak_flux: value of max flux during time period
+        :peak_time: time of max flux
+        
     """
     if len(crossing_time) != len(onset_peak):
         sys.exit("consistent_peak_flux: Different lengths for "
@@ -919,11 +969,13 @@ def check_bin_exists(threshold, energy_bins):
         Expect threshold[0] = lowedge-highedge, threshold[1] = flux value
         
         INPUTS:
-        threshold (string) - threshold input by user in string format
-        energy_bins (float 2xn array) - energy bins for n energy channels
+        
+        :threshold: (string) - threshold input by user in string format
+        :energy_bins: (float 2xn array) - energy bins for n energy channels
         
         OUTPUTS:
-        Boolean indicating specified bins exist, or exit
+        
+        :Boolean: indicating specified bins exist, or exit
         
     """
     edges = threshold[0].split("-")
@@ -944,18 +996,23 @@ def get_energy_bin_index(energy_threshold, energy_bins):
         to see that the energy bin is in the requested data set.
         threshold is a list of strings.
         For integral, expect:
-            energy_threshold = lowedge
+            
+            * energy_threshold = lowedge
         
         For differential, expect:
-            energy_threshold[0] = lowedge
-            energy_threshold[1] = highedge
+            
+            * energy_threshold[0] = lowedge
+            * energy_threshold[1] = highedge
             
         INPUTS:
-        energy_threshold (float or 1x2 array)
-        energy_bins (float 2xn array) - energy bins for n energy channels
+        
+        :energy_threshold: (float or 1x2 array)
+        :energy_bins: (float 2xn array) - energy bins for n energy channels
         
         OUTPUTS:
-        index (integer) - index of energy bin associated with energy_threshold
+        
+        :index: (integer) - index of energy bin associated with energy_threshold
+        
     """
     
     is_array = isinstance(threshold, list) #number or array?
@@ -985,10 +1042,13 @@ def determine_time_resolution(dates):
         or model output, the correct time resolution should be identified.
         
         INPUTS:
-        dates (datetime 1xm array) - dates associated with flux time profile
+        
+        :dates: (datetime 1xm array) - dates associated with flux time profile
         
         OUTPUTS:
-        time_resolution (time delta object)
+        
+        :time_resolution: (time delta object)
+        
     """
     ndates = len(dates)
     time_diff = [a - b for a,b in zip(dates[1:ndates],dates[0:ndates-1])]
@@ -1020,12 +1080,15 @@ def calculate_fluence(dates, flux):
         fluxes or 1/[cm^2] for integral fluxes.
         
         INPUTS:
-        flux (float 1xn array) - intensity time series for a single energy bin
+        
+        :flux: (float 1xn array) - intensity time series for a single energy bin
             or single integral channel (1D array).
-        dates (datetime 1xn array) - datetimes that correspond to the fluxes
+        :dates: (datetime 1xn array) - datetimes that correspond to the fluxes
         
         OUTPUTS:
-        fluence (float) - sum of all the flux values in flux
+        
+        :fluence: (float) - sum of all the flux values in flux
+        
     """
     ndates = len(dates)
     time_resolution = determine_time_resolution(dates)
@@ -1061,26 +1124,29 @@ def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
         is_diff_thresh will be true and the filename will not contain "gt".
         
         INPUTS:
-        experiment (string)
-        flux_type (string) - integral or differential
-        options (string array) - bg subtraction, effective energies for
+        
+        :experiment: (string)
+        :flux_type: (string) - integral or differential
+        :options: (string array) - bg subtraction, effective energies for
             GOES channels
-        model_name (string) - name of model or user experiment, if relevant
-        energy_threshold (float) - energy channel to which the
+        :model_name: (string) - name of model or user experiment, if relevant
+        :energy_threshold: (float) - energy channel to which the
             flux threshold value is applied
-        flux_threshold (float) - flux threshold value
-        sep_dates (datetime 1xm array) - dates trimmed between SEP start and
+        :flux_threshold: (float) - flux threshold value
+        :sep_dates: (datetime 1xm array) - dates trimmed between SEP start and
             end times
-        sep_fluxes (float nxm array) - flux time profiles for each energy channel
+        :sep_fluxes: (float nxm array) - flux time profiles for each energy channel
             trimmed between SEP start and end times
-        energy_bins (float 1xn array) - bins for each energy channel
-        diff_thresh (boolean) - indicates if the energy_threshold and
+        :energy_bins: (float 1xn array) - bins for each energy channel
+        :diff_thresh: (boolean) - indicates if the energy_threshold and
             flux_threshold refer to a differential channel (True)
-        save_file (boolean) - set True to save fluence values to file
+        :save_file: (boolean) - set True to save fluence values to file
         
         OUTPUTS:
-        fluence (float 1xn array) - fluence value in each energy bin
-        energies (float 1xn array) - bin centers for each energy bin
+        
+        :fluence: (float 1xn array) - fluence value in each energy bin
+        :energies: (float 1xn array) - bin centers for each energy bin
+        
     """
     nenergy = len(energy_bins)
     fluence = np.zeros(shape=(nenergy))
@@ -1146,12 +1212,14 @@ def get_fluence_spectrum(experiment, flux_type, options, doBGSub,
 def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                 integral_fluxes, detect_prev_event, two_peaks, diff_thresh):
     """ Applies energy and flux thresholds to calculate SEP event quantities:
-            Threshold crossing time (onset)
-            Peak Flux in date range specified by user
-            Time of Peak Flux
-            Rise Time (onset to peak flux)
-            Event End Time (below 0.85*threshold for 3 data points, e.g 15 min)
-            Duration (onset to end)
+            
+            * Threshold crossing time (onset)
+            * Peak Flux in date range specified by user
+            * Time of Peak Flux
+            * Rise Time (onset to peak flux)
+            * Event End Time (below 0.85*threshold for 3 data points, e.g 15 min)
+            * Duration (onset to end)
+            
         If the detect_prev_event flag is set to true and the threshold is crossed
         on the first time in the specified date range, this indicates that fluxes
         were already high due to a previous event. The code will look for the
@@ -1173,24 +1241,26 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
         for which a threshold has been applied.
         
         INPUTS:
-        energy_thresholds (float 1xn array) - energy channels for which a
+        
+        :energy_thresholds: (float 1xn array) - energy channels for which a
             threshold is applied
-        flux_thresholds (float 1xn array) - flux thresholds to apply
-        dates (datetime 1xm array)
-        integral_fluxes (float nxm array) - fluxes only associated with the
+        :flux_thresholds: (float 1xn array) - flux thresholds to apply
+        :dates: (datetime 1xm array)
+        :integral_fluxes: (float nxm array) - fluxes only associated with the
             energy channels in energy_thresholds
-        detect_prev_event (boolean)
-        two_peaks (boolean)
-        diff_thresh (boolean) - indicates if the energy_threshold and
+        :detect_prev_event: (boolean)
+        :two_peaks: (boolean)
+        :diff_thresh: (boolean) - indicates if the energy_threshold and
             flux_threshold refer to a differential channel (True)
             
         OUTPUTS:
-        crossing_time (datetime 1xn array) - crossing times for n applied thresholds
-        peak_flux (float 1xn array) - max flux value between start and end time
-        peak_time (datetime 1xn array)
-        rise_time (timedelta 1xn array) - (peak_time - crossing_time)
-        event_end_time (datetime 1xn array)
-        duration (timedelta 1xn arrat) - (event_end_time - crossing_time)
+        
+        :crossing_time: (datetime 1xn array) - crossing times for n applied thresholds
+        :peak_flux: (float 1xn array) - max flux value between start and end time
+        :peak_time: (datetime 1xn array)
+        :rise_time: (timedelta 1xn array) - (peak_time - crossing_time)
+        :event_end_time: (datetime 1xn array)
+        :duration: (timedelta 1xn arrat) - (event_end_time - crossing_time)
         
     """
     nthresh = len(flux_thresholds)
@@ -1284,21 +1354,23 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         the date None.
         
         INPUTS:
-        experiment (string) e.g. GOES-13
-        energy_thresholds (float 1xn array) - energy channels for which thresholds
+        
+        :experiment: (string) e.g. GOES-13
+        :energy_thresholds: (float 1xn array) - energy channels for which thresholds
             are applied
-        dates (datetime 1xm array) - dates associated with flux time profile
-        integral_fluxes (float nxm array) - fluxes for each energy channel for
+        :dates: (datetime 1xm array) - dates associated with flux time profile
+        :integral_fluxes: (float nxm array) - fluxes for each energy channel for
             which a threshold is applied; each is the same length as dates
-        crossing_time (datetime 1xn array) - threshold crossing times for each energy
+        :crossing_time: (datetime 1xn array) - threshold crossing times for each energy
             channel for which a threshold is applied
-        event_end_time (datetime 1xn array) - end times for each energy channel for which
+        :event_end_time: (datetime 1xn array) - end times for each energy channel for which
             a threshold is applied
-        showplot (bool)
+        :showplot: (bool)
         
         OUTPUTS:
-        onset_date (datetime 1xn array) - time of onset peak
-        onset_peak (float 1xn array) - flux value of onset peak
+        
+        :onset_date: (datetime 1xn array) - time of onset peak
+        :onset_peak: (float 1xn array) - flux value of onset peak
         
     """
     nthresh = len(energy_thresholds)
@@ -1597,19 +1669,21 @@ def calculate_umasep_info(energy_thresholds,flux_thresholds,dates,
             Flux at threshold crossing time + 3, 4, 5, 6, 7 hours
             
         INPUTS:
-        energy_thresholds (float 1xn array) - energy channels for which thresholds
+        
+        :energy_thresholds: (float 1xn array) - energy channels for which thresholds
             are applied
-        flux_thresholds (float 1xn array) - flux thresholds that are applied
-        dates (datetime 1xm array) - dates associated with flux time profile
-        integral_fluxes (float nxm array) - fluxes for each energy channel for
+        :flux_thresholds: (float 1xn array) - flux thresholds that are applied
+        :dates: (datetime 1xm array) - dates associated with flux time profile
+        :integral_fluxes: (float nxm array) - fluxes for each energy channel for
             which a threshold is applied; each is the same length as dates
-        crossing_time (datetime 1xn array) - threshold crossing times for each energy
+        :crossing_time: (datetime 1xn array) - threshold crossing times for each energy
             channel for which a threshold is applied
             
         OUTPUTS:
-        proton_delay_times (datetime nx5 array) - times 3, 4, 5, 6, 7 hours
+        
+        :proton_delay_times: (datetime nx5 array) - times 3, 4, 5, 6, 7 hours
             after crossing time for n thresholds
-        proton_flux (float nx5 array) - value of flux at each delay time and for
+        :proton_flux: (float nx5 array) - value of flux at each delay time and for
             each threshold
         
     """
@@ -1687,19 +1761,21 @@ def report_threshold_fluences(experiment, flux_type, model_name,
         that were estimated for each integral channel in energy_thresholds.
         
         INPUTS:
-        experiment (string)
-        flux_type (string) - integral or differential
-        model_name (string) - name of model or experiment if experiment = "user"
-        energy_thresholds (float 1xn array) - integral energy channels for
+        
+        :experiment: (string)
+        :flux_type: (string) - integral or differential
+        :model_name: (string) - name of model or experiment if experiment = "user"
+        :energy_thresholds: (float 1xn array) - integral energy channels for
             which a threshold has been applied
-        energy_bins (float 2xm array) - energy bins for input fluxes
-        sep_dates (datetime 1xp array) - time profile dates trimmed to
+        :energy_bins: (float 2xm array) - energy bins for input fluxes
+        :sep_dates: (datetime 1xp array) - time profile dates trimmed to
             start and stop of SEP event
-        sep_fluxes (float mxp array) - flux time profiles for each energy
+        :sep_fluxes: (float mxp array) - flux time profiles for each energy
             channel trimmed to start and end dates
             
         OUTPUTS:
-        integral_fluence (float 1xn array) - event fluence for all
+        
+        :integral_fluence: (float 1xn array) - event fluence for all
             integral energy channels for which a threshold was applied
     """
     tmp_energy_bins = []
@@ -1754,20 +1830,22 @@ def save_integral_fluxes_to_file(experiment, flux_type, options, doBGSub,
         included in this file.
         
         INPUTS:
-        experiment (string)
-        flux_type (string) - integral or differential
-        options (string array) - S14, Bruno2017, uncorrected options for GOES data
-        doBGSub (boolean) - indicates if background subtration is performed
-        model_name (string) - name of model or user experiment, if relevant
-        energy_thresholds (float 1xn array) - energy channels for which
+        
+        :experiment: (string)
+        :flux_type: (string) - integral or differential
+        :options: (string array) - S14, Bruno2017, uncorrected options for GOES data
+        :doBGSub: (boolean) - indicates if background subtration is performed
+        :model_name: (string) - name of model or user experiment, if relevant
+        :energy_thresholds: (float 1xn array) - energy channels for which
             flux thresholds are applied
-        crossing_time (datetime 1xn array) - start times of sep event for each
+        :crossing_time: (datetime 1xn array) - start times of sep event for each
             energy channel (energy_thresolds) for which a threshold was applied
-        dates (datetime 1xm array) - dates for flux time profile
-        integral_fluxes (float nxm array) - flux time profiles for each energy channel
+        :dates: (datetime 1xm array) - dates for flux time profile
+        :integral_fluxes: (float nxm array) - flux time profiles for each energy channel
             for which a threshold was applied; assumed to be (estimated)integral fluxes
         
         OUTPUTS:
+        
         No outputs except output file named e.g.
             integral_fluxes_GOES-13_differential_2012_3_7.csv
     """
@@ -1848,47 +1926,49 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
         written out to json file in a different subroutine.
         
         INPUTS:
-        experiment (string)
-        flux_type (string) - integral or differential
-        options (string array) - can be S14, Bruno2017, uncorrected and apply
+        
+        :experiment: (string)
+        :flux_type: (string) - integral or differential
+        :options: (string array) - can be S14, Bruno2017, uncorrected and apply
             to GOES data
-        doBGSub (boolean) - indicates if background subtraction performed
-        model_name (string) - model or experiment name if experiment = "user"
-        startdate (datetime) - start date of time period entered by user
-        energy_thresholds (float 1xn array) - all energy channels for which
+        :doBGSub: (boolean) - indicates if background subtraction performed
+        :model_name: (string) - model or experiment name if experiment = "user"
+        :startdate: (datetime) - start date of time period entered by user
+        :energy_thresholds: (float 1xn array) - all energy channels for which
             a flux threshold was applied (both integral and differential)
-        flux_thresholds (float 1xn array) - flux thresholds for each of the
+        :flux_thresholds: (float 1xn array) - flux thresholds for each of the
             energy channels in energy_thresholds
-        crossing_time (datetime 1xn array) - SEP event start time for each
+        :crossing_time: (datetime 1xn array) - SEP event start time for each
             applied threshold
-        onset_peak (float 1xn array) - onset peak for each applied threshold
-        onset_date (datetime 1xn array) - onset peak time for each applied
+        :onset_peak: (float 1xn array) - onset peak for each applied threshold
+        :onset_date: (datetime 1xn array) - onset peak time for each applied
             threshold
-        peak_flux (float 1xn array) - maximum flux for each applied threshold
-        peak_time (datetime 1xn array) - time of maximum flux for each applied
+        :peak_flux: (float 1xn array) - maximum flux for each applied threshold
+        :peak_time: (datetime 1xn array) - time of maximum flux for each applied
             threshold
-        rise_time (timedelta 1xn array) - start time to max flux
-        event_end_time (datetime 1xn array) - end time for each applied threshold
-        duration (timedelta 1xn array) - end time minus start time
-        threshold_fluences (float 1xn array) - event fluence for each energy
+        :rise_time: (timedelta 1xn array) - start time to max flux
+        :event_end_time: (datetime 1xn array) - end time for each applied threshold
+        :duration: (timedelta 1xn array) - end time minus start time
+        :threshold_fluences: (float 1xn array) - event fluence for each energy
             channel in energy_thresholds
-        is_diff_thresh (bool 1xn array) - indicates if threshold applied to
+        :is_diff_thresh: (bool 1xn array) - indicates if threshold applied to
             integral or differential channel, e.g. if channel in energy_thresholds
             is an integral or differential channel
-        umasep (boolean) - indicate if user called UMASEP flag
-        umasep_times (datetime 5xn array) - times 3, 4, 5, 6, 7, 9 hours after
+        :umasep: (boolean) - indicate if user called UMASEP flag
+        :umasep_times: (datetime 5xn array) - times 3, 4, 5, 6, 7, 9 hours after
             crossing time for each applied threshold
-        umasep_fluxes (float 5xn) - fluxes at each of those times for each
+        :umasep_fluxes: (float 5xn) - fluxes at each of those times for each
             applied threshold
             
         OUTPUTS:
-        year (integer) - year of either SEP event or startdate (if no
+        
+        :year: (integer) - year of either SEP event or startdate (if no
             thresholds crossed)
-        month (integer) - month of either SEP event or startdate (if no
+        :month: (integer) - month of either SEP event or startdate (if no
             thresholds crossed)
-        day (integer) - day of either SEP event or startdate (if no
+        :day: (integer) - day of either SEP event or startdate (if no
             thresholds crossed)
-        Output file named e.g.
+        :Output file: named e.g.
             output/sep_values_experiment_fluxtype_YYYY_M_D.csv
         
         
@@ -2002,14 +2082,17 @@ def print_values_to_file(experiment, flux_type, options, doBGSub,
 
 def error_check_options(experiment, flux_type, options, doBGSub):
     """ Make sure the selected options make sense for the experiment.
+        
         INPUTS:
-        experiment (string)
-        flux_type (string) - integral or differential
-        options (string array) - various options applied to GOES data
-        doBGSub (boolean) - indicates if background subtraction to be
+        
+        :experiment: (string)
+        :flux_type: (string) - integral or differential
+        :options: (string array) - various options applied to GOES data
+        :doBGSub: (boolean) - indicates if background subtraction to be
             performed
         
         OUTPUTS:
+        
         no outputs by system exit if error found
     """
     if "S14" in options and experiment[0:4] != "GOES":
@@ -2054,16 +2137,18 @@ def error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh
     """ Check that all of the user inputs make sense and fall within bounds.
         
         INPUTS:
-        startdate (datetime) - start of time period entered by user
-        enddate (datetime) - end of time period entered by user
-        experiment (string) - name of experiment specifed by user
-        flux_type (string) - integral or differential
-        is_diff_thresh (bool 1xn array) - where n indicates the number of
+        
+        :startdate: (datetime) - start of time period entered by user
+        :enddate: (datetime) - end of time period entered by user
+        :experiment: (string) - name of experiment specifed by user
+        :flux_type: (string) - integral or differential
+        :is_diff_thresh: (bool 1xn array) - where n indicates the number of
             thresholds input by the user, e.g. "30,1;50,1" n=2
             Indicates if the user-input thresholds apply to integral or
             differential channels
             
         OUTPUTS:
+        
         None, but system exit if error found
     """
     #CHECKS ON INPUTS
@@ -2125,15 +2210,18 @@ def sort_bin_order(all_fluxes, energy_bins):
         estimated properly.
         
         INPUTS:
-        all_fluxes (float nxm array) - fluxes for n energy channels
+        
+        :all_fluxes: (float nxm array) - fluxes for n energy channels
             and m time points
-        energy_bins (float 2xn array) - energy bins for each of the
+        :energy_bins: (float 2xn array) - energy bins for each of the
             energy channels
             
         OUTPUTS:
-        sort_fluxes (float nxm array) - same as above, but sorted so
+        
+        :sort_fluxes: (float nxm array) - same as above, but sorted so
             that the lowest energy channel is first and highest is last
-        sort_bins (float 2xn array) - same as above, but sorted
+        :sort_bins: (float 2xn array) - same as above, but sorted
+        
     """
 
     nbins = len(energy_bins)
@@ -2162,17 +2250,19 @@ def sort_bin_order(all_fluxes, energy_bins):
 ####TOOLS#####
 def get_input_thresholds(str_thresh):
     """ Get user specified input thresholds,
+        
         INPUTS:
-        str_thresh (string) input by user with thresholds
+        :str_thresh: (string) input by user with thresholds
             separated by semi-colons
         
         OUTPUTS:
-        input_threshold (2xn floats) array as
+        
+        :input_threshold: (2xn floats) array as
             [[binLow, flux threshold],
              [bin Low, fluxthreshold],
              ...]
         
-        is_diff_thresh (bool array)
+        :is_diff_thresh: (bool array)
     """
     input_threshold = []
     is_diff_thresh = []
@@ -2196,11 +2286,14 @@ def get_input_thresholds(str_thresh):
 
 def str_to_datetime(date):
     """ String date to datetime
+        
         INPUTS:
-        date (string) - date as "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
+        
+        :date: (string) - date as "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
         
         OUTPUTS:
-        dt (datetime) - datetime conversion of date
+        
+        :dt: (datetime) - datetime conversion of date
     """
     if len(date) == 10: #only YYYY-MM-DD
         date = date  + ' 00:00:00'
@@ -2217,32 +2310,35 @@ def read_in_flux_files(experiment, flux_type, user_file, model_name, startdate,
         points with linear interpolation in time.
         
         INPUTS:
-        experiment (string)
-        flux_type (string) - integral, differential
-        user_file (string) - file containing user's flux time profiles
-        model_name (string) - model name or experiment if experiment = "user"
-        startdate (datetime) - start date of time period entered by user
-        enddate (datetime) - end date of time period entered by user
-        str_startdate (string) - start date in string form
-        str_enddate (string) - end date in string form
-        str_bgstartdate (string) - start date of time period to be used for
+        
+        :experiment: (string)
+        :flux_type: (string) - integral, differential
+        :user_file: (string) - file containing user's flux time profiles
+        :model_name: (string) - model name or experiment if experiment = "user"
+        :startdate: (datetime) - start date of time period entered by user
+        :enddate: (datetime) - end date of time period entered by user
+        :str_startdate: (string) - start date in string form
+        :str_enddate: (string) - end date in string form
+        :str_bgstartdate: (string) - start date of time period to be used for
             background subtraction
-        str_bgenddate (string) - end date of time period to be used or
+        :str_bgenddate: (string) - end date of time period to be used or
             background subtraction
-        options (string array) - options that could be applied
-        doBGSub (bool) - indicate if background subtraction to be performed
-        nointerp (bool) - indicates if user doesn't want to do linear
+        :options: (string array) - options that could be applied
+        :doBGSub: (bool) - indicate if background subtraction to be performed
+        :nointerp: (bool) - indicates if user doesn't want to do linear
             interpolation in time for negative of bad flux values
-        showplot (bool)
-        saveplot (bool) - save plots automatically to "plots" directory
+        :showplot: (bool)
+        :saveplot: (bool) - save plots automatically to "plots" directory
         
         OUTPUTS:
-        dates (datetime 1xm array) - times in flux time profile trimmed
+        
+        :dates: (datetime 1xm array) - times in flux time profile trimmed
             between startdate and enddate
-        fluxes (numpy float nxm array) - fluxes for n energy channels and m
+        :fluxes: (numpy float nxm array) - fluxes for n energy channels and m
             time steps; these are background subtracted fluxes if background
             subtraction was selected.
-        energy_bins (array nx2 for n thresholds)
+        :energy_bins: (array nx2 for n thresholds)
+        
     """
     
     filenames1, filenames2, filenames_orien = datasets.check_data(startdate,
@@ -2297,22 +2393,21 @@ def define_thresholds(input_threshold, is_diff_thresh, str_thresh, energy_bins):
         specified by the user.
         
         INPUTS:
-        input_threshold (float 2xn array) - thresholds specified by user e.g.
-            [[30,1],[50,1]]
         
-        is_diff_thresh (bool 1xn array) - indicates whether the input threshold
+        :input_threshold: (float 2xn array) - thresholds specified by user e.g.
+            [[30,1],[50,1]]
+        :is_diff_thresh: (bool 1xn array) - indicates whether the input threshold
             is a differential channel
-            
-        str_thresh (string) - threshold as input by user in command line e.g.
+        :str_thresh: (string) - threshold as input by user in command line e.g.
             "30,1;50,1;4.9-8.3,10"
             
         OUTPUTS:
-        energy_thresholds (float 1x(n+2) array) - e.g. [10,100,30,50,4.9]
+        
+        :energy_thresholds: (float 1x(n+2) array) - e.g. [10,100,30,50,4.9]
             energy channels for which a threshold will be applied. Includes
             the two operational thresholds plus any thresholds entered by
             the user
-        
-        flux_thresholds (float 1x(n+2) array) - e.g. [10,1,1,1,10]
+        :flux_thresholds: (float 1x(n+2) array) - e.g. [10,1,1,1,10]
             flux thresholds to be applied to the energy channels in
             energy_thresholds. Includes the two operational thresholds
             plus any thresholds entered by the user
@@ -2353,50 +2448,53 @@ def calculate_integral_fluences(experiment, flux_type, options,
         to integral channels.
         
         INPUTS:
-        experiment (string)
-        flux_type (string) - integral, differential
-        options (string array) - options that could be applied
-        model_name (string) - model name or experiment if experiment = "user"
-        doBGSub (bool) - indicate if background subtraction to be performed
-        startdate (datetime) - start date of time period entered by user
-        enddate (datetime) - end date of time period entered by user
-        energy_bins (float 2xp array) - energy bins for all of the flux channels
-        energy_thresholds (float 1xn array) - energy channels for which a
+        
+        :experiment: (string)
+        :flux_type: (string) - integral, differential
+        :options: (string array) - options that could be applied
+        :model_name: (string) - model name or experiment if experiment = "user"
+        :doBGSub: (bool) - indicate if background subtraction to be performed
+        :startdate: (datetime) - start date of time period entered by user
+        :enddate: (datetime) - end date of time period entered by user
+        :energy_bins: (float 2xp array) - energy bins for all of the flux channels
+        :energy_thresholds: (float 1xn array) - energy channels for which a
             threshold is applied (at this point, only the integral ones)
-        flux_thresholds (float 1xn array) - flux thresholds applied to
+        :flux_thresholds: (float 1xn array) - flux thresholds applied to
             the energy channels in energy_thresholds
-        dates (datetime 1xm array) - time points for the flux time profiles
-        fluxes (float pxm array) - flux time profiles for p energy bins and m
+        :dates: (datetime 1xm array) - time points for the flux time profiles
+        :fluxes: (float pxm array) - flux time profiles for p energy bins and m
             time steps
-        integral_fluxes (float nxm array) - flux time profiles of integral
+        :integral_fluxes: (float nxm array) - flux time profiles of integral
             or estimated integral fluxes for n energy channels and m time steps
-        crossing_time (datetime 1xn array) - SEP event start times for each
+        :crossing_time: (datetime 1xn array) - SEP event start times for each
             energy channel with an applied threshold
-        event_end_time (datetime 1xn array) - SEP event end times for each
+        :event_end_time: (datetime 1xn array) - SEP event end times for each
             energy channel with an applied threshold
-        all_threshold_fluences (float 1xn array) - fluence values for integral
+        :all_threshold_fluences: (float 1xn array) - fluence values for integral
             or estimated integral fluxes in the n energy channels for which
             thresholds were applied
-        all_fluence (float nxp array) - fluence spectrum in the original
+        :all_fluence: (float nxp array) - fluence spectrum in the original
             integral or differential energy channels associated with
             energy_bins. Fluence calculated between crossing_time and
             event_end_time, so this is the fluence spectrum associated with
             the events defined by the thresholds applied to each energy channel
-        all_energies (float 1xp array) - effective energies for energy_bins,
+        :all_energies: (float 1xp array) - effective energies for energy_bins,
             defined by sqrt(low bin edge*high bin edge)
         
         
         OUTPUTS:
+        
         Arrays filled in for the integral thresholds:
-        all_threshold_fluences (float 1xn array) - fluence values for integral
+        
+        :all_threshold_fluences: (float 1xn array) - fluence values for integral
             or estimated integral fluxes in the n energy channels for which
             thresholds were applied
-        all_fluence (float nxp array) - fluence spectrum in the original
+        :all_fluence: (float nxp array) - fluence spectrum in the original
             integral or differential energy channels associated with
             energy_bins. Fluence calculated between crossing_time and
             event_end_time, so this is the fluence spectrum associated with
             the events defined by the thresholds applied to each energy channel
-        all_energies (float 1xp array) - effective energies for energy_bins,
+        :all_energies: (float 1xp array) - effective energies for energy_bins,
             defined by sqrt(low bin edge*high bin edge)
         
     """
@@ -2481,90 +2579,90 @@ def append_differential_thresholds(energy_thresholds, flux_thresholds,
         as specified by the user.
         
         Definitions:
-        n integral energy thresholds (>10, >100 + user input integral
-            thresholds)
-        m energy bins associated with the input flux files
-        p user input thresholds (integral + differential, define
-            d differential channels for which a threshold is applied
-            n-2 = integral channels, (n-2)+d = p)
-        q time points in the flux time profiles (between user input
-            start and end dates)
+        
+        * n integral energy thresholds (>10, >100 + user input integral thresholds)
+        * m energy bins associated with the input flux files
+        * p user input thresholds (integral + differential, define d differential channels for which a threshold is applied n-2 = integral channels, (n-2)+d = p)
+        * q time points in the flux time profiles (between user input start and end dates)
         
         INPUTS (filled in up to thresholds applied to integral channels):
-        energy_thresholds (float 1xn array) - energy channels for which a
+        
+        :energy_thresholds: (float 1xn array) - energy channels for which a
             threshold is applied (at this point, only the integral ones)
-        flux_thresholds (float 1xn array) - flux thresholds applied to
+        :flux_thresholds: (float 1xn array) - flux thresholds applied to
             the energy channels in energy_thresholds
-        str_thresh (string 1xp array) - p user input thresholds broken into
+        :str_thresh: (string 1xp array) - p user input thresholds broken into
             an array (need for generating plot labels)
-        is_diff_thresh (bool 1xp array) - indicates which of the user
+        :is_diff_thresh: (bool 1xp array) - indicates which of the user
             thresholds are applied to differential channels
-        plt_energy (float 1xn array) - holds energy thresholds for the
+        :plt_energy: (float 1xn array) - holds energy thresholds for the
             integral channels at this point
-        plt_flux (float 1xn array) - hold the flux thresholds for the
+        :plt_flux: (float 1xn array) - hold the flux thresholds for the
             integral channels at this point
-        input_threshold (float 2xp array) - p input thresholds in form
+        :input_threshold: (float 2xp array) - p input thresholds in form
             [binlowedge, flux threshold]
-        energy_bins (float 2xm array) - m energy bins for each input
+        :energy_bins: (float 2xm array) - m energy bins for each input
             flux channel
-        dates (datetime 1xq array) - q time points for the flux time profile
-        fluxes (float mxq array) - flux time profiles for m energy bins and
+        :dates: (datetime 1xq array) - q time points for the flux time profile
+        :fluxes: (float mxq array) - flux time profiles for m energy bins and
             q time points
-        detect_prev_event (bool) - option for finding start of event
-        two_peaks (bool) - option for extending event length
-        umasep (boolean) - indicate if user called UMASEP flag
-        umasep_times (datetime 5xn array) - times 3, 4, 5, 7, 9 hours after
+        :detect_prev_event: (bool) - option for finding start of event
+        :two_peaks: (bool) - option for extending event length
+        :umasep: (boolean) - indicate if user called UMASEP flag
+        :umasep_times: (datetime 5xn array) - times 3, 4, 5, 7, 9 hours after
             crossing time for each applied threshold
-        umasep_fluxes (float 5xn) - fluxes at each of those times for each
+        :umasep_fluxes: (float 5xn) - fluxes at each of those times for each
             applied threshold
-        all_threshold_fluences (float 1xn array) - fluence values for integral
+        :all_threshold_fluences: (float 1xn array) - fluence values for integral
             or estimated integral fluxes in the n energy channels for which
             thresholds were applied
-        all_fluence (float nxm array) - fluence spectrum in the original
+        :all_fluence: (float nxm array) - fluence spectrum in the original
             integral or differential energy channels associated with
             energy_bins. Fluence calculated between crossing_time and
             event_end_time, so this is the fluence spectrum associated with
             the events defined by the thresholds applied to each energy channel
-        all_energies (float 1xm array) - effective energies for energy_bins,
+        :all_energies: (float 1xm array) - effective energies for energy_bins,
             defined by sqrt(low bin edge*high bin edge)
-        crossing_time (datetime 1xn array) - SEP event start time for each
+        :crossing_time: (datetime 1xn array) - SEP event start time for each
             applied threshold
-        peak_flux (float 1xn array) - maximum flux for each applied threshold
-        peak_time (datetime 1xn array) - time of maximum flux for each applied
+        :peak_flux: (float 1xn array) - maximum flux for each applied threshold
+        :peak_time: (datetime 1xn array) - time of maximum flux for each applied
             threshold
-        rise_time (timedelta 1xn array) - start time to max flux
-        event_end_time (datetime 1xn array) - end time for each applied threshold
-        duration (timedelta 1xn array) - end time minus start time
-        onset_peak (float 1xn array) - onset peak for each applied threshold
-        onset_date (datetime 1xn array) - onset peak time for each applied
+        :rise_time: (timedelta 1xn array) - start time to max flux
+        :event_end_time: (datetime 1xn array) - end time for each applied threshold
+        :duration: (timedelta 1xn array) - end time minus start time
+        :onset_peak: (float 1xn array) - onset peak for each applied threshold
+        :onset_date: (datetime 1xn array) - onset peak time for each applied
             threshold
-        integral_fluxes (float nxq array) - flux time profiles of integral
+        :integral_fluxes: (float nxq array) - flux time profiles of integral
             or estimated integral fluxes for n energy channels and m time steps
        
         
         OUTPUTS:
+        
         (thresholds applied to differential channels have been
         appended; define d as the number of differential channels for
         which the user applied a threshold.
         n+d = total number of thresholds applied to energy channels):
         
-        energy_thresholds (float 1x(n+d) array)
-        flux_thresholds (float 1x(n+d) array)
-        plot_diff_thresh (bool 1x(n+d) array)
-        plt_energy (float 1x(n+d) array)
-        plt_flux (float 1x(n+d) array)
-        all_threshold_fluences (float 1x(n+d) array)
-        all_fluence (float (n+d)xm array)
-        all_energies (float 1xm array)
-        crossing_time (datetime 1x(n+d) array)
-        peak_flux (float 1x(n+d) array)
-        peak_time (datetime 1x(n+d) array)
-        rise_time (timedelta 1x(n+d) array)
-        event_end_time (datetime 1x(n+d) array)
-        duration (timedelta 1x(n+d) array)
-        onset_date (datetime 1x(n+d) array)
-        onset_peak (float 1x(n+d) array)
-        integral_fluxes (float (n+d)xq array)
+        :energy_thresholds: (float 1x(n+d) array)
+        :flux_thresholds: (float 1x(n+d) array)
+        :plot_diff_thresh: (bool 1x(n+d) array)
+        :plt_energy: (float 1x(n+d) array)
+        :plt_flux: (float 1x(n+d) array)
+        :all_threshold_fluences: (float 1x(n+d) array)
+        :all_fluence: (float (n+d)xm array)
+        :all_energies: (float 1xm array)
+        :crossing_time: (datetime 1x(n+d) array)
+        :peak_flux: (float 1x(n+d) array)
+        :peak_time: (datetime 1x(n+d) array)
+        :rise_time: (timedelta 1x(n+d) array)
+        :event_end_time: (datetime 1x(n+d) array)
+        :duration: (timedelta 1x(n+d) array)
+        :onset_date: (datetime 1x(n+d) array)
+        :onset_peak: (float 1x(n+d) array)
+        :integral_fluxes: (float (n+d)xq array)
+        
     """
     #plot_diff_threshold will indicate whether all thresholds applied
     #are integral or differential for all channels
@@ -2663,14 +2761,17 @@ def write_zulu_time_profile(filename, dates, fluxes):
     """ Write out the time profile with the date in the
         first column as the ISO standard and flux in the
         second column as:
+        
         YYYY-MM-DDTHH:MM:SSZ    Float
         
         INPUTS:
-        Filename (string) - name of file to write
-        date (datetime 1xn array) - list of dates
-        fluxes (float 1xn array) - corresponding fluxes
+        
+        :Filename: (string) - name of file to write
+        :date: (datetime 1xn array) - list of dates
+        :fluxes: (float 1xn array) - corresponding fluxes
         
         OUTPUTS:
+        
         None but writes output file with filename
     """
     fname = outpath + "/" + filename
@@ -2696,21 +2797,21 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
         energy-threshold combinations to file.
         
         INPUTS:
+        
         The inputs here are the same as the outputs produced by
         append_differential_thresholds(). Please see the list
         of those outputs for detailed explanations of these inputs.
         
         OUTPUTS:
+        
         No outputs except files are written:
-            -fluence spectra files for each energy channel for which a
-                threshold was applied
-            -integral fluxes in csv file for which a threshold was
-                applied
-            -flux time profiles in txt files for each energy channel for
-                which a threshold was applied
-            -json file in CCMC format containing blocks of information
-                for each energy channel for which a threshold was applied
-            -csv file containing all timing and peak flux values
+            
+            * fluence spectra files for each energy channel for which a threshold was applied
+            * integral fluxes in csv file for which a threshold was applied
+            * flux time profiles in txt files for each energy channel for which a threshold was applied
+            * json file in CCMC format containing blocks of information for each energy channel for which a threshold was applied
+            * csv file containing all timing and peak flux values
+            
     """
     
     #Save all calculated values for all threshold definitions to csv file
@@ -2818,45 +2919,48 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         run using this routine.
         
         INPUTS:
-        str_startdate (string) - user input start date "YYYY-MM-DD" or
+        
+        :str_startdate: (string) - user input start date "YYYY-MM-DD" or
             "YYYY-MM-DD HH:MM:SS"
-        str_enddate (string) - user input end date "YYYY-MM-DD" or
+        :str_enddate: (string) - user input end date "YYYY-MM-DD" or
             "YYYY-MM-DD HH:MM:SS"
-        experiment (string) - "GOES-08" up to "GOES-15", "SEPEM", "SEPEMv3",
+        :experiment: (string) - "GOES-08" up to "GOES-15", "SEPEM", "SEPEMv3",
             "EPHIN", "EPHIN_REleASE", or "user"
-        flux_type (string) - "integral" or "differential" indicates the type
+        :flux_type: (string) - "integral" or "differential" indicates the type
             of flux to read in
-        model_name (string) - If model is "user", set model_name to describe
+        :model_name: (string) - If model is "user", set model_name to describe
             your model or data set (e.g. MyModel), otherwise set to ''.
-        user_file (string) - Default is ''. If "user" is selected for experiment,
+        :user_file: (string) - Default is ''. If "user" is selected for experiment,
             specify name of flux file.
-        spase_id (string) - Default is ''. If you know the spase_id of you
+        :spase_id: (string) - Default is ''. If you know the spase_id of you
             model or experiment, enter it here for the json file
-        showplot (bool) - Set to True to show plots when run
-        saveplot (bool) - Set to True to automatically save plots to the
+        :showplot: (bool) - Set to True to show plots when run
+        :saveplot: (bool) - Set to True to automatically save plots to the
             plots directory when run
-        detect_prev_event (bool) - option for finding start of event
-        two_peaks (bool) - option for extending event length
-        umasep (boolean) - call flag to run code for specific time related
+        :detect_prev_event: (bool) - option for finding start of event
+        :two_peaks: (bool) - option for extending event length
+        :umasep: (boolean) - call flag to run code for specific time related
             to the UMASEP model
-        str_thresh (string) - user-input thresholds in the format "30,1"
+        :str_thresh: (string) - user-input thresholds in the format "30,1"
             for >30 MeV exceeds 1 pfu, "4-7,0.01" for 4-7 MeV differential
             channel exceeds 0.01.  "30,1;4-7,0.01" multiple thresholds
             separated by semi-colon.
-        nointerp (boolean) - set to true to fill in negative fluxes with None
+        :nointerp: (boolean) - set to true to fill in negative fluxes with None
             value rather than filling in via linear interpolation in time
         
         OUTPUTS:
-        sep_year (integer) - year of start of SEP event or year of beginning
+        
+        :sep_year: (integer) - year of start of SEP event or year of beginning
             of user-input time period (if no threshold crossed)
-        ep_month (integer) - month of start of SEP event or year of beginning
+        :sep_month: (integer) - month of start of SEP event or year of beginning
             of user-input time period (if no threshold crossed)
-        sep_day (integer) - day of start of SEP event or year of beginning
+        :sep_day: (integer) - day of start of SEP event or year of beginning
             of user-input time period (if no threshold crossed)
-        jsonfname (string) - name of saved json file (could include issue time,
+        :jsonfname: (string) - name of saved json file (could include issue time,
             which is the time that the program is run, so absolutely
             need to pass file name back as argument)
-        and generates multiple plots
+        :and generates multiple plots:
+        
     """
     #Check for empty dates
     if (str_startdate == "" or str_enddate == ""):

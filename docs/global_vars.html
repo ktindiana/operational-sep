@@ -88,6 +88,7 @@
             
             
               <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="overall_description.html">Overall Description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">operational-sep all modules</a><ul class="current">
@@ -172,6 +173,73 @@
             
   <div class="section" id="module-global_vars">
 <span id="global-vars-module"></span><h1>global_vars module<a class="headerlink" href="#module-global_vars" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="global_vars.about_global_vars">
+<span class="sig-prename descclassname"><span class="pre">global_vars.</span></span><span class="sig-name descname"><span class="pre">about_global_vars</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#global_vars.about_global_vars" title="Permalink to this definition">¶</a></dt>
+<dd><p>About global_vars.py</p>
+<p>VALUES SPECIFIED IN library/global_vars.py:</p>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">datapath</dt>
+<dd class="field-odd"><p>directory containing data, ‘data’</p>
+</dd>
+<dt class="field-even">outpath</dt>
+<dd class="field-even"><p>directory for program output, ‘output’</p>
+</dd>
+<dt class="field-odd">plotpath</dt>
+<dd class="field-odd"><p>directory for saving plots, ‘plots’</p>
+</dd>
+<dt class="field-even">listpath</dt>
+<dd class="field-even"><p>directory for lists (for run_multi_sep.py)</p>
+</dd>
+<dt class="field-odd">badval</dt>
+<dd class="field-odd"><p>will set any bad data points to this value</p>
+</dd>
+<dt class="field-even">endfac</dt>
+<dd class="field-even"><p>multiplicative factor to define threshold for
+end of event; threshold*endfac (default 0.85)</p>
+</dd>
+<dt class="field-odd">nsigma</dt>
+<dd class="field-odd"><p>number of sigma to define SEP versus background
+flux in background subtraction routine</p>
+</dd>
+<dt class="field-even">version</dt>
+<dd class="field-even"><p>if you are running a model or data set, allows you
+to enter a version number</p>
+</dd>
+<dt class="field-odd">user_col</dt>
+<dd class="field-odd"><p>array defining flux columns (0 is always datetime)</p>
+</dd>
+<dt class="field-even">user_delim</dt>
+<dd class="field-even"><p>delimeter used to separate the columns in the time
+profile file that you will read in</p>
+</dd>
+<dt class="field-odd">user_energy_bins</dt>
+<dd class="field-odd"><p>energy bins associated with the columns
+specified in user_col</p>
+</dd>
+<dt class="field-even">energy_units</dt>
+<dd class="field-even"><p>e.g. “MeV’</p>
+</dd>
+<dt class="field-odd">flux_units_integral</dt>
+<dd class="field-odd"><p>e.g. “pfu”</p>
+</dd>
+<dt class="field-even">fluence_units_integral</dt>
+<dd class="field-even"><p>e.g. “cm^-2”</p>
+</dd>
+<dt class="field-odd">flux_units_differential</dt>
+<dd class="field-odd"><p>e.g. “MeV^-1*cm^-2*s^-1*sr^-1” (CCMC format)</p>
+</dd>
+<dt class="field-even">fluence_units_differential</dt>
+<dd class="field-even"><p>e.g. “MeV^-1*cm^-2” (CCMC format)</p>
+</dd>
+</dl>
+<p>(setting the units here will make correct units on plots and in json
+file, but doesn’t change operational threshold values; must be done
+accordingly by hand)</p>
+</div></blockquote>
+</dd></dl>
+
 </div>
 
 

@@ -88,6 +88,7 @@
             
             
               <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="overall_description.html">Overall Description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">operational-sep all modules</a><ul class="current">
@@ -173,6 +174,21 @@
   <div class="section" id="module-ccmc_json_handler">
 <span id="ccmc-json-handler-module"></span><h1>ccmc_json_handler module<a class="headerlink" href="#module-ccmc_json_handler" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.about_ccmc_json_handler">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">about_ccmc_json_handler</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.about_ccmc_json_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>ABOUT ccmc_json_handler.py</p>
+<p>This module places all derived information into json and supporting
+files that follow the format specified for CCMC’s SEP Scoreboard.
+<a class="reference external" href="https://ccmc.gsfc.nasa.gov/challenges/sep.php#format">https://ccmc.gsfc.nasa.gov/challenges/sep.php#format</a></p>
+<p>Reads in templates and fills in SEP event quantities organized
+by one block for each energy channel. If multiple thresholds
+were applied to the same energy channel, the derived information
+will be stored in a single block.</p>
+<p>Template for observations: observations_template.json</p>
+<p>Template for model output: model_template.json</p>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="ccmc_json_handler.clean_json">
 <span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">clean_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">template</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.clean_json" title="Permalink to this definition">¶</a></dt>
 <dd><p>Remove any fields that didn’t get filled in and
@@ -184,12 +200,29 @@ were left as empty strings.</p>
 <span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">fill_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">template</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">issue_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experiment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spase_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">startdate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enddate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_thresholds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_thresholds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crossing_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_peak</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_flux</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rise_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_end_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_threshold_fluences</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diff_thresh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_fluence</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umasep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umasep_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umasep_fluxes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile_filenames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_units</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_units_integral</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fluence_units_integral</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flux_units_differential</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fluence_units_differential</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.fill_json" title="Permalink to this definition">¶</a></dt>
 <dd><p>Add all the appropriate values to the json template for model or
 observations.</p>
+<p>The inputs here are mainly the same as the outputs in
+operational_sep_quantities.append_differential_thresholds()</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="ccmc_json_handler.find_energy_bin">
 <span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">find_energy_bin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lowedge</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_bins</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.find_energy_bin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Identify the energy bin and return low and high edges.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Lowedge</dt>
+<dd class="field-odd"><p>(float) - low edge of an energy bin</p>
+</dd>
+<dt class="field-even">Energy_bins</dt>
+<dd class="field-even"><p>(float 2xn array) - energy bins</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Bin</dt>
+<dd class="field-odd"><p>(float 2x1 array) - single energy bin</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -197,25 +230,49 @@ observations.</p>
 <span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">id_unique_energy_channels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_thresholds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.id_unique_energy_channels" title="Permalink to this definition">¶</a></dt>
 <dd><p>There may be multiple energy channel - flux threshold
 combinations. Identify the number of unique energy
-channels.
-e.g. &gt;10 MeV, 10 pfu (operations) and</p>
+channels, e.g.</p>
 <blockquote>
-<div><p>&gt;10 MeV, 0.001 pfu (SEPMOD testing)</p>
+<div><ul class="simple">
+<li><p>&gt;10 MeV, 10 pfu (operations) and</p></li>
+<li><p>&gt;10 MeV, 0.001 pfu (SEPMOD testing)</p></li>
+</ul>
 </div></blockquote>
-<p>input:
-energy_thresholds (float array)- array containing</p>
-<blockquote>
-<div><p>all the energy channels for which a threshold
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Energy_thresholds</dt>
+<dd class="field-odd"><p>(float 1xn array)- array containing
+all the energy channels for which a threshold
 has been applied</p>
-</div></blockquote>
-<p>output:
-(integer) - number of unique energy channels</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Len(unique)</dt>
+<dd class="field-odd"><p>(integer) - number of unique energy channels</p>
+</dd>
+<dt class="field-even">Unique</dt>
+<dd class="field-even"><p>(float 1xm array) - the m unique energy channels to
+which a threshold was applied</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="ccmc_json_handler.make_ccmc_zulu_time">
 <span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">make_ccmc_zulu_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.make_ccmc_zulu_time" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make a datetime string in the format YYYY-MM-DDTHH:MM:SSZ</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Dt</dt>
+<dd class="field-odd"><p>(datetime)</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Zuludate</dt>
+<dd class="field-odd"><p>(string) in the format YYYY-MM-DDTHH:MM:SSZ</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -227,8 +284,19 @@ has been applied</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="ccmc_json_handler.read_in_json_template">
 <span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">read_in_json_template</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.read_in_json_template" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read in appropriate json file template for model or observations.
-type = model or observations</p>
+<dd><p>Read in appropriate json file template for model or observations.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>(string) = “model” or “observations”</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Template</dt>
+<dd class="field-odd"><p>(dict) - appropiate template is read in and returned</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -241,6 +309,18 @@ type = model or observations</p>
 <dt class="sig sig-object py" id="ccmc_json_handler.zulu_to_time">
 <span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">zulu_to_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zt</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.zulu_to_time" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert Zulu time to datetime</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Zt</dt>
+<dd class="field-odd"><p>(string) - date in the format “YYYY-MM-DDTHH:MM:SSZ”</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Dt</dt>
+<dd class="field-odd"><p>(datetime)</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>

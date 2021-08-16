@@ -76,3 +76,36 @@ fluence_units_integral = "cm^-2"
 flux_units_differential = "MeV^-1*cm^-2*s^-1*sr^-1"
 fluence_units_differential = "MeV^-1*cm^-2"
 ################################
+
+
+def about_global_vars():
+    """ About global_vars.py
+    
+        VALUES SPECIFIED IN library/global_vars.py:
+        
+            :datapath: directory containing data, 'data'
+            :outpath: directory for program output, 'output'
+            :plotpath: directory for saving plots, 'plots'
+            :listpath: directory for lists (for run_multi_sep.py)
+            :badval: will set any bad data points to this value
+            :endfac: multiplicative factor to define threshold for
+                    end of event; threshold*endfac (default 0.85)
+            :nsigma: number of sigma to define SEP versus background
+                    flux in background subtraction routine
+            :version: if you are running a model or data set, allows you
+                    to enter a version number
+            :user_col: array defining flux columns (0 is always datetime)
+            :user_delim: delimeter used to separate the columns in the time
+                    profile file that you will read in
+            :user_energy_bins: energy bins associated with the columns
+                    specified in user_col
+            :energy_units: e.g. "MeV'
+            :flux_units_integral: e.g. "pfu"
+            :fluence_units_integral: e.g. "cm^-2"
+            :flux_units_differential: e.g. "MeV^-1*cm^-2*s^-1*sr^-1" (CCMC format)
+            :fluence_units_differential: e.g. "MeV^-1*cm^-2" (CCMC format)
+            
+            (setting the units here will make correct units on plots and in json
+            file, but doesn't change operational threshold values; must be done
+            accordingly by hand)
+    """

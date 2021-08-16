@@ -88,6 +88,7 @@
             
             
               <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="overall_description.html">Overall Description</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">operational-sep all modules</a><ul class="current">
@@ -173,79 +174,12 @@
   <div class="section" id="module-keys">
 <span id="keys-module"></span><h1>keys module<a class="headerlink" href="#module-keys" title="Permalink to this headline">¶</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="keys.get_key_chain">
-<span class="sig-prename descclassname"><span class="pre">keys.</span></span><span class="sig-name descname"><span class="pre">get_key_chain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#keys.get_key_chain" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the series of arrays that points to a specific values
-in a CCMC JSON file.</p>
-<dl>
-<dt>value (string) is a specifier that indicates the value desired.</dt><dd><p>e.g. peak-intensity requests the chain of entries that will
-results in the location of the peak intensity in the json file.
-key_chain = [‘peak_intensity’][‘intensity’]</p>
-<p>e.g. peak-intensity-units
-key_chain = [‘peak_intensity’][‘units’]</p>
-<p>value is any of the string specifiers used in the CCMC
-JSON helper script and listed in the “Corresponding
-command line argument for helper script” column in the table:
-<a class="reference external" href="https://ccmc.gsfc.nasa.gov/challenges/sepinfo/sepscoreboard_visual_schema_v20201112.pdf">https://ccmc.gsfc.nasa.gov/challenges/sepinfo/sepscoreboard_visual_schema_v20201112.pdf</a>
-(check for most up-to-date version of the Visual Schema at <a class="reference external" href="https://ccmc.gsfc.nasa.gov/challenges/sep.php#format">https://ccmc.gsfc.nasa.gov/challenges/sep.php#format</a>)
-These identifiers are followed as closely as possible, with some
-additions.</p>
-</dd>
-<dt>index (integer) is an optional input; Some of the json entries</dt><dd><p>are contained within arrays. index specifies which element
-of the array to select.
-e.g. [‘fluences’] = [{‘fluence’: , ‘units’: }]
-index applies to ‘fluences’, ‘events_lengths’, ‘threshold_crossings’,</p>
-<blockquote>
-<div><p>‘probabilities’, ‘contacts’</p>
-</div></blockquote>
-</dd>
-</dl>
-<p>The series of string arrays output as the key_chain are with respect to the
-[‘forecasts’] or [‘observations’] field. Model output will have a
-‘forecasts’ field while observational output will have an ‘observations’
-field. An example of a model JSON for a time profile model is shown below.
-The key_chain returned will be the key_chain following the ‘forecasts’
-or ‘observations’ field.</p>
-<dl>
-<dt>{“sep_observation_submission”: {</dt><dd><p>“notes”: [ { “note”: “produced by operational_sep_quantities.py”} ],
-“observatory”: {“short_name”: “GOES-13”, “spase_id”: “”, “flux_type”: “differential”},
-“options”: [“”],
-“issue_time”: “2021-07-23T16:25Z”,
-“mode”: “measurement”,
-“observations”: [</p>
-<blockquote>
-<div><p>{
-“energy_channel”: {“min”: 10, “max”: -1, “units”: “meV”},
-“species”:”proton”,
-“location”: “earth”,
-“observation_window”: {“start_time”: “2011-06-07T00:00Z”, “end_time”: “2011-06-12T00:00Z”},
-“peak_intensity”: {“intensity”: 55.11014913571528, “units”: “pfu”, “time”: “2011-06-07T10:25Z”},
-“peak_intensity_max”: {“intensity”: 75.67780719646345, “units”: “pfu”, “time”: “2011-06-07T18:20Z”},
-“event_lengths”: [{“start_time”: “2011-06-07T07:50Z”, “end_time”: “2011-06-08T20:25Z”, “threshold”: 10, “threshold_units”: “pfu”}],
-“fluences”: [{“fluence”: 50523588.099411, “units”: “cm^-2”}],
-“fluence_spectra”: [{“start_time”: “2011-06-07T07:50Z”, “end_time”: “2011-06-08T20:25Z”, “threshold_start”: 10, “threshold_end”: 8.5, “threshold_units”: “pfu”, “fluence_units”: “cm^-2”,</p>
-<blockquote>
-<div><dl class="simple">
-<dt>“fluence_spectrum”: [</dt><dd><p>{“energy_min”: 4.2, “energy_max”: 8.7, “fluence”: 9471121.886108486},
-{“energy_min”: 8.7, “energy_max”: 14.5, “fluence”: 2390875.507650991},
-{“energy_min”: 15.0, “energy_max”: 40.0, “fluence”: 1309160.620161789},
-{“energy_min”: 38.0, “energy_max”: 82.0, “fluence”: 221348.9742486922},
-{“energy_min”: 84.0, “energy_max”: 200.0, “fluence”: 21820.507114220098},
-{“energy_min”: 110.0, “energy_max”: 900.0, “fluence”: 4491.899843708999},
-{“energy_min”: 330.0, “energy_max”: 420.0, “fluence”: 3346.346055318471},
-{“energy_min”: 420.0, “energy_max”: 510.0, “fluence”: 1892.0212727928365},
-{“energy_min”: 510.0, “energy_max”: 700.0, “fluence”: 887.989987960335},
-{“energy_min”: 700.0, “energy_max”: -1, “fluence”: 209.68393033655906}]}],</p>
-</dd>
-</dl>
-</div></blockquote>
-<p>“threshold_crossings”: [{“crossing_time”: “2011-06-07T07:50Z”, “threshold”: 10, “threshold_units”: “pfu”}],
-“all_clear”: {“all_clear_boolean”: false, “threshold”: 10, “threshold_units”: “pfu”},
-“sep_profile”: “GOES-13_differential.2011-06-07T0000Z.10meV.txt”}</p>
-</div></blockquote>
-</dd>
-</dl>
-<p>}</p>
+<dt class="sig sig-object py" id="keys.about_keys">
+<span class="sig-prename descclassname"><span class="pre">keys.</span></span><span class="sig-name descname"><span class="pre">about_keys</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#keys.about_keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>About keys.py</p>
+<p>Define the keys used to call different variables in the CCMC
+and observation JSON files. These are the keys that are different
+between the observations json and the model output json.</p>
 </dd></dl>
 
 </div>

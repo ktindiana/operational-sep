@@ -45,10 +45,32 @@ user_energy_bins = vars.user_energy_bins
 ############################
 
 
+def about_derive_background():
+    """ About derive_background.py
+        
+        Perform background-subtraction and return only SEP flux values.
+
+        1. Read in a user-specified time period for the background flux
+        2. Estimate the mean flux and level of variation (sigma)
+        3. Define all flux above mean+nsigma*sigma (nsigma is defined in global_vars)as SEP flux and all flux below as background flux
+        4. Separate the SEP fluxes and subtract the mean background value
+        5. Return the total flux, the background flux, and the background-subtracted SEP fluxes
+    """
+    
+
 def remove_none(flux):
-    """Takes 1D array of flux and removes None values.
+    """ Takes 1D array of flux and removes None values.
         None values in a list are converted to NaN values in a numpy array.
         So check for NaN and remove.
+        
+        INPUTS:
+        
+        :flux: (float 1xn array)
+        
+        OUTPUTS:
+        
+        :clean_flux: (float 1xm array) with None or NaN values removed
+        
     """
     bad_index = np.argwhere(np.isnan(flux))
     clean_flux = np.delete(flux, bad_index)
@@ -57,6 +79,15 @@ def remove_none(flux):
 
 def remove_zero(flux):
     """Takes 1D array of flux and removes zero values.
+    
+        INPUTS:
+        
+        :flux: (float 1xn array)
+        
+        OUTPUTS:
+        
+        :clean_flux: (float 1xm array) with zero values removed
+        
     """
     bad_index = np.argwhere(flux == 0)
     clean_flux = np.delete(flux, bad_index)
@@ -64,21 +95,43 @@ def remove_zero(flux):
 
 
 def remove_above(flux, val):
-    """Remove any flux above a specific value, val."""
+    """ Remove any flux above a specific value, val.
+        
+        INPUTS:
+        
+        :flux: (float 1xn array)
+        :val: (float) lower threshold value
+        
+        OUTPUTS:
+        
+        :strip_flux: (float 1xm array) with flux > val removed
+    
+    """
     indices = np.nonzero(flux > val)
     strip_flux = np.delete(flux, indices)
     return strip_flux
 
 
 def remove_below(flux, val):
-    """Remove any flux below a specific value, val."""
+    """ Remove any flux below a specific value, val.
+    
+        INPUTS:
+        
+        :flux: (float 1xn array)
+        :val: (float) upper threshold value
+        
+        OUTPUTS:
+        
+        :strip_flux: (float 1xm array) with flux < val removed
+        
+    """
     indices = np.nonzero(flux < val)
     strip_flux = np.delete(flux, indices)
     return strip_flux
 
 
 def separate_sep_and_background(fluxes, dates, means, sigmas):
-    """Take the input fluxes, separate them into arrays containing
+    """ Take the input fluxes, separate them into arrays containing
         the background flux and SEP flux. Values above mean + Nsigma*sigma is
         considered SEP flux while values below are considered the background.
         Perform a background subtraction on the SEP flux by subtracting the
@@ -86,6 +139,21 @@ def separate_sep_and_background(fluxes, dates, means, sigmas):
         The input flux array is a numpy array, but the output will be a list
         for flexibility.
         Nsigma is specified in library/global_vars.py.
+        
+        INPUTS:
+        
+        :fluxes: (float nxm array) fluxes for n energy channels and m time points
+        :dates: (datetime 1xm array) time points for flux time profile
+        :means: (float 1xn array) mean background flux for n energy channels
+        :sigmas: (float 1xn array) expected variability sigma for n energy channels
+        
+        OUTPUTS:
+        
+        :bgfluxes: (float nxm array) background fluxes for n energy channels and
+            m time points
+        :sepfluxes: (float nxm array) SEP fluxes for n energy channels and
+            m time points
+        
     """
     nflx = len(fluxes)
     sepfluxes = []
@@ -126,6 +194,17 @@ def separate_sep_and_background(fluxes, dates, means, sigmas):
 def define_hist_bins(flux):
     """Takes a 1D numpy array of flux and defines a set of histogram bins
         between the min and max flux values equally spaced in log space.
+        
+        INPUTS:
+        
+        :flux: (float 1xm array) flux time profile for m time steps
+        
+        OUTPUTS:
+        
+        :hist_bins: (float 1x20 (nbins) array) bins for a histogram equally
+            spaced in log space over 20 betweens between the minimum and
+            maximum flux values in flux
+        
     """
     if flux.any(0):
         flux = remove_zero(flux)
@@ -158,6 +237,21 @@ def create_histogram(flux, energy_bin, iteration):
         Estimate the mean by averaging the bin centers weighted by the
         frequency. Calculate the variance and take the square root to estimate
         sigma. Return the mean and sigma.
+        
+        INPUTS:
+        
+        :flux: (float 1xm array) flux time profile for m time points
+        :energy_bin: (float 2x1 array) energy bin that defines the energy
+            channel for the flux array (only used for plotting)
+        :iteration: (integer) indicates how many times the flux has gone
+            through this subroutine (only used for plotting)
+            
+        OUTPUTS:
+        
+        :hist_mean: (float) weighted mean of the histogram
+        :sigma: (float) standard deviation (sqrt(variance)) of
+            the histogram
+        
     """
     #Bad values in the data were set to None
     #Remove None values to calculate flux distribution in a histogram
@@ -215,6 +309,18 @@ def iterate_background(fluxes, energy_bins):
         Exclude fluxes above and below mean +- 3sigma and recalculate mean
         and sigma. Use thes values as the final estimates of the background flux
         and the expected level of variability in the background.
+        
+        INPUTS:
+        
+        :fluxes: (float nxm array) flux time profiles for n energy channels and
+            m time points
+        :energy_bins: (float nx2 array) energy bins for n energy channels
+        
+        OUTPUTS:
+        
+        :means: (float 1xn array) mean values of histogram for n energy channels
+        :sigmas: (float 1xn array) sigma of histograms for n energy channels
+        
     """
     means = []
     sigmas = []
@@ -250,6 +356,24 @@ def plot_fluxes(experiment, flux_type, options, fluxes, dates,
         estimated mean background levels are plotted as dashed lines.
         Zero values are masked, which is useful when make plots of the
         background and SEP flux separately.
+        
+        INPUTS:
+        
+        :experiment: (string) name of experiment
+        :flux_type: (string) "integral" or "differential"
+        :options: (string array) array of options that can be applied
+        :fluxes: (float nxm array) flux time profiles for n energy channels and
+            m time points
+        :dates: (datetime 1xm array) m time points for flux time profile
+        :energy_bins: (float nx2 array) energy bins for n energy channels
+        :means: (float 1xn array) mean values of histogram for n energy channels
+        :sigmas: (float 1xn array) sigma of histograms for n energy channels
+        :saveplot: (bool) True to save plot automatically
+        
+        OUTPUTS:
+        
+        Plot to screen and plot saved to file
+        
     """
     #All energy channels in specified date range with event start and stop
     #Plot all channels of user specified data
@@ -316,7 +440,7 @@ def plot_fluxes(experiment, flux_type, options, fluxes, dates,
 def derive_background(str_startdate, str_enddate, str_bgstartdate, \
             str_bgenddate, experiment, flux_type, model_name,user_file, \
             showplot, saveplot, options):
-    """Derive the background using fluxes in the time period between
+    """ Derive the background using fluxes in the time period between
         background start and end dates specified by the user. Derive the
         mean background value along with an expected level of variation (sigma)
         in the background. Make two separate arrays containing 1) background
@@ -327,6 +451,36 @@ def derive_background(str_startdate, str_enddate, str_bgstartdate, \
         Return the background and background-subtracted SEP flux arrays along
         with a date array. The fluxes and dates will extend from BGStartdate to
         SEPEndDate. The fluxes will be numpy arrays and the dates are a list.
+        
+        INPUTS:
+        
+        :str_startdate: (string) starting date of SEP time period in
+            "YYYY-MM-DD HH:MM:SS"
+        :str_enddate: (string) ending date of SEP time period in
+            "YYYY-MM-DD HH:MM:SS"
+        :str_bgstartdate: (string) starting date of background time period in
+            "YYYY-MM-DD HH:MM:SS"
+        :str_bgenddate: (string) ending date of background time period in
+            "YYYY-MM-DD HH:MM:SS"
+        :experiment: (string) name of experiment
+        :flux_type: (string) "integral" or "differential"
+        :model_name: (string) contains name of user-input model or
+            data set if experiment = "user"
+        :user_file: (string) filename containing user input data
+        :showplot: (bool) True to print plot to screen
+        :saveplot: (bool) True to save plot automatically
+        :options: (string array) array of options that can be applied
+        
+        OUTPUTS:
+        
+        :bgfluxes: (float nxm array) background fluxes for n energy channels
+            and m time points
+        :sepfluxes: (float nxm array) background-subtracted SEP fluxes for n
+            energy channels and m time points
+        :dates: (datetime 1xm array) m time points extending from
+            str_bgstartdate to str_enddate containing background flux time period
+            and SEP flux time period
+        
     """
     if len(str_startdate) == 10: #only YYYY-MM-DD
         str_startdate = str_startdate  + ' 00:00:00'
