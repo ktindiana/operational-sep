@@ -349,7 +349,7 @@ def all_program_info(): #only for documentation purposes
     
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
     python3 operational_sep_quantities.py --StartDate 2012-05-17
-        --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
+        --EndDate "2012-05-19 12:00:00" --Experiment GOES-13
         --FluxType integral --showplot --saveplot
 
     RUN CODE FROM COMMAND FOR USER DATA SET (put on one line), e.g.:

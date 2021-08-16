@@ -1,0 +1,558 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Overall Description &mdash; operational_sep_quantities 3.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="operational-sep all modules" href="modules.html" />
+    <link rel="prev" title="Usage" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> operational_sep_quantities
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overall Description</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bad-flux-values-and-interpolation">Bad Flux Values and Interpolation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#units">Units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#input-options-background-subtraction-and-tweaks">Input Options, Background Subtraction, and Tweaks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-code">Running the Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fluence-and-time-resolution">Fluence and Time Resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#program-output">Program Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inputting-a-user-data-set">Inputting a User Data Set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#global-variables">Global Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">operational-sep all modules</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">operational_sep_quantities</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Overall Description</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/overall_description.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="overall-description">
+<h1>Overall Description<a class="headerlink" href="#overall-description" title="Permalink to this headline">¶</a></h1>
+<p>operational_sep_quantities.py VERSION 3.0</p>
+<p>2021-08-13</p>
+<div class="section" id="description">
+<span id="id1"></span><h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>Program description for operational_sep_quantities.py VERSION 3.0.</p>
+<p>The operational_sep_quantities project needs these files to run:</p>
+<ul class="simple">
+<li><p>operational_sep_quantities.py</p></li>
+<li><p>library/read_datasets.py</p></li>
+<li><p>library/global_vars.py</p></li>
+<li><p>library/derive_background.py</p></li>
+<li><p>library/keys.py</p></li>
+<li><p>library/ccmc_json_handler.py</p></li>
+<li><p>library/model_template.json</p></li>
+<li><p>library/observations_template.json</p></li>
+</ul>
+<p>run_multi_sep.py is a code that can run operational_sep_quantities.py automatically for multiple SEP events (i.e. multiple input time periods). The user must input a list of time periods, inputs, and flags in the correct columns in a csv file.</p>
+<p>compare_data_model.py plots information derived from operational_sep_quantities on the same plots. This may or may not be kept up-to-date. It was originally written to support the SHINE 2019 SEP model validation challenge. Since then, a complete (separate) validation framework has been/is being developed, so this code is no longer necessary.</p>
+<p>This program will calculate various useful pieces of operational
+information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
+data and the SEPEM (RSDv2 and RSDv3) dataset.</p>
+<p>SEP event values are always calculated for threshold definitions:</p>
+<ul class="simple">
+<li><p>&gt;10 MeV exceeds 10 pfu</p></li>
+<li><p>&gt;100 MeV exceed 1 pfu</p></li>
+</ul>
+<p>The user may add multiple additional thresholds through the command line.
+This program will check if data is already present in a ‘data’ directory. If
+not, GOES or EPHIN data will be automatically downloaded from the web. SEPEM
+(RSDv2 and RSDv3) data must be downloaded by the user and unzipped inside
+the ‘data’ directory. Because the SEPEM data set is so large (every 5
+minutes from 1974 to 2015 for RSDv2 and to 2017 for RSDv3), the program will
+break up the data into yearly files for faster reading.</p>
+<p>The values calculated here are important for space radiation operations:</p>
+<ul class="simple">
+<li><p>Onset time, i.e. time to cross thresholds</p></li>
+<li><p>Onset peak intensity</p></li>
+<li><p>Onset peak time</p></li>
+<li><p>Maximum intensity</p></li>
+<li><p>Time of maximum intensity</p></li>
+<li><p>Rise time (onset to peak)</p></li>
+<li><p>End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)</p></li>
+<li><p>Duration</p></li>
+<li><p>Event-integrated fluences</p></li>
+<li><p>Proton fluxes at various times after threshold crossing (UMASEP option)</p></li>
+</ul>
+</div>
+<div class="section" id="bad-flux-values-and-interpolation">
+<h2>Bad Flux Values and Interpolation<a class="headerlink" href="#bad-flux-values-and-interpolation" title="Permalink to this headline">¶</a></h2>
+<p>Data sets are checked for bad data point (negative or None value
+fluxes) and the default behavior is to fill in those bad data points by
+performing a linear interpolation with time. This choice was made to
+calculate more accurate event-intergrated fluence values from data.
+Interpolation with time is not appropriate for model predictions, as
+it will inherently change the prediction or may not be desired by
+the user for the data set. If your model output produces negative flux
+values, you may avoid interpolating them by using the –NoInterp flag.</p>
+<p><strong>–NoInterp:</strong> Turn off interpolation with time by
+setting the</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--NoInterp</span>
+</pre></div>
+</div>
+<p>flag (or nointerp=True). If the interpolation
+is turned off, negative flux values will be set to None.
+Zeroes are always treated as valid values and are not replaced.
+If there are gaps in the time steps, the code does NOT try to
+fill in the gaps. It will ONLY perform interpolation for time
+steps present in the input data set. i.e. gaps in time are not
+interpolated, only time steps with negative or None flux values.</p>
+</div>
+<div class="section" id="units">
+<h2>Units<a class="headerlink" href="#units" title="Permalink to this headline">¶</a></h2>
+<p><strong>UNITS:</strong> User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1)
+or integral fluxes (e.g. [s sr cm^2]^-1 or pfu). Default units are:
+MeV, cm, s, sr
+Units are specified in library/global_vars.py.
+Note that the code produces fluence by multiplying the flux by time and 4pi steradians.
+The program has no internal checks or requirements on units - EXCEPT FOR
+THE THRESHOLD DEFINITIONS OF &gt;10, 10 and &gt;100, 1.
+If you convert those thresholds in the main program to your units,
+you should be able to generate consistent results.
+Currently there are no features to change units automatically. SEE MORE
+about units in the USER INPUT DATA section below.</p>
+</div>
+<div class="section" id="input-options-background-subtraction-and-tweaks">
+<h2>Input Options, Background Subtraction, and Tweaks<a class="headerlink" href="#input-options-background-subtraction-and-tweaks" title="Permalink to this headline">¶</a></h2>
+<p><strong>OPTIONS:</strong> User may specify various options, that currently only apply to
+GOES data:
+Choose corrected or uncorrected GOES fluxes.
+Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
+energies to GOES uncorrected data (recommend using background subtraction).</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--options uncorrected</span>
+<span class="go">--options uncorrected,S14,Bruno2017</span>
+</pre></div>
+</div>
+<p><strong>BACKGROUND SUBTRACTION:</strong> Users may choose to perform a background
+subtraction by specifying:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--SubtractBG --BGStartDate YYYY-MM-DD --BGEndDate YYYY-MM-DD</span>
+</pre></div>
+</div>
+<p>The user should look at the data and select an appropriate time frame
+prior to the event when the background is calm and well-defined. If
+performing background subtraction, the mean background will be subtracted
+from the fluxes in the SEP time frame (StartDate to EndDate). Plots
+showing the mean background level, the background flux only, and the
+background-subtracted SEP fluxes will be created by derive_background to
+verify the quality of the background estimation and subtraction.</p>
+<p><strong>–DetectPreviousEvent:</strong> If a previous event is ongoing and the specified time
+period starts with a threshold already crossed, you may try to set the</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--DetectPreviousEvent</span>
+</pre></div>
+</div>
+<p>flag. If the flux drops below threshold before the
+next event starts, the program will identify the second event. This will only
+work if the threshold is already crossed for the very first time in your specified
+time period, and if the flux drops below threshold before the next event
+starts.</p>
+<p><strong>–TwoPeak:</strong> If the event has an initial increase above threshold for a few
+points, falls below threshold, then continues to increase above threshold again, you
+may try to use the</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--TwoPeak</span>
+</pre></div>
+</div>
+<p>feature to capture the full duration of the event. The initial increase above threshold must be less than a day. An example of this scenario can be seen in &gt;100 MeV for 2011-08-04.</p>
+<p><strong>–UMASEP:</strong> A flag was added with the “UMASEP” option. When this flag is used</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--UMASEP</span>
+</pre></div>
+</div>
+<p>the code finds all information for four energy channels and
+thresholds used by UMASEP: &gt;10 MeV, 10 pfu; &gt;100 MeV, 1 pfu; &gt;30 MeV, 1 pfu;
+&gt;50 MeV, 1 pfu. The proton flux in each of these channels is reported for
+multiple times after threshold crossing (Ts). The applied time delays are
+as follows:</p>
+<ul class="simple">
+<li><p>&gt;10 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+<li><p>&gt;30 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+<li><p>&gt;50 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+<li><p>&gt;100 MeV - Ts + 3, 4, 5, 6, 7 hours</p></li>
+</ul>
+<p><strong>–spase_id:</strong> If you know the appropriate spase_id for the your model or
+experiment, you may specify it here to be filled in to the json file
+for CCMC’s SEP Scoreboard with the flag</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--spase_id</span>
+</pre></div>
+</div>
+<p><strong>Note about EVENT END TIME:</strong> Currently, the code calculates the end of the
+event as the first time that the flux drops below threshold*endfac for
+three consecutive points. The endfac variable is specified in
+library/global_vars.py.
+Mimicking a SRAG code, endfac is set to 0.85 (85% of threshold). This
+may be changed in the future to update this to more NOAA SWPC-like logic
+to define the end of an SEP event.</p>
+</div>
+<div class="section" id="running-the-code">
+<h2>Running the Code<a class="headerlink" href="#running-the-code" title="Permalink to this headline">¶</a></h2>
+<p>RUN CODE FROM COMMAND LINE plus showplot to screen and automatically save plots to the plots directory (remove the saveplot flag if don’t want to automatically save plots), e.g.:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate &quot;2012-05-19 12:00:00&quot; --Experiment GOES-13 --FluxType integral --showplot --saveplot</span>
+</pre></div>
+</div>
+<p>RUN CODE FROM COMMAND FOR USER DATA SET. Note that the user file MyFluxes.txt is specified with respect to the data directory (datapath variable in library/global_vars.py), e.g.:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate &#39;2012-05-19 12:00:00&#39; --Experiment user --ModelName MyModel --UserFile MyFluxes.txt --FluxType integral --showplot</span>
+</pre></div>
+</div>
+<p>RUN CODE FROM COMMAND LINE AND PERFORM BACKGROUND SUBTRACTION AND APPLY
+Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins.
+(note: cannot bg-subtract GOES integral fluxes), e.g.:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate &#39;2012-05-19 12:00:00&#39; --Experiment GOES-13 --FluxType differential  --showplot --options uncorrected,S14,Bruno2017 --SubtractBG --BGStartDate 2012-05-10 --BGEndDate --2012-05-17</span>
+</pre></div>
+</div>
+<p>RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">import operational_sep_quantities as sep</span>
+<span class="go">start_date = &#39;2012-05-17&#39;</span>
+<span class="go">end_date = &#39;2012-05-19 12:00:00&#39;</span>
+<span class="go">experiment = &#39;GOES-13&#39;</span>
+<span class="go">flux_type = &#39;integral&#39;</span>
+<span class="go">spase_id = &#39;&#39;</span>
+<span class="go">model_name = &#39;&#39; #if experiment is user, set model_name to describe data set</span>
+<span class="go">user_file = &#39;&#39; #if experiment is user, specify filename containing fluxes</span>
+<span class="go">showplot = True  #Turn to False if don&#39;t want to see plots</span>
+<span class="go">saveplot = False #turn to true if you want to save plots to file</span>
+<span class="go">options = &#39;&#39; #various options: S14, Bruno2017, uncorrected</span>
+<span class="go">doBGSub = False #Set true if want to perform background subtraction</span>
+<span class="go">bgstart_date = &quot;2012-05-10&quot; #Dates used to estimate mean background if</span>
+<span class="go">bgend_date = &quot;2012-05-17&quot;   #doBGSub is set to True</span>
+<span class="go">detect_prev_event = True  #Helps if previous event causes high intensities</span>
+<span class="go">two_peaks = False  #Helps if two increases above threshold in one event</span>
+<span class="go">umasep = False #Set to true if want UMASEP values (see explanation above)</span>
+<span class="go">threshold = &#39;&#39; #Add a threshold to 10,10 and 100,1: &#39;30,1&#39; or &#39;4.9-7.3,0.01&#39;</span>
+<span class="go">nointerp = False #Default False; set to True to stop linear interpolatin in time</span>
+
+<span class="go">sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \</span>
+<span class="go">     end_date, experiment, flux_type, model_name, user_file,\</span>
+<span class="go">     spase_id, showplot, saveplot, detect_prev_event,  \</span>
+<span class="go">     two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \</span>
+<span class="go">     bgend_date,nointerp)</span>
+</pre></div>
+</div>
+<p>Set the desired directory locations for the data and output at the beginning
+of the program in datapath and outpath. Defaults are ‘data’ and ‘output’.</p>
+</div>
+<div class="section" id="fluence-and-time-resolution">
+<h2>Fluence and Time Resolution<a class="headerlink" href="#fluence-and-time-resolution" title="Permalink to this headline">¶</a></h2>
+<p><strong>Fluence:</strong> In order to calculate the fluence, the program determines time_resolution
+(seconds) by finding the difference between every consecutive set of
+time points in the data set. The most common difference is identified as
+the time resolution. This method should find an accurate time resolution
+even if there are gaps in the time steps.
+If the time steps in the data set are truly irregular, the user will
+have to manually set the time resolution inside the subroutine
+calculate_fluence.</p>
+</div>
+<div class="section" id="program-output">
+<h2>Program Output<a class="headerlink" href="#program-output" title="Permalink to this headline">¶</a></h2>
+<p><strong>OUTPUT:</strong> This program outputs different numbers of files depending on the
+number of thresholds input by the user and the number of thresholds crossed.
+The files contain the fluence spectrum for each threshold, the time profiles
+for each energy channel for which a threshold was applied, and event summaries
+containing all of the calculated information.
+A file named as e.g. fluence_GOES-13_differential_gt10_2012_3_7.csv contains
+the event-integrated fluence for each energy channel using the specified
+threshold (gt10) to determine start and stop times.
+A file named as e.g. sep_values_GOES-13_differential_2012_3_7.csv contains
+start time, peak flux, etc, for each of the defined thresholds.</p>
+<p>The program write to file the &gt;10 MeV and &gt;100 MeV time series for the
+date range input by the user. If the original data were integral fluxes,
+then the output files simply contain the &gt;10 and &gt;100 MeV time series from
+the input files. If the original data were differential fluxes, then the
+estimated &gt;10 and &gt;100 MeV fluxes are output as time series.</p>
+<p>The program also writes any time profile to file if a threshold was applied
+to it. Each energy channel is written to an independent file, named according
+to CCMC’s SEP Scoreboard naming conventions. These accompany a json file
+that contains all quantities calculated for the SEP event. There is also a csv
+file that contains most of the same values recorded in the json file.</p>
+<p>Example output for values derived from SEPMOD forecasts for the 2021-05-29
+SEP event with additional threshold &gt;10, 0.001 pfu, &gt;100, 0.0001 pfu,
+&gt;30 MeV, 1 pfu, &gt;50 MeV, 1 pfu, and &gt;60 MeV, 0.079 pfu. Some of the files
+below are only created if a threshold was crossed. A default run would produce
+only 10 and 100 MeV files, sep_values_*.csv and json file:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv</span>
+<span class="go">fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv</span>
+<span class="go">fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv</span>
+<span class="go">fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv</span>
+<span class="go">fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv</span>
+<span class="go">fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv</span>
+<span class="go">integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv</span>
+<span class="go">sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt</span>
+<span class="go">SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json</span>
+</pre></div>
+</div>
+<p>In the .txt files, the first date is the start date of the time period
+specified by the user. The second date is the issue time of the forecast, i.e. the date when operational_sep_quantities.py was run to produce the files.
+This second date is only included in the filename when you input your
+own user file. The code will assume you are inputting model results. If you
+run the code for a native data set (e.g. GOES or SEPEM), the second date
+will not be present.</p>
+<p>The json and txt files listed above would be the ones that would be appropriate
+to read into the CCMC SEP Scoreboard or to pass to the SEP validation code
+being developed in conjunction with the SEP Scoreboard. The csv files are legacy
+files, but may also be easier for some users to read.</p>
+</div>
+<div class="section" id="inputting-a-user-data-set">
+<h2>Inputting a User Data Set<a class="headerlink" href="#inputting-a-user-data-set" title="Permalink to this headline">¶</a></h2>
+<p><strong>USER INPUT DATA SETS:</strong> Users may input their own data set. For example, when performing a validation study, an
+SEP modeler could feed their own intensity time series into this
+code and calculate all values in exactly the same way they were calculated
+for data. Default flux units are
+1/[MeV cm^2 s sr] or 1/[cm^2 s sr] and energy channels in MeV for the default
+thresholds to be correct. You can specify your units in the
+library/global_vars.py file.</p>
+<p>You can use any units, as long as you are consistent with energy units in
+energy channel/bin definition and in fluxes and you MODIFY THE THRESHOLD
+VALUES TO REFLECT YOUR UNITS. If you want to use different units, but
+still apply the correct operational definitions, you need to modify these
+lines in define_thresholds() below:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">energy_thresholds</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span><span class="mi">100</span><span class="p">]</span> <span class="c1">#MeV; flux for particles of &gt; this MeV</span>
+<span class="n">flux_thresholds</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="c1">#pfu; exceed this level of intensity</span>
+</pre></div>
+</div>
+<p><strong>NOTES:</strong></p>
+<ul class="simple">
+<li><p>The first column in your flux file is assumed to be time in format YYYY-MM-DD HH:MM:SS. IMPORTANT FORMATTING!!</p></li>
+<li><p>The flux file may contain header lines that start with a hash #, including blank lines.</p></li>
+<li><p>Any bad or missing fluxes must be indicated by a negative value.</p></li>
+<li><p>Put your flux file into the “datapath” directory. Filenames will be relative to this path.</p></li>
+<li><p>Please use only differential or integral channels. Please do not mix them. You may have one integral channel in the last bin and this must also be the highest energy bin, as this is the way HEPAD works and the code has been written to include that HEPAD &gt;700 MeV bin along with lower differential channels.</p></li>
+</ul>
+<p><strong>USER VARIABLES:</strong> The user must modify the following variables in
+library/global_vars.py:</p>
+<ul class="simple">
+<li><p><strong>user_col:</strong> identify columns in your file containing fluxes to analyze; even if your delimeter is white space, consider the date-time column as one single column. SET IN library/global_vars.py.</p></li>
+<li><p><strong>user_delim:</strong> delimeter between columns, e.g. ” ” or “,”   Use ” ” for any amount of whitespace. SET IN library/global_vars.py.</p></li>
+<li><p><strong>user_energy_bins:</strong> define your energy bins at the top of the code in the variable user_energy_bins. Follow the format in the subroutine define_energy_bins. SET IN library/global_vars.py.</p></li>
+<li><p><strong>user_fname:</strong> specify the name of the file containing the fluxes through an argument in the command line. –UserFile  The user_fname variable will be updated with that filename. ARGUMENT</p></li>
+<li><p><strong>time_resolution:</strong> the program determines time_resolution (seconds) by finding the difference between every consecutive set of time points in the data set. The most common difference is identified as the time resolution. This method should find an accurate time resolution even if there are gaps in the time steps.. AUTOMATICALLY DETERMINED.</p></li>
+</ul>
+<p>Running the code for a user-input file may look like the example below.
+Note that the –UserFile location is with respect to the “data” directory
+inside the operational-sep directory:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold &quot;10,0.001;100,0.0001;30,1;50,1;60,0.079&quot; --spase_id &quot;spase://CCMC/SimulationModel/SEPMOD&quot; --FluxType integral</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="global-variables">
+<h2>Global Variables<a class="headerlink" href="#global-variables" title="Permalink to this headline">¶</a></h2>
+<p><strong>VALUES SPECIFIED IN library/global_vars.py:</strong></p>
+<ul class="simple">
+<li><p><strong>datapath:</strong> directory containing data, ‘data’</p></li>
+<li><p><strong>outpath:</strong> directory for program output, ‘output’</p></li>
+<li><p><strong>plotpath:</strong> directory for saving plots, ‘plots’</p></li>
+<li><p><strong>listpath:</strong> directory for lists (for run_multi_sep.py)</p></li>
+<li><p><strong>badval:</strong> will set any bad data points to this value</p></li>
+<li><p><strong>endfac:</strong> multiplicative factor to define threshold for end of event; threshold*endfac (default 0.85)</p></li>
+<li><p><strong>nsigma:</strong> number of sigma to define SEP versus background flux in background subtraction routine</p></li>
+<li><p><strong>version:</strong> if you are running a model or data set, allows you to enter a version number</p></li>
+<li><p><strong>user_col:</strong> array defining flux columns (0 is always datetime)</p></li>
+<li><p><strong>user_delim:</strong> delimeter used to separate the columns in the time profile file that you will read in</p></li>
+<li><p><strong>user_energy_bins:</strong> energy bins associated with the columns specified in user_col</p></li>
+<li><p><strong>energy_units:</strong> e.g. “MeV’</p></li>
+<li><p><strong>flux_units_integral:</strong> e.g. “pfu”</p></li>
+<li><p><strong>fluence_units_integral:</strong> e.g. “cm^-2” note that the code will multiple flux by time and 4pi steradians</p></li>
+<li><p><strong>flux_units_differential:</strong> e.g. “MeV^-1*cm^-2*s^-1*sr^-1” (CCMC format)</p></li>
+<li><p><strong>fluence_units_differential:</strong> e.g. “MeV^-1*cm^-2” (CCMC format)</p></li>
+</ul>
+<p>(setting the units here will make correct units on plots and in json
+file, but doesn’t change operational threshold values; must be done
+accordingly by hand)</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="modules.html" class="btn btn-neutral float-right" title="operational-sep all modules" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Kathryn Whitman.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
