@@ -88,12 +88,15 @@
             
             
               <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="repository.html">Repository</a></li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Overall Description</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#description">Description</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#bad-flux-values-and-interpolation">Bad Flux Values and Interpolation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#units">Units</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#input-options-background-subtraction-and-tweaks">Input Options, Background Subtraction, and Tweaks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#event-end-time">Event End Time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#onset-peak">Onset Peak</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#running-the-code">Running the Code</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#fluence-and-time-resolution">Fluence and Time Resolution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#program-output">Program Output</a></li>
@@ -316,6 +319,9 @@ for CCMC’s SEP Scoreboard with the flag</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">--spase_id</span>
 </pre></div>
 </div>
+</div>
+<div class="section" id="event-end-time">
+<h2>Event End Time<a class="headerlink" href="#event-end-time" title="Permalink to this headline">¶</a></h2>
 <p><strong>Note about EVENT END TIME:</strong> Currently, the code calculates the end of the
 event as the first time that the flux drops below threshold*endfac for
 three consecutive points. The endfac variable is specified in
@@ -323,6 +329,20 @@ library/global_vars.py.
 Mimicking a SRAG code, endfac is set to 0.85 (85% of threshold). This
 may be changed in the future to update this to more NOAA SWPC-like logic
 to define the end of an SEP event.</p>
+</div>
+<div class="section" id="onset-peak">
+<h2>Onset Peak<a class="headerlink" href="#onset-peak" title="Permalink to this headline">¶</a></h2>
+<p><strong>Note about ONSET PEAK:</strong> In operational_sep_quantities.py version 3.0,
+the onset peak may be found up to 12 hours prior to the threshold crossing
+that determines the SEP event start time. In previous versions, the onset
+peak could only be found at or after the threshold crossing time. For events
+that crossed threshold by a small amount, this often meant that the
+onset peak occurred prior to threshold crossing at a lower flux value.
+In an effort to derive the onset peak from the shape of the flux time
+profile independent of the applied threshold value, the code will
+search for the onset peak 12 hours earlier for events with lower
+flux levels. The documentation for
+operational_sep_quantities.calculate_onset_peak() has further details.</p>
 </div>
 <div class="section" id="running-the-code">
 <h2>Running the Code<a class="headerlink" href="#running-the-code" title="Permalink to this headline">¶</a></h2>

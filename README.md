@@ -35,7 +35,7 @@ The code calculates:
 - Values based on user input thresholds which can be applied to both integral or differential channels
 - Start Time when thresholds are crossed
 - End Time: when flux falls below 0.85 x threshold values
-- Onset Peak Flux - the onset peak is defined to be the flux value at the location that the initial intensity rise turns over and becomes more gradual; a preliminary algorithm has been developed to locate the onset peak in an automated fashion and is still under development.
+- Onset Peak Flux - the onset peak is defined to be the flux value at the location that the initial intensity rise turns over and becomes more gradual; a preliminary algorithm has been developed to locate the onset peak in an automated fashion. In v3.0, the onset peak may be found prior to the first threshold crossing in an effort to make the identification of the onset peak more dependent on the shape of the proton flux time profile and independent of the threshold level.
 - Time of Onset Peak
 - Maximum Flux for >10 MeV, >100 MeV and any other channel for which a threshold has been applied: Maximum flux value between the start and end times; this may be the ESP for lower energy channels
 - Time of Maximum Flux
@@ -69,7 +69,7 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-2
 python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate 2012-05-20 --Experiment EPHIN --FluxType differential --showplot --Threshold "40.9-53,0.001"
 
 **Perform background subtraction and apply Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins. (note: cannot bg-subtract GOES integral fluxes), e.g.:**\
-    python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-19 12:00:00" --Experiment GOES-13 --FluxType differential  --showplot --options uncorrected,S14,Bruno2017 --SubtractBG --BGStartDate 2012-05-10 --BGEndDate 2012-05-17
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-19 12:00:00" --Experiment GOES-13 --FluxType differential  --showplot --options uncorrected,S14,Bruno2017 --SubtractBG --BGStartDate 2012-05-10 --BGEndDate 2012-05-17
 
 
 ## Run code from command line for user-input file as, e.g.:
