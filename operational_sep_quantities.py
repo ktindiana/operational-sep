@@ -2400,7 +2400,8 @@ def read_in_flux_files(experiment, flux_type, user_file, model_name, startdate,
       
       
       
-def define_thresholds(input_threshold, is_diff_thresh, str_thresh, energy_bins):
+def define_thresholds(input_threshold, is_diff_thresh, str_thresh, energy_bins,
+        umasep):
     """ Two operational thresholds plus any thresholds
         specified by the user.
         
@@ -3024,7 +3025,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #At this point, energy_thresholds and flux_thresholds correspond
     #ONLY to threshold applied to integral flux channels
     energy_thresholds, flux_thresholds = define_thresholds(input_threshold,
-                is_diff_thresh, str_thresh, energy_bins)
+                is_diff_thresh, str_thresh, energy_bins, umasep)
     
     #Estimate or select integral fluxes corresponding the energy_thresholds
     #Pull out or estimate only the integral flux channels for which a
