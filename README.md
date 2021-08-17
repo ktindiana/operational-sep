@@ -239,10 +239,10 @@ V3.0
     that determines the SEP event start time. In previous versions, the onset
     peak could only be found at or after the threshold crossing time. For events
     that crossed threshold by a small amount, this often meant that the
-    onset peak occurred prior to threshold crossing at a lower flux value.
-    In an effort to derive the onset peak from the shape of the flux time
-    profile independent of the applied threshold value, the code will
-    search for the onset peak 12 hours earlier for events with lower
+    actual onset peak as identified by eye occurred prior to threshold crossing
+    at a lower flux value. In an effort to derive the onset peak from the shape
+    of the flux time profile independent of the applied threshold value, the code
+    will search for the onset peak 12 hours earlier for events with lower
     flux levels. The documentation for
     operational_sep_quantities.calculate_onset_peak() has further details.
 

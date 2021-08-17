@@ -297,6 +297,19 @@ library/global_vars.py.
 Mimicking a SRAG code, endfac is set to 0.85 (85% of threshold). This
 may be changed in the future to update this to more NOAA SWPC-like logic
 to define the end of an SEP event.</p>
+<blockquote>
+<div><p>Note about ONSET PEAK: In operational_sep_quantities.py version 3.0,</p>
+</div></blockquote>
+<p>the onset peak may be found up to 12 hours prior to the threshold crossing
+that determines the SEP event start time. In previous versions, the onset
+peak could only be found at or after the threshold crossing time. For events
+that crossed threshold by a small amount, this often meant that the
+actual onset peak as identified by eye occurred prior to threshold crossing
+at a lower flux value. In an effort to derive the onset peak from the shape
+of the flux time profile independent of the applied threshold value, the code
+will search for the onset peak 12 hours earlier for events with lower
+flux levels. The documentation for
+operational_sep_quantities.calculate_onset_peak() has further details.</p>
 <p>RUN CODE FROM COMMAND LINE (put on one line), e.g.:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="n">operational_sep_quantities</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">StartDate</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">05</span><span class="o">-</span><span class="mi">17</span>
 <span class="o">--</span><span class="n">EndDate</span> <span class="s2">&quot;2012-05-19 12:00:00&quot;</span> <span class="o">--</span><span class="n">Experiment</span> <span class="n">GOES</span><span class="o">-</span><span class="mi">13</span>
