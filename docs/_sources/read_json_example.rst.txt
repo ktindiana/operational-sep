@@ -1,0 +1,7 @@
+read\_json\_example module
+==========================
+
+.. automodule:: read_json_example
+   :members:
+   :undoc-members:
+   :show-inheritance:

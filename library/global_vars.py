@@ -9,7 +9,7 @@ plotpath = 'plots'
 listpath = 'lists'
 badval = -1 #bad data points will be set to this value; must be negative
 endfac = 0.85 #factor multiplied by flux threshold to determine end of event
-
+errval = "Value Not Found"  #alternative value to None to indicate value not present
 
 ###FOR BACKGROUND SUBTRACTION###
 #derive_background.py calculates the mean background plus an expected level

@@ -2849,7 +2849,7 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
             modifier = modifier + '_' + opt
     if doBGSub:
         modifier = modifier + '_bgsub'
-        options.append(",BGSubtracted")
+        options.append("BGSubtracted")
         
         
     #Get issue time of forecast (now)

@@ -100,6 +100,7 @@
 <li class="toctree-l2"><a class="reference internal" href="keys.html">keys module</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">run_multi_sep module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compare_data_model.html">compare_data_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="read_json_example.html">read_json_example module</a></li>
 </ul>
 </li>
 </ul>
@@ -246,12 +247,35 @@ below. The SEP dates will be read in from a csv file with the columns:</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="run_multi_sep.check_list_path">
 <span class="sig-prename descclassname"><span class="pre">run_multi_sep.</span></span><span class="sig-name descname"><span class="pre">check_list_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#run_multi_sep.check_list_path" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Check if the path listpath (global_vars.py) exists</p>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="run_multi_sep.initialize_files">
 <span class="sig-prename descclassname"><span class="pre">run_multi_sep.</span></span><span class="sig-name descname"><span class="pre">initialize_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jsonfname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#run_multi_sep.initialize_files" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize the output files that will contain the sep quantities.</p>
+<dd><p>Create and initialize the output files that will contain
+the sep quantities. One output file for each unique energy
+channel and threshold combination.</p>
+<p>Create file and add header.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Jsonfname</dt>
+<dd class="field-odd"><p>(string) name of json file</p>
+</dd>
+</dl>
+<p>OUTPUT:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Combos</dt>
+<dd class="field-odd"><p>(array of dictionaries)</p>
+</dd>
+</dl>
+<p>combos contains all the unique energy and threshold combinations
+identified in all the different possible values in the json file.
+combos = [{‘energy_channel’: {‘min’: min, ‘max’: max},’threshold’: thresh},</p>
+<blockquote>
+<div><p>{‘energy_channel’: {‘min’: min, ‘max’: max},’threshold’: thresh},
+…]</p>
+</div></blockquote>
 </dd></dl>
 
 <dl class="py function">
@@ -270,17 +294,121 @@ the file must have the format:</p>
 </dl>
 <p>Flags may be: TwoPeak, DetectPreviousEvent, SubtractBG</p>
 <p>options may be: “S14,Bruno2017,uncorrected”</p>
+<p>Each column is returned as an array.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sep_filename</dt>
+<dd class="field-odd"><p>(string) name of file containing the list of
+experiments and time periods to run</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Start_dates</dt>
+<dd class="field-odd"><p>(datetime 1xn array)</p>
+</dd>
+<dt class="field-even">End_dates</dt>
+<dd class="field-even"><p>(datetime 1xn array)</p>
+</dd>
+<dt class="field-odd">Experiments</dt>
+<dd class="field-odd"><p>(string 1xn array)</p>
+</dd>
+<dt class="field-even">Flux_types</dt>
+<dd class="field-even"><p>(string 1xn array)</p>
+</dd>
+<dt class="field-odd">Flags</dt>
+<dd class="field-odd"><p>(string 1xn array)</p>
+</dd>
+<dt class="field-even">Model_names</dt>
+<dd class="field-even"><p>(string 1xn array)</p>
+</dd>
+<dt class="field-odd">User_files</dt>
+<dd class="field-odd"><p>(string 1xn array)</p>
+</dd>
+<dt class="field-even">Options</dt>
+<dd class="field-even"><p>(string 1xn array)</p>
+</dd>
+<dt class="field-odd">Bgstartdate</dt>
+<dd class="field-odd"><p>(datetime 1xn array)</p>
+</dd>
+<dt class="field-even">Bgenddate</dt>
+<dd class="field-even"><p>(datetime 1xn array)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="run_multi_sep.run_all_events">
+<span class="sig-prename descclassname"><span class="pre">run_multi_sep.</span></span><span class="sig-name descname"><span class="pre">run_all_events</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sep_filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outfname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">umasep</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#run_multi_sep.run_all_events" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run all of the time periods and experiments in the list
+file. Extract the values of interest and compile them
+in event lists, one list per energy channel and threshold
+combination.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sep_filename</dt>
+<dd class="field-odd"><p>(string) file containing list of events
+and experiments to run</p>
+</dd>
+<dt class="field-even">Outfname</dt>
+<dd class="field-even"><p>(string) name of a file that will report any
+errors encountered when running each event in the list</p>
+</dd>
+<dt class="field-odd">Threshold</dt>
+<dd class="field-odd"><p>(string) any additional thresholds to run
+beyond &gt;10 MeV, 10 pfu and &gt;100 MeV, 1 pfu. Specify
+in same way as called for by operational_sep_quantities.py</p>
+</dd>
+<dt class="field-even">Umasep</dt>
+<dd class="field-even"><p>(boolean) set to true to calculate values related to
+the UMASEP model</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<p>None except for:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Output file listing each run and any errors encountered</p></li>
+<li><dl class="simple">
+<dt>Output files containing event lists for each unique energy</dt><dd><p>channel and threshold combination</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="run_multi_sep.write_sep_lists">
-<span class="sig-prename descclassname"><span class="pre">run_multi_sep.</span></span><span class="sig-name descname"><span class="pre">write_sep_lists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jsonfname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#run_multi_sep.write_sep_lists" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">run_multi_sep.</span></span><span class="sig-name descname"><span class="pre">write_sep_lists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jsonfname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">combos</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#run_multi_sep.write_sep_lists" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reads in sep_values_*.json files output by operational_sep_quantities.
 Selected information is taken and sorted into lists for each threshold
 definition. Output is then an SEP list with associated quantities for
 each threshold.</p>
-<p>In the output list file, None or null values indicate that the model
+<p>In the output list file, None, null, or global_var.py errval variable
+(currently “Value Not Found”) indicate that the model
 or observations did not cross threshold.</p>
+<dl class="simple">
+<dt>combos = [{‘energy_channel’: {‘min’: min, ‘max’: max},’threshold’: thresh},</dt><dd><p>{‘energy_channel’: {‘min’: min, ‘max’: max},’threshold’: thresh},
+…]</p>
+</dd>
+</dl>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Jsonfname</dt>
+<dd class="field-odd"><p>(string) name of the json file</p>
+</dd>
+<dt class="field-even">Combos</dt>
+<dd class="field-even"><p>(array of dictionaries) all of the different energy channel
+and threshold combinations in the json file</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Boolean</dt>
+<dd class="field-odd"><p>True if values successfully written to file</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>

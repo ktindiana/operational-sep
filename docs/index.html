@@ -162,11 +162,26 @@
 <h1>Welcome to operational_sep_quantities’s documentation<a class="headerlink" href="#welcome-to-operational-sep-quantities-s-documentation" title="Permalink to this headline">¶</a></h1>
 <p>operational_sep_quantities CURRENT VERSION 3.0</p>
 <p>2021-08-13</p>
+<div class="section" id="purpose">
+<h2>Purpose<a class="headerlink" href="#purpose" title="Permalink to this headline">¶</a></h2>
 <p><strong>operational_sep_quantities</strong> is a python code to derive quantities from solar energetic particle (SEP) event flux time profiles to use for forecasting, assessment, and validation of SEP models. SEP flux time profiles are assessed using thresholds applied to energy channels. The operational thresholds &gt;10 MeV exceeds 10 pfu and &gt;100 MeV exceeds 1 pfu are always applied. Users may enter additional threshold definitions. If a threshold is crossed, the program derives event start and end time, onset peak flux and time, maximum flux and time, and event-integrated fluence.</p>
 <p>Derived values are output to both csv files and the JSON format and accompanying text files used by CCMC’s SEP Scoreboard.</p>
+</div>
+<div class="section" id="native-data-sets">
+<h2>Native Data Sets<a class="headerlink" href="#native-data-sets" title="Permalink to this headline">¶</a></h2>
 <p>This code has a few “native” data sets, including GOES-08 to GOES-15, SOHO/EPHIN, SOHO/EPHIN data in the energy bins provided on the REleASE website, SEPEM RDSv2.0, and SEPEM RDSv3.0 (when it becomes publicly available). Users may input their own time profile data sets of model output.</p>
 <p>This code works with both integral and differential fluxes. Data gaps (time steps with negative with negative fluxes, e.g. -999) are replaced with estimated values via linear interpolation in time.</p>
+</div>
+<div class="section" id="background-subtraction-and-post-processing">
+<h2>Background-Subtraction and Post-Processing<a class="headerlink" href="#background-subtraction-and-post-processing" title="Permalink to this headline">¶</a></h2>
 <p>Users may choose to perform background-subtraction by specifying an appropriate time period containing the background. For GOES data, users may choose between corrected or uncorrected fluxes, or to apply the Sandberg et al. (2014) or Bruno (2017) effective energies determined for the EPS, EPEAD, and HEPAD detectors.</p>
+</div>
+<div class="section" id="output-json-file-reader">
+<h2>Output JSON File Reader<a class="headerlink" href="#output-json-file-reader" title="Permalink to this headline">¶</a></h2>
+<p>The code included in this repository also includes subroutines to read values
+from the json files produced by operational_sep_quantities.py or prepared for
+the CCMC SEP Scoreboard. The code read_json_example.py gives examples of how to
+use them.</p>
 <p>This project is under active development.</p>
 <div class="toctree-wrapper compound">
 <ul>
@@ -202,9 +217,11 @@
 <li class="toctree-l2"><a class="reference internal" href="keys.html">keys module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="run_multi_sep.html">run_multi_sep module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compare_data_model.html">compare_data_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="read_json_example.html">read_json_example module</a></li>
 </ul>
 </li>
 </ul>
+</div>
 </div>
 </div>
 <div class="section" id="indices-and-tables">

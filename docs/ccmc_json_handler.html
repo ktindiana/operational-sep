@@ -100,6 +100,7 @@
 <li class="toctree-l2"><a class="reference internal" href="keys.html">keys module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="run_multi_sep.html">run_multi_sep module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compare_data_model.html">compare_data_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="read_json_example.html">read_json_example module</a></li>
 </ul>
 </li>
 </ul>
@@ -186,6 +187,36 @@ were applied to the same energy channel, the derived information
 will be stored in a single block.</p>
 <p>Template for observations: observations_template.json</p>
 <p>Template for model output: model_template.json</p>
+<p>ADDITIONALLY:</p>
+<p>ccmc_jason_handler.py combined with library/keys.py
+provides all of the information needed to read the JSON
+files in the CCMC SEP Scoreboard format or produced
+by operational_sep_quantities.py.</p>
+<p>The user provides a unique identifier as listed in keys.py
+or the json visual scheme document on the CCMC webpage:
+<a class="reference external" href="https://ccmc.gsfc.nasa.gov/challenges/sep.php#format">https://ccmc.gsfc.nasa.gov/challenges/sep.php#format</a>
+The CCMC identifiers are followed as closely as possible, with some
+additions specific to the operational_sep_quantities.py code and
+this SEP model validation effort.</p>
+<p>In some cases, the user must also provide an index value or
+a threshold value to uniquely identify values that are stored
+in arrays in the json file, These include ‘fluences’, ‘fluence_spectra’,
+‘events_lengths’, ‘threshold_crossings’,’probabilities’</p>
+<p>In this code, a key_chain will be requested from keys.py. The
+key_chain contains the unique location of the desired value, but
+in a list of strings and integers (if an index is needed).
+validation_jason_handler.py extracts the unique value by
+extracting each sub-dictionary in an iterative manner until
+the unique value is accessed.</p>
+<p>For example, if key_chain = [‘event_lengths’,1,’start_time’], the
+value will be extracted from the full json dictionary (dict) as a
+loop over the key_chain, pulling out a subdictionary each time until
+the unique value is found, effectively as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">subdict1</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">[</span><span class="s1">&#39;sep_forecast_submission&#39;</span><span class="p">][</span><span class="s1">&#39;forecasts&#39;</span><span class="p">][</span><span class="s1">&#39;event_lengths&#39;</span><span class="p">]</span>
+<span class="n">subdict2</span> <span class="o">=</span> <span class="n">subdict1</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">desired_val</span> <span class="o">=</span> <span class="n">subdict2</span><span class="p">[</span><span class="s1">&#39;start_time&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -295,6 +326,255 @@ which a threshold was applied</p>
 <dl class="field-list simple">
 <dt class="field-odd">Template</dt>
 <dd class="field-odd"><p>(dict) - appropiate template is read in and returned</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.return_json_value_by_energy">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">return_json_value_by_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">injson</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_channel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.return_json_value_by_energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value of a specific entry in the json file listed in
+the fields under ‘observations’ or ‘forecasts’.</p>
+<p>Identify the desired block under ‘observations’ or ‘forecasts’
+by matching the ‘energy_channel’ entry. The array index
+for the desired block will be discovered.</p>
+<p>matches input energy_channel dictionary to either
+injson[‘sep_forecast_submission’][‘forecasts’][i][‘energy_channel’]
+injson[‘sep_observation_submission’][‘observations’][i][‘energy_channel’]</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Injson</dt>
+<dd class="field-odd"><p>(dictionary) is the dictionary created by reading in a CCMC
+SEP Scoreboard JSON file for a single SEP event or
+forecast period</p>
+</dd>
+<dt class="field-even">Value</dt>
+<dd class="field-even"><p>(string) indicates value desired and may be any of the
+unique identifiers in keys.py</p>
+</dd>
+<dt class="field-odd">Energy_channel</dt>
+<dd class="field-odd"><p>(dictionary, optional) defines which energy channel
+from which the value is desired. All observations and forecasts
+are organized by energy channel. e.g.
+{‘min’: 10, ‘max’: 10, ‘units’: ‘MeV’}</p>
+</dd>
+<dt class="field-even">Index</dt>
+<dd class="field-even"><p>(int, optional) - for json elements that may be arrays, index
+indicates which array element to choose; if not specified, will
+return the 0th entry in the array</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sub</dt>
+<dd class="field-odd"><p>(varies) sub is the final unique value found be equating the
+unique identier “value” with a key_chain and then extracting
+that specific value from the json dictionary; returns None
+if the value cannot be found or the field is empty</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>NOTE: values that are strings in zulu time will be converted to</dt><dd><p>datetime prior to returning</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.return_json_value_by_index">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">return_json_value_by_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">injson</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel_index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.return_json_value_by_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value of a specific entry in the json file listed in
+the fields under ‘observations’ or ‘forecasts’. Select which block
+under under ‘observations’ or ‘forecasts’ to access by specifying
+channel_index.</p>
+<p>injson[‘forecasts’][channel_index]</p>
+<p>Then, if the desired value within that block is an array, e.g.
+fluences or event_lengths, specify which element in the array
+should be returned using index.</p>
+<p>injson[‘forecasts’][channel_index][‘fluences’][index]</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Injson</dt>
+<dd class="field-odd"><p>(dictionary) is the dictionary created by reading in a CCMC
+SEP Scoreboard JSON file for a single SEP event or
+forecast period</p>
+</dd>
+<dt class="field-even">Value</dt>
+<dd class="field-even"><p>(string) indicates value desired and may be any of the
+unique identifiers in keys.py</p>
+</dd>
+<dt class="field-odd">Channel_index</dt>
+<dd class="field-odd"><p>(int) defines which entry in the forecast or
+observation array from which the value is desired. i.e.
+injson[‘sep_model_submission’][‘forecasts’] is an array and
+channel_index specifies which forecast to choose</p>
+</dd>
+<dt class="field-even">Index</dt>
+<dd class="field-even"><p>(int, optional) - for json elements UNDER ‘forecasts’ or
+‘observations’ that may be arrays, index indicates which
+array element to choose, e.g. fluences is an array and
+index indicates which element of the array to choose;
+if not specified, will return the 0th entry in the array</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sub</dt>
+<dd class="field-odd"><p>(varies) sub is the final unique value found be equating the
+unique identier “value” with a key_chain and then extracting
+that specific value from the json dictionary; returns None
+if the value cannot be found or the field is empty</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>NOTE: values that are strings in zulu time will be converted to</dt><dd><p>datetime prior to returning</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.return_json_value_by_threshold">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">return_json_value_by_threshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">injson</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_channel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.return_json_value_by_threshold" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value of a specific entry in the json file listed in
+the fields under ‘observations’ or ‘forecasts’.</p>
+<p>Select the desired energy block by matching to energy_channel.
+If the desired value is inside of an array (e.g. event_lengths,
+fluences, fluence_spectra, etc), find the correct element by
+matching the applied threshold value.</p>
+<p>Match energy_channel and threshold to pull out a unique value.
+For example, to get an event start time for a 10 pfu threshold
+applied to the &gt;10 MeV channel:</p>
+<ul class="simple">
+<li><p>energy_channel = {“min”: 10.0, “max”: -1, “units”: “MeV”}</p></li>
+<li><p>threshold = 10</p></li>
+</ul>
+<p>injson[‘sep_forecast_submission’][‘forecasts’][i][‘event_lengths’][j][‘start_time’]</p>
+<p>where i was found by matching energy_channel and j was found by matching</p>
+<p>injson[‘sep_forecast_submission’][‘forecasts’][i][‘event_lengths’][j][‘threshold’]</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Injson</dt>
+<dd class="field-odd"><p>(dictionary) is the dictionary created by reading in a CCMC
+SEP Scoreboard JSON file for a single SEP event or
+forecast period</p>
+</dd>
+<dt class="field-even">Value</dt>
+<dd class="field-even"><p>(string) indicates value desired and may be any of the
+unique identifiers in keys.py</p>
+</dd>
+<dt class="field-odd">Energy_channel</dt>
+<dd class="field-odd"><p>(dictionary, optional) defines which energy channel
+from which the value is desired. All observations and forecasts
+are organized by energy channel. e.g.
+{‘min’: 10, ‘max’: 10, ‘units’: ‘MeV’}</p>
+</dd>
+<dt class="field-even">Threshold</dt>
+<dd class="field-even"><p>(float) - for json elements that may be arrays, identify
+the desired entry to selecting the one associated with a
+threshold value</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sub</dt>
+<dd class="field-odd"><p>(varies) sub is the final unique value found be equating the
+unique identier “value” with a key_chain and then extracting
+that specific value from the json dictionary; returns None
+if the value cannot be found or the field is empty</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>NOTE: values that are strings in zulu time will be converted to</dt><dd><p>datetime prior to returning</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.return_main_key">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">return_main_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">injson</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.return_main_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the highest level key in the json file, typically
+‘sep_forecast_submission’ or ‘sep_observation_submission’.
+Possible values assigned in keys.py.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Injson</dt>
+<dd class="field-odd"><p>(dictionary) - a complete json file for a model or
+observation</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Main_key</dt>
+<dd class="field-odd"><p>(string) - the highest level key in the json file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.return_nforecasts">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">return_nforecasts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">injson</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.return_nforecasts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of forecasts or observations
+in the file. e.g.</p>
+<p>len(json[‘sep_forecast_submission’][‘forecasts’])</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Injson</dt>
+<dd class="field-odd"><p>(dictionary) - a complete json file for a model or
+observation</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">N</dt>
+<dd class="field-odd"><p>(integer) - the number of forecast or observation blocks in
+the json file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.return_type_key">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">return_type_key</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">injson</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.return_type_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the key associated with type (model or observations)
+where the forecasts or observed information are stored in
+the json file, typically ‘forecasts’ or ‘observations’.
+Possible values assigned in keys.py.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Injson</dt>
+<dd class="field-odd"><p>(dictionary) - a complete json file for a model or
+observation</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type_key</dt>
+<dd class="field-odd"><p>(string) - a second level key in the json file which
+should match either the obs_type or model_type keys in keys.py</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ccmc_json_handler.switch_model_to_obs_keys">
+<span class="sig-prename descclassname"><span class="pre">ccmc_json_handler.</span></span><span class="sig-name descname"><span class="pre">switch_model_to_obs_keys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key_chain</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ccmc_json_handler.switch_model_to_obs_keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>keys.py provides the location of each entry in the
+json files, but uses default identifiers that correspond
+to the ones used by CCMC for model forecasts.</p>
+<p>operational_sep_quantities.py outputs similar jsons for
+measurements, but since they are observations and not
+forecasts, some of the fields have been relabeled.</p>
+<p>If looking at an observations json, fix the keys
+to reflect the correct names of the fields.</p>
+<p>INPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Key_chain</dt>
+<dd class="field-odd"><p>(array, list) list of strings and integers</p>
+</dd>
+</dl>
+<p>OUTPUTS:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Key_chain</dt>
+<dd class="field-odd"><p>(array, list) list of strings and integers</p>
 </dd>
 </dl>
 </dd></dl>
