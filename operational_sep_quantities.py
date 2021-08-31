@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.0"
+__version__ = "3.1"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -203,6 +203,16 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   starting 12 hours before the flux threshold is crossed.
 #   Onset peak will still only be derived if thresholds
 #   are crossed.
+#2021-08-30, changes in 3.1: if the user tries to apply a threshold
+#   to an energy channel that isn't in the data, give an error
+#   and exit. Added ability for
+#   check_bin_exists to check if integral bins within energy_bins.
+#   In extract_integral_fluxes, change code to save flux as -999
+#   rather than 0 if a >10 or >100 MeV energy channel doesn't
+#   exist in the data set. Previously stored integral fluxes
+#   as zero values if couldn't find the energy bin, but this is
+#   no good since 0 is a valid model prediction and a valid
+#   flux value in some data sets.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -796,10 +806,10 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
                 print("Didn't find energy threshold for " \
                 + str(energy_thresholds[i]) + ", " + str(flux_thresholds[i]))
                 if len(integral_fluxes) == 0:
-                    integral_fluxes = [None]*len(fluxes[0,:])
+                    integral_fluxes = [-999]*len(fluxes[0,:])
                 else:
                     integral_fluxes = np.concatenate((integral_fluxes,
-                                        [np.array([0]*len(fluxes[0,:]))]))
+                                        [np.array([-999]*len(fluxes[0,:]))]))
 
         if len(integral_fluxes) == 0:
             sys.exit("There were no integral fluxes with the requested energy "
@@ -990,16 +1000,21 @@ def check_bin_exists(threshold, energy_bins):
         :Boolean: indicating specified bins exist, or exit
         
     """
-    edges = threshold[0].split("-")
-    lowedge = float(edges[0])
-    highedge = float(edges[1])
+    if "-" in threshold[0]:
+        edges = threshold[0].split("-")
+        lowedge = float(edges[0])
+        highedge = float(edges[1])
+    else:
+        lowedge = float(threshold[0])
+        highedge = -1.0
     for bin in energy_bins:
         if lowedge == bin[0] and highedge == bin[1]:
             return True
 
-    sys.exit("check_bin_exists: The user-defined threshold (" + threshold[0] \
-            + ',' + threshold[1] + "cannot be found in the experiment's energy "
-            "bins: " + str(energy_bins))
+    sys.exit("check_bin_exists: The user is attempting to apply a "
+            "threshold to the energy channel: " + str(lowedge) + " to " \
+            + str(highedge) + " that cannot be found in the experiment's energy "
+            "bins: " + str(energy_bins) + ". Please remove threshold. Exiting.")
 
 
 
@@ -2401,7 +2416,7 @@ def read_in_flux_files(experiment, flux_type, user_file, model_name, startdate,
       
       
 def define_thresholds(input_threshold, is_diff_thresh, str_thresh, energy_bins,
-        umasep):
+        flux_type, umasep):
     """ Two operational thresholds plus any thresholds
         specified by the user.
         
@@ -2433,6 +2448,8 @@ def define_thresholds(input_threshold, is_diff_thresh, str_thresh, energy_bins,
         nin_thresh = len(input_threshold)
         for i in range(nin_thresh):
             if not is_diff_thresh[i]:
+                if flux_type == "integral":
+                    check_bin_exists(str_thresh[i],energy_bins)
                 energy_thresholds.append(input_threshold[i][0])
                 flux_thresholds.append(input_threshold[i][1])
             #Check if user entered differential threshold
@@ -3025,7 +3042,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #At this point, energy_thresholds and flux_thresholds correspond
     #ONLY to threshold applied to integral flux channels
     energy_thresholds, flux_thresholds = define_thresholds(input_threshold,
-                is_diff_thresh, str_thresh, energy_bins, umasep)
+                is_diff_thresh, str_thresh, energy_bins, flux_type, umasep)
     
     #Estimate or select integral fluxes corresponding the energy_thresholds
     #Pull out or estimate only the integral flux channels for which a

@@ -8,7 +8,7 @@ from library import global_vars as vars
 from library import keys
 import os
 
-__version__ = "1.1"
+__version__ = "1.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -57,6 +57,10 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   This code, coupled with keys.py, will allow users
 #   to access any values in the json files produced by
 #   operational_sep_quantities.py
+#2021-08-30, changes in 1.2: fixed bug in identifying energy
+#   bins in fill_json. In clean_json, will remove the block for
+#   an energy channel if the max flux is stored as a negative
+#   value.
 
 version = vars.version
 
@@ -313,9 +317,8 @@ def fill_json(template, issue_time, experiment, flux_type, energy_bins,
             
     #Fill in the unique energy channels
     for i in range(nthresh):
-        if not diff_thresh[i] and flux_type == "differential":
-            bin = [energy_thresholds[i], -1]
-        else:
+        bin = [energy_thresholds[i], -1] #default assume integral
+        if diff_thresh[i]:
             bin = find_energy_bin(energy_thresholds[i], energy_bins)
         
         energy_dict = {"min":bin[0], "max": bin[1], "units":energy_units}
@@ -336,9 +339,8 @@ def fill_json(template, issue_time, experiment, flux_type, energy_bins,
             flux_units = flux_units_differential #"[MeV/n cm^2 s sr]^(-1)"
             fluence_units = fluence_units_differential #'MeV^-1*cm^-2'
             
-        if not diff_thresh[i] and flux_type == "differential":
-            bin = [energy_thresholds[i], -1]
-        else:
+        bin = [energy_thresholds[i], -1] #default assume integral
+        if diff_thresh[i]:
             bin = find_energy_bin(energy_thresholds[i], energy_bins)
         
         
@@ -484,6 +486,7 @@ def fill_json(template, issue_time, experiment, flux_type, energy_bins,
 def clean_json(template, experiment):
     """ Remove any fields that didn't get filled in and
         were left as empty strings.
+        
     """
     if experiment == "user":
         key = keys.model_main
@@ -505,15 +508,24 @@ def clean_json(template, experiment):
             template[key]['observatory'].pop('spase_id', None)
 
     nent = len(template[key][type_key])
-    for i in range(nent):
+    for i in range(nent-1,-1,-1):
         #Onset Peak Flux
         if template[key][type_key][i]['peak_intensity']['intensity'] == "":
-                    template[key][type_key][i].pop('peak_intensity', None)
+            template[key][type_key][i].pop('peak_intensity', None)
         
         #Maximum Flux
         if template[key][type_key][i]['peak_intensity_max']['intensity'] == "":
-                    template[key][type_key][i].pop('peak_intensity_max', None)
-        
+            template[key][type_key][i].pop('peak_intensity_max', None)
+                    
+        #Maximum flux is the one field that will always be filled in,
+        #regardless of whether a threshold is crossed. If max peak is
+        #set to a negative number, then remove entire entry for the
+        #energy channel, because it means the energy bin didn't exist
+        #in the data set.
+        if template[key][type_key][i]['peak_intensity_max']['intensity'] < 0:
+            template[key][type_key].pop(i)
+            continue
+            
         #Start and End Times, Fluence
         nev = len(template[key][type_key][i]['event_lengths'])
         for j in range(nev-1,-1,-1):

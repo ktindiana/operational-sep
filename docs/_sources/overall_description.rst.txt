@@ -1,7 +1,7 @@
 Overall Description
 ===================
 
-operational_sep_quantities.py VERSION 3.0
+operational_sep_quantities.py VERSION 3.1
 
 2021-08-13
 
@@ -11,7 +11,7 @@ operational_sep_quantities.py VERSION 3.0
 Description
 -----------
 
-Program description for operational_sep_quantities.py VERSION 3.0.
+Program description for operational_sep_quantities.py VERSION 3.1.
 
 The operational_sep_quantities project needs these files to run:
 

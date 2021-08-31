@@ -6,7 +6,7 @@
 Welcome to operational_sep_quantities's documentation
 =====================================================
 
-operational_sep_quantities CURRENT VERSION 3.0
+operational_sep_quantities CURRENT VERSION 3.1
 
 2021-08-13
 
