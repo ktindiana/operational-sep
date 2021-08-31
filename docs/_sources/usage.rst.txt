@@ -1,7 +1,7 @@
 Usage
 =====
 
-operational_sep_quantities.py VERSION 3.0
+operational_sep_quantities.py VERSION 3.1
 
 2021-08-13
 
