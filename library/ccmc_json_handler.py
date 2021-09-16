@@ -8,7 +8,7 @@ from library import global_vars as vars
 from library import keys
 import os
 
-__version__ = "1.2"
+__version__ = "1.3"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -61,6 +61,10 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   bins in fill_json. In clean_json, will remove the block for
 #   an energy channel if the max flux is stored as a negative
 #   value.
+#2021-09-16, changes in 1.3: support for json_type, introduced
+#   in operational_sep_quantities.py v3.2. Allows user to indicate
+#   if a user input file should be written to observation or model
+#   json file in fill_json and clean_json.
 
 version = vars.version
 
@@ -258,7 +262,8 @@ def id_unique_energy_channels(energy_thresholds):
     return len(unique), unique
 
 ###############FILL AND WRITE JSONS##############
-def fill_json(template, issue_time, experiment, flux_type, energy_bins,
+def fill_json(template, issue_time, experiment, flux_type, json_type,
+                energy_bins,
                 model_name, spase_id, startdate, enddate, options,
                 energy_thresholds, flux_thresholds, crossing_time,
                 onset_peak, onset_date, peak_flux, peak_time, rise_time,
@@ -275,7 +280,7 @@ def fill_json(template, issue_time, experiment, flux_type, energy_bins,
     """
     #For now, assume a user-input file is model output
     #This is not generic and should be modified in the future
-    if experiment == "user":
+    if experiment == "user" and json_type == "model":
         key = keys.model_main
         type_key = keys.model_type
         win_key = keys.model_win
@@ -292,6 +297,8 @@ def fill_json(template, issue_time, experiment, flux_type, energy_bins,
         type_key = keys.obs_type
         win_key = keys.obs_win
         template[key][keys.obs_exp]['short_name'] = experiment
+        if experiment == "user" and model_name != "":
+                template[key][keys.obs_exp]['short_name'] = model_name
         template[key][keys.obs_exp]['flux_type'] = flux_type
         if spase_id != "":
             template[key]['observatory']['spase_id'] = spase_id
@@ -483,12 +490,12 @@ def fill_json(template, issue_time, experiment, flux_type, energy_bins,
     return template
 
 
-def clean_json(template, experiment):
+def clean_json(template, experiment, json_type):
     """ Remove any fields that didn't get filled in and
         were left as empty strings.
         
     """
-    if experiment == "user":
+    if experiment == "user" and json_type == "model":
         key = keys.model_main
         type_key = keys.model_type
         win_key = keys.model_win

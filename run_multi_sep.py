@@ -12,7 +12,7 @@ import sys
 import os
 import asciitable
 
-__version__ = "0.6"
+__version__ = "0.7"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -35,6 +35,8 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   operational_sep_quantities.py v3.0 w.r.t. inputs and outputs.
 #   run_multi_sep.py now works with keys.py and ccmc_json_handler.py to
 #   read in values from the json file and write out to list.
+#2021-09-16, changes in 0.7: Add support for the JSONType (json_type)
+#   variable added in operational_sep_quantities.py v3.2.
 
 
 datapath = vars.datapath
@@ -114,11 +116,13 @@ def read_sep_dates(sep_filename):
         the file must have the format:
         
         StartDate, Enddate, Experiment, FluxType, Flags, Model Name,
-            User Filename, options, bgstartdate, bgenddate
+            User Filename, options, bgstartdate, bgenddate, JSON type
 
         Flags may be: TwoPeak, DetectPreviousEvent, SubtractBG
         
         options may be: "S14,Bruno2017,uncorrected"
+        
+        JSON type may be: model or observations
         
         Each column is returned as an array.
         
@@ -136,6 +140,7 @@ def read_sep_dates(sep_filename):
         :flags: (string 1xn array)
         :model_names: (string 1xn array)
         :user_files: (string 1xn array)
+        :json_types: (string 1xn array)
         :options: (string 1xn array)
         :bgstartdate: (datetime 1xn array)
         :bgenddate: (datetime 1xn array)
@@ -152,6 +157,7 @@ def read_sep_dates(sep_filename):
     options = [] #row 7
     bgstartdate = [] #row 8
     bgenddate = [] #row 9
+    json_types = [] #row 10 (if user experiment)
 
     with open(sep_filename) as csvfile:
         readCSV = csv.reader(csvfile, delimiter=',')
@@ -205,6 +211,11 @@ def read_sep_dates(sep_filename):
                 bgenddate.append(row[9])
             else:
                 bgenddate.append('')
+            
+            if len(row) > 10:
+                json_types.append(row[10])
+            else:
+                json_types.append('')
 
 
             if row[1] == 'user':
@@ -214,7 +225,7 @@ def read_sep_dates(sep_filename):
 
 
     return start_dates, end_dates, experiments, flux_types, flags, model_names,\
-        user_files, options, bgstartdate, bgenddate
+        user_files, json_types, options, bgstartdate, bgenddate
 
 
 
@@ -473,8 +484,9 @@ def run_all_events(sep_filename, outfname, threshold, umasep):
     check_list_path()
 
     #READ IN SEP DATES AND experiments
-    start_dates, end_dates, experiments, flux_types, flags, model_names, \
-        user_files, options, bgstart, bgend = read_sep_dates(sep_filename)
+    start_dates, end_dates, experiments, flux_types, flags, \
+        model_names, user_files, json_types, options, bgstart, \
+        bgend = read_sep_dates(sep_filename)
 
     #Prepare output file listing events and flags
     fout = open(outfname,"w+")
@@ -491,6 +503,7 @@ def run_all_events(sep_filename, outfname, threshold, umasep):
         flag = flags[i]
         model_name = model_names[i]
         user_file = user_files[i]
+        json_type = json_types[i]
         option = options[i]
         bgstartdate = bgstart[i]
         bgenddate = bgend[i]
@@ -513,7 +526,7 @@ def run_all_events(sep_filename, outfname, threshold, umasep):
         #CALCULATE SEP INFO AND OUTPUT RESULTS TO FILE
         try:
             sep_year, sep_month, \
-            sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file,
+            sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file, json_type,
                 spase_id, showplot, saveplot, detect_prev_event,
                 two_peaks, umasep, threshold, option, doBGSub, bgstartdate,
                 bgenddate, nointerp)
@@ -614,8 +627,9 @@ if __name__ == "__main__":
     check_list_path()
 
     #READ IN SEP DATES AND experiments
-    start_dates, end_dates, experiments, flux_types, flags, model_names, \
-        user_files, options, bgstart, bgend = read_sep_dates(sep_filename)
+    start_dates, end_dates, experiments, flux_types, flags,  \
+        model_names, user_files, json_types, options, bgstart,\
+        bgend = read_sep_dates(sep_filename)
 
     #Prepare output file listing events and flags
     fout = open(outfname,"w+")
@@ -632,6 +646,7 @@ if __name__ == "__main__":
         flag = flags[i]
         model_name = model_names[i]
         user_file = user_files[i]
+        json_type = json_types[i]
         option = options[i]
         bgstartdate = bgstart[i]
         bgenddate = bgend[i]
@@ -654,7 +669,7 @@ if __name__ == "__main__":
         #CALCULATE SEP INFO AND OUTPUT RESULTS TO FILE
         try:
             sep_year, sep_month, \
-            sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file,
+            sep_day, jsonfname = sep.run_all(start_date, end_date, experiment, flux_type, model_name, user_file, json_type,
                 spase_id, showplot, saveplot, detect_prev_event,
                 two_peaks, umasep, threshold, option, doBGSub, bgstartdate,
                 bgenddate, nointerp)

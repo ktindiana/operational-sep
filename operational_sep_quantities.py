@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.1"
+__version__ = "3.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -213,6 +213,9 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   as zero values if couldn't find the energy bin, but this is
 #   no good since 0 is a valid model prediction and a valid
 #   flux value in some data sets.
+#2021-9-16, changes in 3.2: add feature to specify which type of json
+#   file to write if the user inputs their own experiment. JSONType flag
+#   added to the inputs.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -247,7 +250,7 @@ user_fname = ['tmp.txt']
 
 
 def all_program_info(): #only for documentation purposes
-    """ Program description for operational_sep_quantities.py v3.0.
+    """ Program description for operational_sep_quantities.py v3.2.
     
     Formatting for Sphinx web-based documentation, which can be viewed
     within the docs/index.html directory or online at:
@@ -425,6 +428,8 @@ def all_program_info(): #only for documentation purposes
         spase_id = ''
         model_name = '' #if experiment is user, set model_name to describe data set
         user_file = '' #if experiment is user, specify filename containing fluxes
+        json_type = '' #if experiment is user, specify which type of json file
+                       # should be created
         showplot = True  #Turn to False if don't want to see plots
         saveplot = False #turn to true if you want to save plots to file
         options = '' #various options: S14, Bruno2017, uncorrected
@@ -438,7 +443,7 @@ def all_program_info(): #only for documentation purposes
         nointerp = False #Default False; set to True to stop linear interpolatin in time
 
         sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
-            end_date, experiment, flux_type, model_name, user_file,\
+            end_date, experiment, flux_type, model_name, user_file, json_type,\
             spase_id, showplot, saveplot, detect_prev_event,  \
             two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
             bgend_date,nointerp)
@@ -532,6 +537,11 @@ def all_program_info(): #only for documentation purposes
     them. You may have one integral channel in the last bin, as this is the way
     HEPAD works and the code has been written to include that HEPAD >700 MeV
     bin along with lower differential channels.
+    NOTE: You must specify whether your input file represents model output or
+    observations so that the correct type of JSON file may be written. Use the
+    JSONType flag or json_type variable and specify "model" or "observations"
+    to indicate which is the correct format. The default is set to "model"
+    when run from main.
 
     USER VARIABLES: The user must modify the following variables in
     library/global_vars.py:
@@ -560,7 +570,7 @@ def all_program_info(): #only for documentation purposes
     
     .. code-block::
     
-        python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
+        python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --JSONType model --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
     
     VALUES SPECIFIED IN library/global_vars.py:
     
@@ -2160,7 +2170,8 @@ def error_check_options(experiment, flux_type, options, doBGSub):
 
 
 
-def error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh):
+def error_check_inputs(startdate, enddate, experiment, flux_type, json_type,
+    is_diff_thresh):
     """ Check that all of the user inputs make sense and fall within bounds.
         
         INPUTS:
@@ -2169,6 +2180,7 @@ def error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh
         :enddate: (datetime) - end of time period entered by user
         :experiment: (string) - name of experiment specifed by user
         :flux_type: (string) - integral or differential
+        :json_type: (string) - model or observations, only needed if "user" experiment
         :is_diff_thresh: (bool 1xn array) - where n indicates the number of
             thresholds input by the user, e.g. "30,1;50,1" n=2
             Indicates if the user-input thresholds apply to integral or
@@ -2199,6 +2211,11 @@ def error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh
         and flux_type == "integral"):
         sys.exit('The SOHO/EPHIN data set only provides differential fluxes.'
             ' Please change your FluxType to differential. Exiting.')
+            
+    if experiment == "user" and (json_type != "model" \
+        and json_type != "observations"):
+        sys.exit('User experiments must specify a JSONType of \"model\" or '
+            '\"observation\". Please change your JSONType. Exiting.')
 
     for diff_thresh in is_diff_thresh:
         if diff_thresh and flux_type == "integral":
@@ -2815,8 +2832,8 @@ def write_zulu_time_profile(filename, dates, fluxes):
 
 
 
-def write_info_to_file(experiment, flux_type, options, doBGSub,
-        energy_bins, model_name, spase_id, startdate, enddate,
+def write_info_to_file(experiment, flux_type, json_type, options,
+        doBGSub, energy_bins, model_name, spase_id, startdate, enddate,
         energy_thresholds, flux_thresholds, dates, integral_fluxes,
         crossing_time, onset_peak, onset_date, peak_flux, peak_time,
         rise_time, event_end_time, duration, all_threshold_fluences,
@@ -2828,8 +2845,14 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
         
         INPUTS:
         
-        The inputs here are the same as the outputs produced by
-        append_differential_thresholds(). Please see the list
+        :experiment: (string)
+        :flux_type: (string) differential or integral
+        :json_type: (string) model or observations, indicates which json
+            template to use if the experiment is "user"
+            
+        The remaining inputs here are the same as the outputs produced by
+        append_differential_thresholds() or have been described in other
+        subroutine. Please see the list
         of those outputs for detailed explanations of these inputs.
         
         OUTPUTS:
@@ -2856,7 +2879,7 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
     #SAVE TO JSON FILE
     type = "observations"
     if experiment == "user":
-        type = "model"
+        type = json_type
     template = ccmc_json.read_in_json_template(type)
 
     modifier = ''
@@ -2882,10 +2905,16 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
         fnameprefix = experiment + "_" + flux_type + modifier + "." + zstdate.replace(":","")
     
     #For a user data set or model, include issue time
-    if experiment == "user":
+    if experiment == "user" and json_type == "model":
         fnameprefix = experiment + "_" + flux_type + modifier + "." + zstdate.replace(":","") + "." + issue_time.replace(":","")
-    if experiment == 'user' and model_name != '':
+        if model_name != '':
             fnameprefix = model_name + "_" + flux_type + modifier + "." + zstdate.replace(":","") + "." + issue_time.replace(":","")
+            
+    #For a user data set that is an observation
+    if experiment == "user" and json_type == "observations":
+        fnameprefix = experiment + "_" + flux_type + modifier + "." + zstdate.replace(":","")
+        if model_name != '':
+            fnameprefix = model_name + "_" + flux_type + modifier + "." + zstdate.replace(":","") 
             
     jsonfname = outpath +'/' + fnameprefix + ".json"
     
@@ -2905,7 +2934,7 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
     
     ##### WRITE JSON FILE #######
     filled_json = ccmc_json.fill_json(template, issue_time,
-                    experiment, flux_type,
+                    experiment, flux_type, type,
                     energy_bins, model_name, spase_id, startdate, enddate,
                     options, energy_thresholds, flux_thresholds, crossing_time,
                     onset_peak, onset_date, peak_flux, peak_time, rise_time,
@@ -2915,7 +2944,7 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
                     energy_units, flux_units_integral, fluence_units_integral,
                     flux_units_differential, fluence_units_differential)
     
-    filled_json = ccmc_json.clean_json(filled_json,experiment)
+    filled_json = ccmc_json.clean_json(filled_json,experiment,type)
     isgood = ccmc_json.write_json(filled_json, jsonfname)
     if not isgood:
         print("WARNING: ccmc_json_handler: write_json could not write your " \
@@ -2941,7 +2970,7 @@ def write_info_to_file(experiment, flux_type, options, doBGSub,
 
 ######## MAIN PROGRAM #########
 def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
-        user_file, spase_id, showplot, saveplot, detect_prev_event,
+        user_file, json_type, spase_id, showplot, saveplot, detect_prev_event,
         two_peaks, umasep, str_thresh, options, doBGSub, str_bgstartdate,
         str_bgenddate, nointerp=False):
     """"Runs all subroutines and gets all needed values. Takes the command line
@@ -3014,7 +3043,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
 
     #PERFORM CHECKS AND VALIDATE INPUTS
     error_check_options(experiment, flux_type, options, doBGSub)
-    error_check_inputs(startdate, enddate, experiment, flux_type, is_diff_thresh)
+    error_check_inputs(startdate, enddate, experiment, flux_type, json_type, is_diff_thresh)
     datasets.check_paths()
     
     #SET UNITS
@@ -3128,8 +3157,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #and any differential flux channel time profiles for which
     #thresholds were applied
     sep_year, sep_month, sep_day, jsonfname\
-        = write_info_to_file(experiment, flux_type, options, doBGSub,
-        energy_bins, model_name, spase_id,  startdate, enddate,
+        = write_info_to_file(experiment, flux_type, json_type, options,
+        doBGSub, energy_bins, model_name, spase_id,  startdate, enddate,
         energy_thresholds, flux_thresholds, dates, integral_fluxes,
         crossing_time, onset_peak, onset_date, peak_flux, peak_time,
         rise_time, event_end_time, duration, all_threshold_fluences,
@@ -3391,6 +3420,11 @@ if __name__ == "__main__":
             "you chose user for experiment, specify the filename containing "
             "the fluxes. Specify energy bins and delimeter in code at top. "
             "Default is tmp.txt."))
+    parser.add_argument("--JSONType", type=str, choices=['model',
+            'observations'], default='model',
+            help=("For user-input files, specify whether they are observations "
+            "or model predictions to generate a JSON file in the correct format. "
+            "Choices are \"model\" or \"observations\" Default is model."))
     parser.add_argument("--spase_id", type=str, default='', help=("If your "
             "model or data source has an associated Spase ID, specify here."))
     parser.add_argument("--Threshold", type=str, default="",
@@ -3460,6 +3494,7 @@ if __name__ == "__main__":
     flux_type = args.FluxType
     model_name = args.ModelName
     user_file = args.UserFile
+    json_type = args.JSONType
     spase_id = args.spase_id
     str_thresh = args.Threshold
     doBGSub = args.SubtractBG
@@ -3477,7 +3512,7 @@ if __name__ == "__main__":
 
     sep_year, sep_month, sep_day, jsonfname = run_all(str_startdate,
         str_enddate, experiment,
-        flux_type, model_name, user_file, spase_id, showplot, saveplot,
+        flux_type, model_name, user_file, json_type, spase_id, showplot, saveplot,
         detect_prev_event, two_peaks, umasep, str_thresh, options, doBGSub,
         str_bgstartdate, str_bgenddate, nointerp)
 

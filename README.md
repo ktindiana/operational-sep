@@ -1,6 +1,6 @@
 # operational-sep
 
-**operational_sep_quantities.py CURRENT VERSION 3.1**
+**operational_sep_quantities.py CURRENT VERSION 3.2**
 
 Please see the extensive and nicely formatted web documentation at <a href="https://ktindiana.github.io/operational-sep/index.html" target="_blank">https://ktindiana.github.io/operational-sep/index.html</a>.
 
@@ -73,7 +73,7 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-
 
 
 ## Run code from command line for user-input file as, e.g.:
-python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-19 12:00:00" --Experiment user --ModelName MyModel --UserFile MyFluxes.txt --FluxType integral --showplot
+python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-19 12:00:00" --Experiment user --ModelName MyModel --UserFile MyFluxes.txt --FluxType integral --showplot --JSONType model
 
 ## Import code and run as, e.g.:
     import operational_sep_quantities as sep
@@ -84,6 +84,8 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-
     spase_id = ''
     model_name = '' #if experiment is user, set model_name to describe data set
     user_file = '' #if experiment is user, specify filename containing fluxes
+    json_type = '' #if experiment is user, specify which type of json file
+                   # should be created ("model" or "observations")
     showplot = True  #Turn to False if don't want to see plots
     saveplot = False #turn to true if you want to save plots to file
     options = '' #various options: S14, Bruno2017, uncorrected
@@ -97,7 +99,7 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-
     nointerp = False #Default False; set to True to stop linear interpolatin in time
 
     sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
-        end_date, experiment, flux_type, model_name, user_file,\
+        end_date, experiment, flux_type, model_name, user_file, json_type,\
         spase_id, showplot, saveplot, detect_prev_event,  \
         two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
         bgend_date,nointerp)
@@ -122,15 +124,20 @@ V3.0
 
 ### FUNCTIONS
 #### all_program_info()
-    Program description for operational_sep_quantities.py v3.0.
+    Program description for operational_sep_quantities.py v3.2.
+
+    Formatting for Sphinx web-based documentation, which can be viewed
+    within the docs/index.html directory or online at:
+    https://ktindiana.github.io/operational-sep/index.html
 
     This program will calculate various useful pieces of operational
     information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
     data and the SEPEM (RSDv2 and RSDv3) dataset.
 
     SEP event values are always calculated for threshold definitions:
-        >10 MeV exceeds 10 pfu
-        >100 MeV exceed 1 pfu
+        
+        * >10 MeV exceeds 10 pfu
+        * >100 MeV exceed 1 pfu
 
     The user may add multiple additional thresholds through the command line.
     This program will check if data is already present in a 'data' directory. If
@@ -156,16 +163,17 @@ V3.0
     interpolated, only time steps with negative or None flux values.
 
     The values calculated here are important for space radiation operations:
-       Onset time, i.e. time to cross thresholds
-       Onset peak intensity
-       Onset peak time
-       Maximum intensity
-       Time of maximum intensity
-       Rise time (onset to peak)
-       End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
-       Duration
-       Event-integrated fluences
-       Proton fluxes at various times after threshold crossing (UMASEP option)
+       
+       * Onset time, i.e. time to cross thresholds
+       * Onset peak intensity
+       * Onset peak time
+       * Maximum intensity
+       * Time of maximum intensity
+       * Rise time (onset to peak)
+       * End time, i.e. fall below 0.85*threshold for 3 points (15 mins for GOES)
+       * Duration
+       * Event-integrated fluences
+       * Proton fluxes at various times after threshold crossing (UMASEP option)
 
     UNITS: User may choose differential proton fluxes (e.g. [MeV s sr cm^2]^-1)
     or integral fluxes (e.g. [s sr cm^2]^-1 or pfu). Default units are:
@@ -180,15 +188,23 @@ V3.0
 
     OPTIONS: User may specify various options, that currently only apply to
     GOES data:
-        Choose corrected or uncorrected GOES fluxes.
-        Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
-        energies to GOES uncorrected data.
-    --options uncorrected
-    --options uncorrected,S14,Bruno2017 (recommend using background subtraction)
+        
+        * Choose corrected or uncorrected GOES fluxes.
+        * Choose to apply Bruno (2017) or Sandberg et al. (2014) effective
+          energies to GOES uncorrected data.
+
+    .. code-block::
+
+        --options uncorrected
+        --options uncorrected,S14,Bruno2017 (recommend using background subtraction)
 
     BACKGROUND SUBTRACTION: Users may choose to perform a background
     subtraction by specifying:
-    --SubtractBG --BGStartDate YYYY-MM-DD --BGEndDate YYYY-MM-DD
+
+    .. code-block::
+
+        --SubtractBG --BGStartDate YYYY-MM-DD --BGEndDate YYYY-MM-DD
+
     The user should look at the data and select an appropriate time frame
     prior to the event when the background is calm and well-defined. If
     performing background subtraction, the mean background will be subtracted
@@ -217,10 +233,11 @@ V3.0
     >50 MeV, 1 pfu. The proton flux in each of these channels is reported for
     multiple times after threshold crossing (Ts). The applied time delays are
     as follows:
-        >10 MeV - Ts + 3, 4, 5, 6, 7 hours
-        >30 MeV - Ts + 3, 4, 5, 6, 7 hours
-        >50 MeV - Ts + 3, 4, 5, 6, 7 hours
-        >100 MeV - Ts + 3, 4, 5, 6, 7 hours
+        
+        * >10 MeV - Ts + 3, 4, 5, 6, 7 hours
+        * >30 MeV - Ts + 3, 4, 5, 6, 7 hours
+        * >50 MeV - Ts + 3, 4, 5, 6, 7 hours
+        * >100 MeV - Ts + 3, 4, 5, 6, 7 hours
 
     --spase_id: If you know the appropriate spase_id for the your model or
     experiment, you may specify it here to be filled in to the json file
@@ -233,8 +250,8 @@ V3.0
     Mimicking a SRAG code, endfac is set to 0.85 (85% of threshold). This
     may be changed in the future to update this to more NOAA SWPC-like logic
     to define the end of an SEP event.
-    
-    Note about ONSET PEAK: In operational_sep_quantities.py version 3.0,
+
+        Note about ONSET PEAK: In operational_sep_quantities.py version 3.0,
     the onset peak may be found up to 12 hours prior to the threshold crossing
     that determines the SEP event start time. In previous versions, the onset
     peak could only be found at or after the threshold crossing time. For events
@@ -247,49 +264,63 @@ V3.0
     operational_sep_quantities.calculate_onset_peak() has further details.
 
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
-    python3 operational_sep_quantities.py --StartDate 2012-05-17
+
+    .. code-block::
+
+        python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate "2012-05-19 12:00:00" --Experiment GOES-13
         --FluxType integral --showplot --saveplot
 
     RUN CODE FROM COMMAND FOR USER DATA SET (put on one line), e.g.:
-    python3 operational_sep_quantities.py --StartDate 2012-05-17
+
+    .. code-block::
+
+        python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment user --ModelName MyModel
         --UserFile MyFluxes.txt --FluxType integral --showplot
 
     RUN CODE FROM COMMAND LINE AND PERFORM BACKGROUND SUBTRACTION AND APPLY
     Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins.
     (note: cannot bg-subtract GOES integral fluxes), e.g.:
-    python3 operational_sep_quantities.py --StartDate 2012-05-17
+
+    .. code-block::
+        
+        python3 operational_sep_quantities.py --StartDate 2012-05-17
         --EndDate '2012-05-19 12:00:00' --Experiment GOES-13
         --FluxType differential  --showplot --options uncorrected,S14,Bruno2017
         --SubtractBG --BGStartDate 2012-05-10 --BGEndDate --2012-05-17
 
     RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
-    import operational_sep_quantities as sep
-    start_date = '2012-05-17'
-    end_date = '2012-05-19 12:00:00'
-    experiment = 'GOES-13'
-    flux_type = 'integral'
-    spase_id = ''
-    model_name = '' #if experiment is user, set model_name to describe data set
-    user_file = '' #if experiment is user, specify filename containing fluxes
-    showplot = True  #Turn to False if don't want to see plots
-    saveplot = False #turn to true if you want to save plots to file
-    options = '' #various options: S14, Bruno2017, uncorrected
-    doBGSub = False #Set true if want to perform background subtraction
-    bgstart_date = "2012-05-10" #Dates used to estimate mean background if
-    bgend_date = "2012-05-17"   #doBGSub is set to True
-    detect_prev_event = True  #Helps if previous event causes high intensities
-    two_peaks = False  #Helps if two increases above threshold in one event
-    umasep = False #Set to true if want UMASEP values (see explanation above)
-    threshold = '' #Add a threshold to 10,10 and 100,1: '30,1' or '4.9-7.3,0.01'
-    nointerp = False #Default False; set to True to stop linear interpolatin in time
 
-    sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
-        end_date, experiment, flux_type, model_name, user_file,\
-        spase_id, showplot, saveplot, detect_prev_event,  \
-        two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
-        bgend_date,nointerp)
+    .. code-block::
+
+        import operational_sep_quantities as sep
+        start_date = '2012-05-17'
+        end_date = '2012-05-19 12:00:00'
+        experiment = 'GOES-13'
+        flux_type = 'integral'
+        spase_id = ''
+        model_name = '' #if experiment is user, set model_name to describe data set
+        user_file = '' #if experiment is user, specify filename containing fluxes
+        json_type = '' #if experiment is user, specify which type of json file
+                       # should be created
+        showplot = True  #Turn to False if don't want to see plots
+        saveplot = False #turn to true if you want to save plots to file
+        options = '' #various options: S14, Bruno2017, uncorrected
+        doBGSub = False #Set true if want to perform background subtraction
+        bgstart_date = "2012-05-10" #Dates used to estimate mean background if
+        bgend_date = "2012-05-17"   #doBGSub is set to True
+        detect_prev_event = True  #Helps if previous event causes high intensities
+        two_peaks = False  #Helps if two increases above threshold in one event
+        umasep = False #Set to true if want UMASEP values (see explanation above)
+        threshold = '' #Add a threshold to 10,10 and 100,1: '30,1' or '4.9-7.3,0.01'
+        nointerp = False #Default False; set to True to stop linear interpolatin in time
+
+        sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
+            end_date, experiment, flux_type, model_name, user_file, json_type,\
+            spase_id, showplot, saveplot, detect_prev_event,  \
+            two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
+            bgend_date,nointerp)
 
     Set the desired directory locations for the data and output at the beginning
     of the program in datapath and outpath. Defaults are 'data' and 'output'.
@@ -328,22 +359,23 @@ V3.0
     >30 MeV, 1 pfu, >50 MeV, 1 pfu, and >60 MeV, 0.079 pfu. Some of the files
     below are only created if a threshold was crossed. A default run would produce
     only 10 and 100 MeV files, sep_values_*.csv and json file:
-    fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv
-    fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv
-    integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv
-    sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt
-    SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json
+
+    * fluence_SEPMOD_RT_60min_integral_gt10_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt10.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt30.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt50.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt60.0_2021_5_29.csv
+    * fluence_SEPMOD_RT_60min_integral_gt100.0_2021_5_29.csv
+    * integral_fluxes_SEPMOD_RT_60min_integral_2021_5_29.csv
+    * sep_values_SEPMOD_RT_60min_integral_2021_5_29.csv
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.10MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.30.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.50.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.60.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100.0MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.100MeV.txt
+    * SEPMOD_RT_60min_integral.2021-05-29T000000Z.2021-08-06T172140Z.json
 
     The json and txt files listed above would be the ones that would be appropriate
     to read into the CCMC SEP Scoreboard or to pass to the SEP validation code
@@ -364,8 +396,9 @@ V3.0
     VALUES TO REFLECT YOUR UNITS. If you want to use different units, but
     still have the correct operational definitions, you need to modify these
     lines in define_thresholds() below:
-        energy_thresholds = [10,100] #MeV; flux for particles of > this MeV
-        flux_thresholds = [10,1] #pfu; exceed this level of intensity
+
+    * energy_thresholds = [10,100] #MeV; flux for particles of > this MeV
+    * flux_thresholds = [10,1] #pfu; exceed this level of intensity
 
     NOTE: The first column in your flux file is assumed to be time in format
     YYYY-MM-DD HH:MM:SS. IMPORTANT FORMATTING!!
@@ -378,55 +411,65 @@ V3.0
     them. You may have one integral channel in the last bin, as this is the way
     HEPAD works and the code has been written to include that HEPAD >700 MeV
     bin along with lower differential channels.
+    NOTE: You must specify whether your input file represents model output or
+    observations so that the correct type of JSON file may be written. Use the
+    JSONType flag or json_type variable and specify "model" or "observations"
+    to indicate which is the correct format. The default is set to "model"
+    when run from main.
 
     USER VARIABLES: The user must modify the following variables in
     library/global_vars.py:
-        user_col - identify columns in your file containing fluxes to analyze;
-                even if your delimeter is white space, consider the date-time
-                column as one single column. SET IN library/global_vars.py.
-        user_delim - delimeter between columns, e.g. " " or ","   Use " " for
-                any amount of whitespace. SET IN library/global_vars.py.
-        user_energy_bins - define your energy bins at the top of the code in the
-                variable user_energy_bins. Follow the format in the subroutine
-                define_energy_bins. SET IN library/global_vars.py.
-        user_fname - specify the name of the file containing the fluxes
-                through an argument in the command line. --UserFile  The
-                user_fname variable will be updated with that filename. ARGUMENT
-        time_resolution - the program determines time_resolution
-                (seconds) by finding the difference between every consecutive
-                set of time points in the data set. The most common difference
-                is identified as the time resolution. This method should find
-                an accurate time resolution even if there are gaps in the
-                time steps.. AUTOMATICALLY DETERMINED.
-                
+
+    :user_col: identify columns in your file containing fluxes to analyze;
+            even if your delimeter is white space, consider the date-time
+            column as one single column. SET IN library/global_vars.py.
+    :user_delim: delimeter between columns, e.g. " " or ","   Use " " for
+            any amount of whitespace. SET IN library/global_vars.py.
+    :user_energy_bins: define your energy bins at the top of the code in the
+            variable user_energy_bins. Follow the format in the subroutine
+            define_energy_bins. SET IN library/global_vars.py.
+    :user_fname: specify the name of the file containing the fluxes
+            through an argument in the command line. --UserFile  The
+            user_fname variable will be updated with that filename. ARGUMENT
+    :time_resolution: the program determines time_resolution
+            (seconds) by finding the difference between every consecutive
+            set of time points in the data set. The most common difference
+            is identified as the time resolution. This method should find
+            an accurate time resolution even if there are gaps in the
+            time steps.. AUTOMATICALLY DETERMINED.
+            
     Running the code for a user-input file may look like the example below.
     Note that the --UserFile location is with respect to the "data" directory
     inside the operational-sep directory:
-    python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
+
+    .. code-block::
+
+        python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --JSONType model --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
 
     VALUES SPECIFIED IN library/global_vars.py:
-        datapath - directory containing data, 'data'
-        outpath - directory for program output, 'output'
-        plotpath - directory for saving plots, 'plots'
-        listpath - directory for lists (for run_multi_sep.py)
-        badval - will set any bad data points to this value
-        endfac - multiplicative factor to define threshold for
-                end of event; threshold*endfac (default 0.85)
-        nsigma - number of sigma to define SEP versus background
-                flux in background subtraction routine
-        version - if you are running a model or data set, allows you
-                to enter a version number
-        user_col - array defining flux columns (0 is always datetime)
-        user_delim - delimeter used to separate the columns in the time
-                profile file that you will read in
-        user_energy_bins - energy bins associated with the columns
-                specified in user_col
-        energy_units - e.g. "MeV'
-        flux_units_integral - e.g. "pfu"
-        fluence_units_integral - e.g. "cm^-2"
-        flux_units_differential - e.g. "MeV^-1*cm^-2*s^-1*sr^-1" (CCMC format)
-        fluence_units_differential - e.g. "MeV^-1*cm^-2" (CCMC format)
-        
-        (setting the units here will make correct units on plots and in json
-        file, but doesn't change operational threshold values; must be done
-        accordingly by hand)
+
+    :datapath: directory containing data, 'data'
+    :outpath: directory for program output, 'output'
+    :plotpath: directory for saving plots, 'plots'
+    :listpath: directory for lists (for run_multi_sep.py)
+    :badval: will set any bad data points to this value
+    :endfac: multiplicative factor to define threshold for
+            end of event; threshold*endfac (default 0.85)
+    :nsigma: number of sigma to define SEP versus background
+            flux in background subtraction routine
+    :version: if you are running a model or data set, allows you
+            to enter a version number
+    :user_col: array defining flux columns (0 is always datetime)
+    :user_delim: delimeter used to separate the columns in the time
+            profile file that you will read in
+    :user_energy_bins: energy bins associated with the columns
+            specified in user_col
+    :energy_units: e.g. "MeV'
+    :flux_units_integral: e.g. "pfu"
+    :fluence_units_integral: e.g. "cm^-2"
+    :flux_units_differential: e.g. "MeV^-1*cm^-2*s^-1*sr^-1" (CCMC format)
+    :fluence_units_differential: e.g. "MeV^-1*cm^-2" (CCMC format)
+    
+    (setting the units here will make correct units on plots and in json
+    file, but doesn't change operational threshold values; must be done
+    accordingly by hand)

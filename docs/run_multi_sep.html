@@ -289,11 +289,12 @@ combos = [{‘energy_channel’: {‘min’: min, ‘max’: max},’threshold�
 <p>If the experiment is ‘user’, indicating a user-input flux file, then
 the file must have the format:</p>
 <dl class="simple">
-<dt>StartDate, Enddate, Experiment, FluxType, Flags, Model Name,</dt><dd><p>User Filename, options, bgstartdate, bgenddate</p>
+<dt>StartDate, Enddate, Experiment, FluxType, Flags, Model Name,</dt><dd><p>User Filename, options, bgstartdate, bgenddate, JSON type</p>
 </dd>
 </dl>
 <p>Flags may be: TwoPeak, DetectPreviousEvent, SubtractBG</p>
 <p>options may be: “S14,Bruno2017,uncorrected”</p>
+<p>JSON type may be: model or observations</p>
 <p>Each column is returned as an array.</p>
 <p>INPUTS:</p>
 <dl class="field-list simple">
@@ -325,14 +326,17 @@ experiments and time periods to run</p>
 <dt class="field-odd">User_files</dt>
 <dd class="field-odd"><p>(string 1xn array)</p>
 </dd>
-<dt class="field-even">Options</dt>
+<dt class="field-even">Json_types</dt>
 <dd class="field-even"><p>(string 1xn array)</p>
 </dd>
-<dt class="field-odd">Bgstartdate</dt>
-<dd class="field-odd"><p>(datetime 1xn array)</p>
+<dt class="field-odd">Options</dt>
+<dd class="field-odd"><p>(string 1xn array)</p>
 </dd>
-<dt class="field-even">Bgenddate</dt>
+<dt class="field-even">Bgstartdate</dt>
 <dd class="field-even"><p>(datetime 1xn array)</p>
+</dd>
+<dt class="field-odd">Bgenddate</dt>
+<dd class="field-odd"><p>(datetime 1xn array)</p>
 </dd>
 </dl>
 </dd></dl>

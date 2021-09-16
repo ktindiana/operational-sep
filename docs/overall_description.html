@@ -174,11 +174,11 @@
             
   <div class="section" id="overall-description">
 <h1>Overall Description<a class="headerlink" href="#overall-description" title="Permalink to this headline">¶</a></h1>
-<p>operational_sep_quantities.py VERSION 3.1</p>
+<p>operational_sep_quantities.py VERSION 3.2</p>
 <p>2021-08-13</p>
 <div class="section" id="description">
 <span id="id1"></span><h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
-<p>Program description for operational_sep_quantities.py VERSION 3.1.</p>
+<p>Program description for operational_sep_quantities.py VERSION 3.2.</p>
 <p>The operational_sep_quantities project needs these files to run:</p>
 <ul class="simple">
 <li><p>operational_sep_quantities.py</p></li>
@@ -369,6 +369,8 @@ Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins.
 <span class="go">spase_id = &#39;&#39;</span>
 <span class="go">model_name = &#39;&#39; #if experiment is user, set model_name to describe data set</span>
 <span class="go">user_file = &#39;&#39; #if experiment is user, specify filename containing fluxes</span>
+<span class="go">json_type = &#39;&#39; #if experiment is user, specify which type of json file</span>
+<span class="gp">                    # </span>should be created <span class="o">(</span>model or observations<span class="o">)</span>
 <span class="go">showplot = True  #Turn to False if don&#39;t want to see plots</span>
 <span class="go">saveplot = False #turn to true if you want to save plots to file</span>
 <span class="go">options = &#39;&#39; #various options: S14, Bruno2017, uncorrected</span>
@@ -382,7 +384,7 @@ Sandberg et al. (2014) and Bruno (2017) effective energies to the GOES bins.
 <span class="go">nointerp = False #Default False; set to True to stop linear interpolatin in time</span>
 
 <span class="go">sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \</span>
-<span class="go">     end_date, experiment, flux_type, model_name, user_file,\</span>
+<span class="go">     end_date, experiment, flux_type, model_name, user_file,json_type,\</span>
 <span class="go">     spase_id, showplot, saveplot, detect_prev_event,  \</span>
 <span class="go">     two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \</span>
 <span class="go">     bgend_date,nointerp)</span>
@@ -484,6 +486,7 @@ lines in define_thresholds() below:</p>
 <li><p>Put your flux file into the “datapath” directory. Filenames will be relative to this path.</p></li>
 <li><p>Please use only differential or integral channels. Please do not mix them. You may have one integral channel in the last bin and this must also be the highest energy bin, as this is the way HEPAD works and the code has been written to include that HEPAD &gt;700 MeV bin along with lower differential channels.</p></li>
 </ul>
+<p><a href="#id2"><span class="problematic" id="id3">*</span></a>You must specify whether your input file represents model output or observations so that the correct type of JSON file may be written. Use the JSONType flag or json_type variable and specify “model” or “observations” to indicate which is the correct format. The default is set to “model” when run from main.</p>
 <p><strong>USER VARIABLES:</strong> The user must modify the following variables in
 library/global_vars.py:</p>
 <ul class="simple">
@@ -496,7 +499,7 @@ library/global_vars.py:</p>
 <p>Running the code for a user-input file may look like the example below.
 Note that the –UserFile location is with respect to the “data” directory
 inside the operational-sep directory:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold &quot;10,0.001;100,0.0001;30,1;50,1;60,0.079&quot; --spase_id &quot;spase://CCMC/SimulationModel/SEPMOD&quot; --FluxType integral</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --JSONType model --showplot --Threshold &quot;10,0.001;100,0.0001;30,1;50,1;60,0.079&quot; --spase_id &quot;spase://CCMC/SimulationModel/SEPMOD&quot; --FluxType integral</span>
 </pre></div>
 </div>
 </div>

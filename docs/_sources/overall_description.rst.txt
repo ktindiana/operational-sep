@@ -1,7 +1,7 @@
 Overall Description
 ===================
 
-operational_sep_quantities.py VERSION 3.1
+operational_sep_quantities.py VERSION 3.2
 
 2021-08-13
 
@@ -11,7 +11,7 @@ operational_sep_quantities.py VERSION 3.1
 Description
 -----------
 
-Program description for operational_sep_quantities.py VERSION 3.1.
+Program description for operational_sep_quantities.py VERSION 3.2.
 
 The operational_sep_quantities project needs these files to run:
 
@@ -239,6 +239,8 @@ RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
    spase_id = ''
    model_name = '' #if experiment is user, set model_name to describe data set
    user_file = '' #if experiment is user, specify filename containing fluxes
+   json_type = '' #if experiment is user, specify which type of json file
+                       # should be created (model or observations)
    showplot = True  #Turn to False if don't want to see plots
    saveplot = False #turn to true if you want to save plots to file
    options = '' #various options: S14, Bruno2017, uncorrected
@@ -252,7 +254,7 @@ RUN CODE IMPORTED INTO ANOTHER PYTHON PROGRAM, e.g.:
    nointerp = False #Default False; set to True to stop linear interpolatin in time
 
    sep_year, sep_month,sep_day, jsonfname = sep.run_all(start_date, \
-        end_date, experiment, flux_type, model_name, user_file,\
+        end_date, experiment, flux_type, model_name, user_file,json_type,\
         spase_id, showplot, saveplot, detect_prev_event,  \
         two_peaks, umasep, threshold, options, doBGSub, bgstart_date, \
         bgend_date,nointerp)
@@ -364,6 +366,7 @@ lines in define_thresholds() below:
 * Any bad or missing fluxes must be indicated by a negative value.
 * Put your flux file into the "datapath" directory. Filenames will be relative to this path.
 * Please use only differential or integral channels. Please do not mix them. You may have one integral channel in the last bin and this must also be the highest energy bin, as this is the way HEPAD works and the code has been written to include that HEPAD >700 MeV bin along with lower differential channels.
+*You must specify whether your input file represents model output or observations so that the correct type of JSON file may be written. Use the JSONType flag or json_type variable and specify "model" or "observations" to indicate which is the correct format. The default is set to "model" when run from main.
 
 **USER VARIABLES:** The user must modify the following variables in
 library/global_vars.py:
@@ -380,7 +383,7 @@ inside the operational-sep directory:
 
 .. code-block:: console
 
-  python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
+  python3 operational_sep_quantities.py --StartDate 2021-05-29 --EndDate 2021-06-05 --Experiment user --UserFile SEPMOD/Scoreboard/SEPMOD.20210529_000000.20210529_165133.20210529_133005_geo_integral_tseries_timestamped_60min.txt --ModelName SEPMOD_RT_60min --JSONType model --showplot --Threshold "10,0.001;100,0.0001;30,1;50,1;60,0.079" --spase_id "spase://CCMC/SimulationModel/SEPMOD" --FluxType integral
     
 Global Variables
 ----------------
