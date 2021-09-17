@@ -216,6 +216,8 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2021-9-16, changes in 3.2: add feature to specify which type of json
 #   file to write if the user inputs their own experiment. JSONType flag
 #   added to the inputs.
+#   Fixed bug in extract_integral_fluxes that only happened when an
+#   input data set did not have the >10 MeV channel.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -816,7 +818,7 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
                 print("Didn't find energy threshold for " \
                 + str(energy_thresholds[i]) + ", " + str(flux_thresholds[i]))
                 if len(integral_fluxes) == 0:
-                    integral_fluxes = [-999]*len(fluxes[0,:])
+                    integral_fluxes = [np.array([-999]*len(fluxes[0,:]))]
                 else:
                     integral_fluxes = np.concatenate((integral_fluxes,
                                         [np.array([-999]*len(fluxes[0,:]))]))
