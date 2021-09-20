@@ -8,7 +8,7 @@ from library import global_vars as vars
 from library import keys
 import os
 
-__version__ = "1.3"
+__version__ = "1.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -65,6 +65,9 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   in operational_sep_quantities.py v3.2. Allows user to indicate
 #   if a user input file should be written to observation or model
 #   json file in fill_json and clean_json.
+#2021-09-20, changes in 1.4: Added threshold units to the all clear
+#   fields in fill_json (I had previously forgotten them and the
+#   fields were being left as empty strings).
 
 version = vars.version
 
@@ -448,6 +451,8 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
                                 = all_clear
                 template[key][type_key][tidx]['all_clear']['threshold'] \
                                 = flux_thresholds[i]
+                template[key][type_key][tidx]['all_clear']['threshold_units'] \
+                                = flux_units
             
             #SEP Flux Time Profile
             template[key][type_key][tidx]['sep_profile'] = profile_filenames[i]
@@ -486,6 +491,8 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
                                 = all_clear
                 template[key][type_key][tidx]['all_clear']['threshold'] \
                                 = flux_thresholds[i]
+                template[key][type_key][tidx]['all_clear']['threshold_units'] \
+                                = flux_units
 
     return template
 
