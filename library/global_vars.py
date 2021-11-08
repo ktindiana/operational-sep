@@ -25,6 +25,8 @@ nsigma = 2.0
 
 ########FOR USER DATA SETS#######
 version = "" #Enter the version number of your model or data set
+time_shift = 0. #float in hours !!!WILL SHIFT TIMES IN USER-INPUT FILES IF NON-ZERO!!!
+               # positive shifts times later, negative shifts times earlier
 
 #####(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
@@ -34,20 +36,22 @@ user_col = arr.array('i',[1,2,3,4,5,6,7,8])
 #   REleASE-60 [6,7,8,9]
 #   REleASE-90 [10,11,12,13]
 #   SPARX [1,2]
+#   STAT [1,2,3]
 #   SEPMOD [1,2,3,4,5,6,7,8]
 #   SEPCaster [1,2,3,4,5]
 #   GOES-16 [1,2,3,4,5,6,7,8]
-#   M-FLAMPA [1]
+#   M-FLAMPA [1,3,5]
 #   iPATH differential [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
 
 #####DELIMETER between columns; for whitespace separating columns, use ""
-user_delim = ","
+user_delim = ""
 
 #####DEFINE ENERGY BINS associated with user file and columns specified above as:
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
-user_energy_bins = [[1,-1],[5,-1],[10,-1],[30,-1],[50,-1],[60,-1],[100,-1],[500,-1]]
+user_energy_bins = [[750,-1],[500,-1],[300,-1],[100,-1],\
+                    [60,-1],[50,-1],[30,-1],[10,-1]]
 
 #   SEPEM_H_GOES13 P3 - P7 [[4,9],[12,23],[26,38],[40,73],[100,142],[160,242]]
 #   EPREM [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
@@ -58,11 +62,12 @@ user_energy_bins = [[1,-1],[5,-1],[10,-1],[30,-1],[50,-1],[60,-1],[100,-1],[500,
 #   SEPMOD IMP8 differential [[72,72],[53,53],[36,36],[26,26],[17,17],\
 #                    [8.6,8.6],[5.1,5.1],[2.6,2.6],[1.2,1.2]]
 #   SPARX [[10,-1],[60,-1]]
+#   STAT [[10,-1],[50,-1],[100,-1]]
 #   ASPECS [[10,-1],[30,-1]]
-#   RELeASE [[4,9],[9,15.8],[15.8,39.6],[20.0,35.5]]
+#   RELeASE [[4,9],[9,15.8],[15.8,39.6],[28.2,50.1]]
 #   SEPCaster [[5,-1],[15,-1],[30,-1],[60,-1],[100,-1]]
 #   GOES-16 [[1,-1],[5,-1],[10,-1],[30,-1],[50,-1],[60,-1],[100,-1],[500,-1]]
-#   M-FLAMPA [[10,-1]]
+#   M-FLAMPA [[10,-1],[50,-1],[100,-1]]
 #   iPATH differential [[0.1,0.1],[0.14677993,0.14677993],[0.21544347,0.21544347],\
 #                    [0.31622777,0.31622777],[0.46415888,0.46415888],\
 #                    [0.68129207,0.68129207],[1,1],[1.4677993,1.4677993],\

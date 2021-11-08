@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.2"
+__version__ = "3.3"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -218,6 +218,14 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   added to the inputs.
 #   Fixed bug in extract_integral_fluxes that only happened when an
 #   input data set did not have the >10 MeV channel.
+#2021-09-25, changes in 3.3: When convert GOES corrected differential
+#   flux to integral flux, perform a background subtraction on the HEPAD
+#   channels, since those are not treated with the Zwickl correction.
+#   Currently using very rough background estimates:
+#   330 - 420 MeV: 0.001804912
+#   420 - 510 MeV: 0.001014797
+#   510 - 700 MeV: 0.000431988
+#   >700 MeV:      0.00013735
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -605,7 +613,7 @@ def all_program_info(): #only for documentation purposes
 
 
 def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
-                fluxes, options):
+                fluxes, options, doBGSub):
     """ If user selected differential fluxes, convert to integral fluxes to
         caluculate operational threshold crossings (>10 MeV protons exceed 10
         pfu, >100 MeV protons exceed 1 pfu).
@@ -720,6 +728,40 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                             'flux of zero. Should not happen here, bin [i+1,j] '
                             '['+ str(i+1) + ',' + str(j) + '].' )
                     #F2 = 1e-15 #Set to very small number for interpolation
+                
+                #FOR GOES differential corrected fluxes, subtract a
+                #static value as background before estimating integral
+                #   330 - 420 MeV: 0.001804912
+                #   420 - 510 MeV: 0.001014797
+                #   510 - 700 MeV: 0.000431988
+                #   >700 MeV:      0.00013735
+                if 'GOES' in experiment and 'uncorrected' not in options\
+                    and not doBGSub:
+                    if energy_bins[i][0] == 330.0 and energy_bins[i][1] == 420.0:
+                        F1 = F1 - 0.001804912
+                        if F1 < 0: F1 = 0
+                    if energy_bins[i+1][0] == 330.0 and energy_bins[i+1][1] == 420.0:
+                        F2 = F2 - 0.001804912
+                        if F2 < 0: F2 = 0
+                        
+                    if energy_bins[i][0] == 420.0 and energy_bins[i][1] == 510.0:
+                        F1 = F1 - 0.001014797
+                        if F1 < 0: F1 = 0
+                    if energy_bins[i+1][0] == 420.0 and energy_bins[i+1][1] == 510.0:
+                        F2 = F2 - 0.001014797
+                        if F2 < 0: F2 = 0
+                        
+                    if energy_bins[i][0] == 510.0 and energy_bins[i][1] == 700.0:
+                        F1 = F1 - 0.000431988
+                        if F1 < 0: F1 = 0
+                    if energy_bins[i+1][0] == 510.0 and energy_bins[i+1][1] == 700.0:
+                        F2 = F2 - 0.000431988
+                        if F2 < 0: F2 = 0
+                 
+                if F1 == 0 or F2 == 0: #add 0 flux
+                    ninc = ninc + 1
+                    continue
+                 
                 logF1 = np.log(F1)
                 logF2 = np.log(F2)
                 logE1 = np.log(bin_center[i])
@@ -744,7 +786,14 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
 
         #if last bin is integral, add (HEPAD)
         if energy_bins[nbins-1][1] == -1 and fluxes[nbins-1,j] >= 0:
-            sum_flux = sum_flux + fluxes[nbins-1,j]
+            intflx = fluxes[nbins-1,j]
+            if 'GOES' in experiment and 'uncorrected' not in options\
+                and not doBGSub:
+                if energy_bins[i][0] == 700.0 and energy_bins[i][1] == -1:
+                        intflx = intflx - 0.00013735
+                        if intflx < 0: intflx = 0
+            
+            sum_flux = sum_flux + intflx
             ninc = ninc + 1
 
         if ninc == 0:
@@ -756,7 +805,7 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
 
 
 def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
-            energy_thresholds, energy_bins, options):
+            energy_thresholds, energy_bins, options, doBGSub):
     """ Select or create the integral fluxes that correspond to the desired
         energy thresholds.
         If the user selected differential fluxes, then the
@@ -796,7 +845,7 @@ def extract_integral_fluxes(fluxes, experiment, flux_type, flux_thresholds,
     if flux_type == "differential":
         for i in range(nthresh):
             integral_flux = from_differential_to_integral_flux(experiment, \
-                            energy_thresholds[i], energy_bins, fluxes, options)
+                            energy_thresholds[i], energy_bins, fluxes, options, doBGSub)
             if i == 0:
                 integral_fluxes = [np.array(integral_flux)]
             else:
@@ -3079,7 +3128,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
     #Pull out or estimate only the integral flux channels for which a
     #threshold will be applied
     integral_fluxes = extract_integral_fluxes(fluxes, experiment, flux_type,
-                    flux_thresholds, energy_thresholds, energy_bins, options)
+                    flux_thresholds, energy_thresholds, energy_bins, options, doBGSub)
 
     #Calculate SEP event quantities for energy and flux threshold combinations
     #integral fluxes are used to define event start and stop

@@ -13,8 +13,9 @@ from dateutil.parser import parse
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import math
 
-__version__ = "0.3"
+__version__ = "0.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -25,6 +26,10 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2021-02-25, Changes 0.3: Changed GOES-13, 14, 15 S14 option to include
 #   S14 corrections to channels P6 and P7. Had previously only
 #   applied S14 to P2 - P5 for those experiments.
+#2021-09-24, Changes in 0.4: added a global_var called time_shift
+#   which allows users to shift the times in user-input files by
+#   time_shift number of hours. Changed in read_in_user_files and
+#   added convert_decimal_hour.
 
 
 datapath = gl.datapath
@@ -1103,6 +1108,24 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
     return all_dates, all_fluxes, west_detector
 
 
+def convert_decimal_hour(decimal_hours):
+    """ Convert an hour in decimals to number of hours, minutes,
+        and seconds.
+    """
+    hours = math.floor(decimal_hours)
+    
+    frac = decimal_hours - float(hours)
+    decimal_minutes = frac*60.
+    
+    minutes = math.floor(decimal_minutes)
+    frac = decimal_minutes - float(minutes)
+    
+    decimal_seconds = frac*60.
+    seconds = round(decimal_seconds)
+    
+    return hours, minutes, seconds
+
+
 def read_in_user_files(filenames1):
     """ Read in file containing flux time profile information that was
         specified by the user.
@@ -1116,6 +1139,10 @@ def read_in_user_files(filenames1):
         at the very beginning, including empty lines.
         Be sure to add the energy bins associated with your flux columns in the
         subroutine define_energy_bins under the "user" is statement.
+        
+        Allow user to add a time shift to files using the global_var time_shift
+        to specify the time shift in hours. A negative value shifts earlier, a
+        positive value shifts later.
         
         INPUTS:
     
@@ -1131,6 +1158,9 @@ def read_in_user_files(filenames1):
        
     """
     print('Reading in user-specified files.')
+    if gl.time_shift != 0:
+        print("!!!!!!!Shifting times by time_shift in global_vars.py: " \
+            + str(gl.time_shift) + " hours. Set to zero if do not want to shift.")
     NFILES = len(filenames1)
     ncol = len(user_col) #include column for date
     for i in range(NFILES):
@@ -1179,6 +1209,13 @@ def read_in_user_files(filenames1):
 
                 date = datetime.datetime.strptime(str_date,
                                                 "%Y-%m-%d %H:%M:%S")
+                #apply a time shift to user data with the variable set in
+                #global_vars
+                if gl.time_shift != 0:
+                    hours, minutes, seconds = convert_decimal_hour(gl.time_shift)
+                    date = date + datetime.timedelta(hours=hours, minutes=minutes,\
+                                                        seconds=seconds)
+                    
                 dates.append(date)
                 
                 for j in range(len(user_col_mod)):

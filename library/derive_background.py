@@ -22,10 +22,12 @@ import array as arr
 import pandas as pd
 import scipy
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
+
+#2021-09-25, changes in 0.2: print out means and sigmas in derive_background
 
 datapath = vars.datapath
 outpath = vars.outpath
@@ -583,6 +585,11 @@ def derive_background(str_startdate, str_enddate, str_bgstartdate, \
     means, sigmas = iterate_background(bg_fluxes, energy_bins)
     bgfluxes, sepfluxes = separate_sep_and_background(fluxes, dates,\
                      means, sigmas)
+                     
+    print("=====BACKROUND SUBTRACTION=====")
+    for k in range(len(means)):
+        print("Mean: " + str(means[k]) + " +- " + str(vars.nsigma) + "* " + str(sigmas[k]))
+    
     #To get into a consistent format as used in operational_sep_quantities.py
     bgfluxes = np.array(bgfluxes)
     sepfluxes = np.array(sepfluxes)
