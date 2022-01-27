@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.3"
+__version__ = "3.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -226,6 +226,10 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   420 - 510 MeV: 0.001014797
 #   510 - 700 MeV: 0.000431988
 #   >700 MeV:      0.00013735
+#2021-11-16, changes in 3.4: Added support in read_datasets and
+#   operational_sep_quantities to read in GOES-R differential flux
+#   data (5 min averaged). Integral fluxes are not readily available
+#   from the NOAA website.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -2262,6 +2266,12 @@ def error_check_inputs(startdate, enddate, experiment, flux_type, json_type,
         and flux_type == "integral"):
         sys.exit('The SOHO/EPHIN data set only provides differential fluxes.'
             ' Please change your FluxType to differential. Exiting.')
+    
+    #UNTIL NOAA PROVIDES A SUPPORTED INTEGRAL PRODUCT
+    if ((experiment == "GOES-16" or experiment == "GOES-17") \
+        and flux_type == "integral"):
+        sys.exit('The GOES-R data sets only provides differential fluxes.'
+            ' Please change your FluxType to differential. Exiting.')
             
     if experiment == "user" and (json_type != "model" \
         and json_type != "observations"):
@@ -3459,7 +3469,8 @@ if __name__ == "__main__":
                     " with quotes"))
     parser.add_argument("--Experiment", type=str, choices=['GOES-08',
             'GOES-10', 'GOES-11', 'GOES-12', 'GOES-13', 'GOES-14', 'GOES-15',
-            'SEPEM', 'SEPEMv3', 'EPHIN', 'EPHIN_REleASE', 'user'],
+            'GOES-16', 'GOES-17','SEPEM', 'SEPEMv3', 'EPHIN', 'EPHIN_REleASE',
+            'user'],
             default='', help="Enter name of spacecraft or dataset")
     parser.add_argument("--FluxType", type=str, choices=['integral',
             'differential'], default='',

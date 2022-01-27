@@ -14,8 +14,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import math
+import netCDF4
 
-__version__ = "0.4"
+__version__ = "0.5"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -30,6 +31,8 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   which allows users to shift the times in user-input files by
 #   time_shift number of hours. Changed in read_in_user_files and
 #   added convert_decimal_hour.
+#2021-11-16, Changes in 0.5: added support for GOES-16 and GOES-17
+#   differential fluxes.
 
 
 datapath = gl.datapath
@@ -386,6 +389,84 @@ def check_goes_data(startdate, enddate, experiment, flux_type):
     return filenames1, filenames2, filenames_orien
 
 
+
+def check_goesR_data(startdate, enddate, experiment, flux_type):
+    """Check that GOES-R data is on your computer or download it from the NOAA
+        website. Return the filenames associated with the correct GOES data.
+        GOES-R files are saved daily in cdf format.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the GOES
+            EPS or EPEAD data that span the desired time range
+            (monthly files)
+        :filenames2: (string array) the files containing the GOES
+            HEPAD data that span the desired time range
+        :filenames_orien: (string array) the files
+            that indicate the orientation of the GOES EPS or
+            EPEAD detector (so can choose westward facing detector)
+        
+    """
+    styear = startdate.year
+    stmonth = startdate.month
+    stday = startdate.day
+    endyear = enddate.year
+    endmonth = enddate.month
+    endday = enddate.day
+
+    #Array of filenames that contain the data requested by the User
+    filenames1 = []  #GOES-R
+    filenames2 = []  #place holder
+    filenames_orien = []  #place holder
+
+    #GOES-R data is stored in daily data files
+    td = enddate - startdate
+    NFILES = td.days #number of data files to download
+    if td.seconds > 0: NFILES = NFILES + 1
+
+    if experiment == "GOES-16":
+        prefix = 'sci_sgps-l2-avg5m_g16_'
+        satellite = 'goes16'
+
+    if experiment == "GOES-17":
+        prefix = 'sci_sgps-l2-avg5m_g17_'
+        satellite = 'goes17'
+
+
+    #for every month that data is required, check if file is present or
+    #needs to be downloaded.
+    for i in range(NFILES):
+        date = startdate + datetime.timedelta(days=i)
+        year = date.year
+        month = date.month
+        day = date.day
+        date_suffix = 'd%i%02i%02i' % (year,month,day)
+ 
+        fname1 = prefix + date_suffix + '_v2-0-0.nc'
+        exists1 = os.path.isfile(datapath + '/GOES-R/' + fname1)
+        filenames1.append('GOES-R/' + fname1)
+
+        if not exists1:
+            url=('https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/%s/l2/data/sgps-l2-avg5m/%i/%02i/%s' % (satellite,year,month,fname1))
+            try:
+                urllib.request.urlopen(url)
+                wget.download(url, datapath + '/GOES-R/' + fname1)
+            except urllib.request.HTTPError:
+                sys.exit("Cannot access orientation file at " + url +
+               ". Please check that selected spacecraft covers date range.")
+  
+
+    return filenames1, filenames2, filenames_orien
+
+
+
 def check_ephin_data(startdate, enddate, experiment, flux_type):
     """Check for SOHO/COSTEP/EPHIN data on your computer. If not there,
         download from http://ulysses.physik.uni-kiel.de/costep/level3/l3i/
@@ -556,10 +637,16 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
         filenames1 = check_sepem_data(startdate, enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
 
-    if experiment[0:4] == "GOES":
+    if experiment[0:4] == "GOES" and experiment != "GOES-16" and experiment != "GOES-17":
         filenames1, filenames2, filenames_orien = check_goes_data(startdate, \
                                         enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
+
+    if experiment == "GOES-16" or experiment == "GOES-17":
+        filenames1, filenames2, filenames_orien = check_goesR_data(startdate, \
+                                        enddate, experiment, flux_type)
+        return filenames1, filenames2, filenames_orien
+
 
     if experiment == "EPHIN":
         filenames1 = check_ephin_data(startdate, enddate, experiment, flux_type)
@@ -870,7 +957,7 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
         csvfile.close()
 
         #If reading in multiple files, then combine all data into one array
-        if i==0:
+        if all_fluxes == []:
             all_fluxes = fluxes
             all_dates = dates
         else:
@@ -881,6 +968,108 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
         print("read_in_goes: Did not find the data you were looking for.")
         
     return all_dates, all_fluxes, west_detector
+
+
+
+def read_in_goesR(experiment, flux_type, filenames1):
+    """Read in GOES-R data from your computer.
+        Appears that only differential channels + one >500 MeV
+        integral channel are available in the files.
+        
+        Reading in Level 2 data.
+        Flux fill value = -1e+31
+        Differential flux units = protons/(cm^2 sr keV s)
+        
+        Time stamp is seconds since 2000-01-01 12:00:00
+        
+        +X and -X are stored in the same array as the 0th and 1st
+        array entry... figuring out which are which
+        Typicaly, -X faces West and +X faces East
+        
+        YawFlipFlag indicates if the spacecraft is flipped.
+        Assume a value of 1 indicates the spacecraft is flipped.
+        
+        https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/goes16/l1b/docs/GOES-16_SEISS_SGPS_L1b_Provisional_Maturity_ReadMe.pdf
+        "There are two SGPS sensor units mounted on each GOES-R series spacecraft, facing in the spacecraft -X and +X directions. When the spacecraft is not in the yaw-flipped configuration SGPS-X faces west and SGPS+X faces east. Each SGPS unit has three solid-state (silicon detector) telescopes T1, T2, and T3 for measuring 1-25, 25-80, and 80-500 MeV protons, respectively. All three telescopes have the same look direction (i.e., +X or -X). T1 and T2 have 60o (full cone angle) fields of view, and T3 has a 90o field of view. Each unit measures 1-500 MeV proton fluxes in 13 logarithmically spaced differential channels (P1-P10) and >500 proton flux in a single integral channel (P11). The L1b data product is one-second cadence fluxes. The channels generally register counts above backgrounds only during solar energetic particle events, except for P11 which measures galactic cosmic rays in the absence of a solar particle event."
+        
+        
+        INPUTS:
+        
+        :experiment: (string) experiment name
+        :flux_type: (string) integral or differential
+        :filenames1: (string array) the files containing the GOES-R
+            netcdf data that span the desired time range
+        
+            
+        OUTPUTS:
+        
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+    
+        Note that all_dates and all_fluxes will be trimmed down to the
+        user time period of interest.
+        
+    """
+    ndiff_chan = 13
+    conversion = 1000. #keV/MeV
+    
+    NFILES = len(filenames1)
+    all_dates = []
+    all_fluxes = []
+    west_detector = [] #place holder, will be filled if needed
+
+    #GOES-R times are wrt reference time of 2000-01-01 12:00:00
+    ref_date = datetime.datetime(year=2000, month=1, day=1, hour=12)
+    
+    #Read in fluxes from files
+    for i in range(NFILES):
+        infile = os.path.expanduser(datapath + "/" + filenames1[i])
+        data = netCDF4.Dataset(infile)
+        
+        #13 differential channels, one integral channel
+        #5 minute time steps
+        fluxes = np.zeros(shape=(14,288))
+        
+        ntimes = len(data.variables["L2_SciData_TimeStamp"])
+        for j in range(ntimes):
+            time_sec = float(data.variables["L2_SciData_TimeStamp"][j].data)
+            td = datetime.timedelta(seconds=time_sec)
+            date = ref_date + td
+            all_dates.append(date)
+            
+            #Orientation flag
+            flip_flag = data.variables["YawFlipFlag"][j]
+            idx = 0
+            if flip_flag == 1:
+                idx = 1
+            #if flip_flag > 1:
+            #    idx = None #exclude these points because in process of flip
+            
+            #Extract the 13 differential channels
+            for k in range(ndiff_chan):
+                #[288 time step, 2 +/-X, 13 energy chan]
+                flux = data.variables["AvgDiffProtonFluxObserved"][j][idx][k]
+                if flux < 0:
+                    flux = badval
+                fluxes[k][j] = flux*conversion
+            
+            #>500 MeV integral channel
+            flux = data.variables["AvgIntProtonFluxObserved"][j][idx]
+            if flux < 0:
+                flux = badval
+            fluxes[-1][j] = flux
+                
+        if all_fluxes == []:
+            all_fluxes = fluxes
+        else:
+            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
+
+
+    return all_dates, all_fluxes, west_detector
+
+
 
 
 def read_in_ephin(experiment, flux_type, filenames1):
@@ -1091,9 +1280,14 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
         return all_dates, all_fluxes, west_detector
 
     #All GOES data
-    if experiment[0:4] == "GOES":
+    if experiment[0:4] == "GOES" and experiment != "GOES-16" and experiment != "GOES-17":
         all_dates, all_fluxes, west_detector = read_in_goes(experiment, \
                     flux_type, filenames1, filenames2, filenames_orien, options)
+        return all_dates, all_fluxes, west_detector
+        
+    if experiment == "GOES-16" or experiment == "GOES-17":
+        all_dates, all_fluxes, west_detector = read_in_goesR(experiment, \
+                    flux_type, filenames1)
         return all_dates, all_fluxes, west_detector
 
     if experiment == "EPHIN":
@@ -1613,6 +1807,14 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
                     energy_bins[7] = [325.3,464.6] #P9
                     energy_bins[8] = [420.4,573.1] #P10
                     energy_bins[9] = [878.6,1230.0] #P11
+
+
+    if experiment == "GOES-16" or experiment == "GOES-17":
+        energy_bins = [[1.02,1.86],[1.9,2.3],[2.31,3.34],
+                       [3.4,6.48],[5.84,11.0],[11.64,23.27],
+                       [24.9,38.1],[40.3,73.4],[83.7,98.5],
+                       [99.9,118.0],[115.0,143.0],[160.0,242.0],
+                       [276.0,404.0],[500.0,-1]]
 
 
     if experiment == "user":
