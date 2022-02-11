@@ -1,8 +1,15 @@
 # operational-sep
 
-**operational_sep_quantities.py CURRENT VERSION 3.2**
+**operational_sep_quantities.py CURRENT VERSION 3.5**
 
 Please see the extensive and nicely formatted web documentation at <a href="https://ktindiana.github.io/operational-sep/index.html" target="_blank">https://ktindiana.github.io/operational-sep/index.html</a>.
+
+This program will calculate various useful pieces of operational information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15, -16, -17 data, SOHO/EPHIN L3 data, SOHO/EPHIN real time data from the REleASE website, and the SEPEM (RSDv2 and RSDv3) dataset.
+
+**Recently added support for GOES-16 and GOES-17:**\
+GOES-16 and GOES-17 L2 differential fluxes, including the >500 MeV channel may now be plotted.
+
+GOES-R primary spacecraft integral channels may also be plotted. The integral fluxes from >1 to >100 MeV come from the daily json files posted on NOAA SWPCs website, and are archived at CCMC. These are real time data and not the official L2 integral flux product, which is not yet available in the NOAA archive (as of 2022-02-11).
 
 **All files needed to run operational_sep_quantities.py:**\
 operational_sep_quantities.py\
@@ -24,7 +31,7 @@ This code was originally developed in support of the SHINE 2019 SEP modeling cha
 
 Users may specify any of the native data sets or supply their own flux time profiles. If differential fluxes are used, the >10 and >100 MeV integral fluxes will be estimated from the available differential channels.
 
-Data sets that are native to this code currently include GOES-08 to GOES-15 corrected or uncorrected fluxes, SEPEM RSDv2, and SOHO/EPHIN Level3 data. Native data sets will continue to be expanded and various calibration schemes from the literature will be made available. 
+Data sets that are native to this code currently include GOES-08 to GOES-17 corrected or uncorrected fluxes, SEPEM RSDv2, and SOHO/EPHIN Level3 data. Native data sets will continue to be expanded and various calibration schemes from the literature will be made available. 
 
 An option has been added to perform a background subtracion of the SEP flux. The code for this is contained in derive_background.py, which is automatically called from operational_sep_quantities.py if background subtraction is specified.
 
@@ -85,7 +92,7 @@ python3 operational_sep_quantities.py --StartDate 2012-05-17 --EndDate "2012-05-
     model_name = '' #if experiment is user, set model_name to describe data set
     user_file = '' #if experiment is user, specify filename containing fluxes
     json_type = '' #if experiment is user, specify which type of json file
-                   # should be created ("model" or "observations")
+                   \# should be created ("model" or "observations")
     showplot = True  #Turn to False if don't want to see plots
     saveplot = False #turn to true if you want to save plots to file
     options = '' #various options: S14, Bruno2017, uncorrected

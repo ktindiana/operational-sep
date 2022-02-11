@@ -16,7 +16,7 @@ import sys
 import math
 import netCDF4
 
-__version__ = "0.5"
+__version__ = "0.6"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -33,6 +33,11 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   added convert_decimal_hour.
 #2021-11-16, Changes in 0.5: added support for GOES-16 and GOES-17
 #   differential fluxes.
+#2022-02-11, Changes in 0.6: Added support for GOES-R (16&17) primary
+#   integral fluxes served by CCMC. These are the real time fluxes
+#   from NOAA archived on the CCMC website. These are not the
+#   official NOAA L2 integral fluxes. Those are not yet
+#   available.
 
 
 datapath = gl.datapath
@@ -395,6 +400,9 @@ def check_goesR_data(startdate, enddate, experiment, flux_type):
         website. Return the filenames associated with the correct GOES data.
         GOES-R files are saved daily in cdf format.
         
+        GOES-16 & 17 differential fluxes are the official science-grade product
+        provided by NOAA SWPC.
+        
         INPUTS:
         
         :startdate: (datetime) start of time period specified by user
@@ -414,6 +422,11 @@ def check_goesR_data(startdate, enddate, experiment, flux_type):
             EPEAD detector (so can choose westward facing detector)
         
     """
+    if flux_type == "integral":
+        sys.exit("check_goesR_data: This subroutine is only valid for GOES-R "
+                "differential fluxes. Please set the flux_type to differential "
+                "and try again.")
+                
     styear = startdate.year
     stmonth = startdate.month
     stday = startdate.day
@@ -440,7 +453,7 @@ def check_goesR_data(startdate, enddate, experiment, flux_type):
         satellite = 'goes17'
 
 
-    #for every month that data is required, check if file is present or
+    #for every day that data is required, check if file is present or
     #needs to be downloaded.
     for i in range(NFILES):
         date = startdate + datetime.timedelta(days=i)
@@ -464,6 +477,92 @@ def check_goesR_data(startdate, enddate, experiment, flux_type):
   
 
     return filenames1, filenames2, filenames_orien
+
+
+def check_goesR_RTdata(startdate, enddate, experiment, flux_type):
+    """Check that GOES-R data is on your computer or download it from the NOAA
+        website. Return the filenames associated with the correct GOES data.
+        GOES-R real time integral files are saved daily in txt format.
+        
+        The GOES-16 & 17 integral fluxes are the real time product plotted
+        by SWPC on a daily basis and archived at CCMC. These fluxes are
+        not the official science-grade integral flux product from NOAA, as
+        these are not yet available. Also, only the PRIMARY spacecraft
+        integral fluxes are available and it isn't possible to choose
+        between GOES-16 or GOES-17 for the integral fluxes. When the official
+        integral fluxes are available, it will be possible to select the
+        spacecraft.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the GOES
+            EPS or EPEAD data that span the desired time range
+            (monthly files)
+        :filenames2: (string array) the files containing the GOES
+            HEPAD data that span the desired time range
+        :filenames_orien: (string array) the files
+            that indicate the orientation of the GOES EPS or
+            EPEAD detector (so can choose westward facing detector)
+        
+    """
+    if flux_type == "differential":
+        sys.exit("check_goesR_RTdata: This subroutine is only valid for GOES-R "
+                "integral fluxes. Please set the flux_type to integral and try "
+                "again.")
+    
+    styear = startdate.year
+    stmonth = startdate.month
+    stday = startdate.day
+    endyear = enddate.year
+    endmonth = enddate.month
+    endday = enddate.day
+
+    #Array of filenames that contain the data requested by the User
+    filenames1 = []  #GOES-R
+    filenames2 = []  #place holder
+    filenames_orien = []  #place holder
+
+    #GOES-R data is stored in daily data files
+    td = enddate - startdate
+    NFILES = td.days #number of data files to download
+    if td.seconds > 0: NFILES = NFILES + 1
+
+    #pulls primary spacecraft fluxes
+    prefix = '_Gp_part_5m'
+
+
+    #for every day that data is required, check if file is present or
+    #needs to be downloaded.
+    for i in range(NFILES):
+        date = startdate + datetime.timedelta(days=i)
+        year = date.year
+        month = date.month
+        day = date.day
+        date_suffix = '%i%02i%02i' % (year,month,day)
+ 
+        fname1 = date_suffix + prefix + '.txt'
+        exists1 = os.path.isfile(datapath + '/GOES-R/' + fname1)
+        filenames1.append('GOES-R/' + fname1)
+
+        if not exists1:
+            url=('https://iswa.gsfc.nasa.gov/iswa_data_tree/observation/magnetosphere/goes_p/particle/%i/%02i/%s' % (year,month,fname1))
+            try:
+                urllib.request.urlopen(url)
+                wget.download(url, datapath + '/GOES-R/' + fname1)
+            except urllib.request.HTTPError:
+                sys.exit("Cannot access orientation file at " + url +
+               ". Please check that selected spacecraft covers date range.")
+  
+
+    return filenames1, filenames2, filenames_orien
+
 
 
 
@@ -642,8 +741,13 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
                                         enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
 
-    if experiment == "GOES-16" or experiment == "GOES-17":
+    if (experiment == "GOES-16" or experiment == "GOES-17") and flux_type == "differential":
         filenames1, filenames2, filenames_orien = check_goesR_data(startdate, \
+                                        enddate, experiment, flux_type)
+        return filenames1, filenames2, filenames_orien
+        
+    if (experiment == "GOES-16" or experiment == "GOES-17") and flux_type == "integral":
+        filenames1, filenames2, filenames_orien = check_goesR_RTdata(startdate, \
                                         enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
 
@@ -1012,7 +1116,7 @@ def read_in_goesR(experiment, flux_type, filenames1):
         user time period of interest.
         
     """
-    ndiff_chan = 13
+    ndiff_chan = 13 #5
     conversion = 1000. #keV/MeV
     
     NFILES = len(filenames1)
@@ -1049,6 +1153,8 @@ def read_in_goesR(experiment, flux_type, filenames1):
             
             #Extract the 13 differential channels
             for k in range(ndiff_chan):
+                ###TEMP###
+                #kk = k + 8
                 #[288 time step, 2 +/-X, 13 energy chan]
                 flux = data.variables["AvgDiffProtonFluxObserved"][j][idx][k]
                 if flux < 0:
@@ -1066,6 +1172,95 @@ def read_in_goesR(experiment, flux_type, filenames1):
         else:
             all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
 
+
+    return all_dates, all_fluxes, west_detector
+
+
+
+def read_in_goesR_RT(experiment, flux_type, filenames1):
+    """ Read in GOES-R data from your computer.
+        Read in the NOAA SWPC real time integral flux files from
+        the 1 day json files for the primary GOES spacecraft.
+        These files are archived on the CCMC website.
+        
+        The >500 MeV fluxes are in the differential files. This
+        file contains fluxes up to >100 MeV.
+        
+        Reading in Level 2 data.
+        Flux fill value = -100000.0
+        Units: Particles = Protons/cm2-s-sr
+        Units: Electrons = Electrons/cm2-s-sr
+        
+        Time stamp is YYYYY M D HHMM: 2022  1  20  0000
+        
+        No selection for +/-X direction. Assume always westward facing.
+        
+        
+        INPUTS:
+        
+        :experiment: (string) experiment name
+        :flux_type: (string) integral or differential
+        :filenames1: (string array) the files containing the GOES-R
+            netcdf data that span the desired time range
+        
+            
+        OUTPUTS:
+        
+        :all_dates: (datetime 1xm array) time points for every time in
+            all the data points in the files contained in filenames1
+        :all_fluxes: (float nxm array) fluxes for n energy channels and m
+            time points
+    
+        Note that all_dates and all_fluxes will be trimmed down to the
+        user time period of interest.
+        
+    """
+    n_chan = 6
+    
+    NFILES = len(filenames1)
+    all_dates = []
+    all_fluxes = []
+    west_detector = [] #place holder, will be filled if needed
+
+    
+    #Read in fluxes from files
+    for i in range(NFILES):
+        with open(datapath + "/" + filenames1[i]) as infile:
+        
+            #6 integral channels
+            #5 minute time steps up to 00:00 of the next day
+            #Exclude last time step at midnight of next day or will
+            #end up with repeat entries for the same time.
+            fluxes = np.zeros(shape=(n_chan,288))
+            j = 0 #counter for number of time steps in file
+        
+            for row in infile:
+                if row[0] == "#": continue
+                if j == 288: continue
+                
+                row = row.split()
+                
+                #Get Date
+                year = int(row[0])
+                month = int(row[1])
+                day = int(row[2])
+                hour = int(row[3][0:2])
+                minute = int(row[3][2:4])
+                date = datetime.datetime(year=year,month=month,day=day,hour=hour,minute=minute)
+                all_dates.append(date)
+                
+                for k in range(n_chan):
+                    flux = float(row[6+k])
+                    if flux < 0:
+                        flux = badval
+                    fluxes[k][j] = flux
+                
+                j = j+1 #count dates
+                    
+        if all_fluxes == []:
+            all_fluxes = fluxes
+        else:
+            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
 
     return all_dates, all_fluxes, west_detector
 
@@ -1285,8 +1480,13 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
                     flux_type, filenames1, filenames2, filenames_orien, options)
         return all_dates, all_fluxes, west_detector
         
-    if experiment == "GOES-16" or experiment == "GOES-17":
+    if (experiment == "GOES-16" or experiment == "GOES-17") and flux_type == "differential":
         all_dates, all_fluxes, west_detector = read_in_goesR(experiment, \
+                    flux_type, filenames1)
+        return all_dates, all_fluxes, west_detector
+        
+    if (experiment == "GOES-16" or experiment == "GOES-17") and flux_type == "integral":
+        all_dates, all_fluxes, west_detector = read_in_goesR_RT(experiment, \
                     flux_type, filenames1)
         return all_dates, all_fluxes, west_detector
 
@@ -1810,11 +2010,17 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
 
 
     if experiment == "GOES-16" or experiment == "GOES-17":
-        energy_bins = [[1.02,1.86],[1.9,2.3],[2.31,3.34],
-                       [3.4,6.48],[5.84,11.0],[11.64,23.27],
-                       [24.9,38.1],[40.3,73.4],[83.7,98.5],
-                       [99.9,118.0],[115.0,143.0],[160.0,242.0],
-                       [276.0,404.0],[500.0,-1]]
+        if flux_type == "differential":
+            #energy_bins = [[83.7,98.5],
+            #               [99.9,118.0],[115.0,143.0],[160.0,242.0],
+            #               [276.0,404.0],[500.0,-1]]
+            energy_bins = [[1.02,1.86],[1.9,2.3],[2.31,3.34],
+                           [3.4,6.48],[5.84,11.0],[11.64,23.27],
+                           [24.9,38.1],[40.3,73.4],[83.7,98.5],
+                           [99.9,118.0],[115.0,143.0],[160.0,242.0],
+                           [276.0,404.0],[500.0,-1]]
+        if flux_type == "integral":
+            energy_bins = [[1,-1],[5,-1],[10,-1],[30,-1],[50,-1],[100,-1]]
 
 
     if experiment == "user":

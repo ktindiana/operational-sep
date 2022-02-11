@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.4"
+__version__ = "3.5"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -230,6 +230,14 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   operational_sep_quantities to read in GOES-R differential flux
 #   data (5 min averaged). Integral fluxes are not readily available
 #   from the NOAA website.
+#2022-02-11, change in 3.5: Added support for real time GOES-R
+#   integral fluxes served by CCMC. These are the daily integral
+#   fluxes provided by NOAA SWPC and archived at CCMC. They are not
+#   the official science-grade integral product, which is not
+#   yet available. If the user specifies GOES-16 or GOES-17,
+#   the integral fluxes will come from the primary instrument.
+#   It's not possible to select between the spacecraft with
+#   this particular product.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -2270,8 +2278,10 @@ def error_check_inputs(startdate, enddate, experiment, flux_type, json_type,
     #UNTIL NOAA PROVIDES A SUPPORTED INTEGRAL PRODUCT
     if ((experiment == "GOES-16" or experiment == "GOES-17") \
         and flux_type == "integral"):
-        sys.exit('The GOES-R data sets only provides differential fluxes.'
-            ' Please change your FluxType to differential. Exiting.')
+        print('Note: The GOES-R integral fluxes are the daily real time fluxes '
+            'for the primary GOES spacecraft served by NOAA and archived at CCMC. '
+            'These are not NOAA\'s official L2 fluxes, which are not '
+            'yet available in the GOES-R archive. (as of 2022-02-11)')
             
     if experiment == "user" and (json_type != "model" \
         and json_type != "observations"):
@@ -3393,6 +3403,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                         + "Differential Energy Bins with Threshold Crossings")
         plt.xlabel('Date')
         plt.yscale("log")
+        #plt.grid(which="major", axis="both", linestyle="dotted")
         chartBox = ax.get_position()
         ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*0.85,
                          chartBox.height])
