@@ -16,7 +16,7 @@ import sys
 import math
 import netCDF4
 
-__version__ = "0.6"
+__version__ = "0.7"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -38,6 +38,8 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   from NOAA archived on the CCMC website. These are not the
 #   official NOAA L2 integral fluxes. Those are not yet
 #   available.
+#2022-02-18, Changes in 0.7: Added checking for data/GOES-R
+#   directory and will make if not present.
 
 
 datapath = gl.datapath
@@ -91,6 +93,10 @@ def check_paths():
         print('check_paths: Directory containing fluxes, ' + datapath +
         '/GOES, does not exist. Creating.')
         os.mkdir(datapath + '/GOES');
+    if not os.path.isdir(datapath + '/GOES-R'):
+        print('check_paths: Directory containing fluxes, ' + datapath +
+        '/GOES-R, does not exist. Creating.')
+        os.mkdir(datapath + '/GOES-R');
     if not os.path.isdir(datapath + '/SEPEM'):
         print('check_paths: Directory containing fluxes, ' + datapath +
         '/SEPEM, does not exist. Creating.')
