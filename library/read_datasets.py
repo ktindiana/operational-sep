@@ -16,7 +16,7 @@ import sys
 import math
 import netCDF4
 
-__version__ = "0.7"
+__version__ = "0.9"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -40,6 +40,13 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   available.
 #2022-02-18, Changes in 0.7: Added checking for data/GOES-R
 #   directory and will make if not present.
+#2022-03-23, Changes in 0.8: Added ability to download and read GOES-16
+#   SEP event file on NOAA's website in check_goesR_data. Modified
+#   read_in_goesR data since the special file contains 30 days
+#   of data with slightly different variable names.
+#2022-05-20. Changes in 0.9: Changed SOHO/EPHIN L3 data from 30 minute
+#   to 10 min data.
+
 
 
 datapath = gl.datapath
@@ -56,7 +63,7 @@ def about_read_datasets():
         Subroutines that are required to read in the data sets
         native to this code or the user-specified data set.
         
-        Reads GOES-08 to GOES-15, SOHO/EPHIN Level 3 data,
+        Reads GOES-08 to GOES-15, GOES-R, SOHO/EPHIN Level 3 data,
         SOHO/EPHIN data from the REleASE website, SEPEM RDSv2
         and SEPEM RDSv3 (if the user downloads and unzips the
         files into the data directory).
@@ -444,7 +451,24 @@ def check_goesR_data(startdate, enddate, experiment, flux_type):
     filenames1 = []  #GOES-R
     filenames2 = []  #place holder
     filenames_orien = []  #place holder
-
+    
+    #SPECIAL FILE FOR 2017-09-10 SEP EVENTS
+    if experiment == "GOES-16" and styear == 2017:
+        fname1 = 'se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc'
+        filenames1.append('GOES-R/' + fname1)
+        exists1 = os.path.isfile(datapath + '/GOES-R/' + fname1)
+        if not exists1:
+            url=('https://www.ngdc.noaa.gov/stp/space-weather/satellite-data/satellite-systems/goesr/solar_proton_events/sgps_sep2017_event_data/%s' % (fname1))
+            try:
+                urllib.request.urlopen(url)
+                wget.download(url, datapath + '/GOES-R/' + fname1)
+            except urllib.request.HTTPError:
+                sys.exit("Cannot access SEP event file at " + url +
+               ". Please check that the url is still active.")
+        
+        return filenames1, filenames2, filenames_orien
+    
+    
     #GOES-R data is stored in daily data files
     td = enddate - startdate
     NFILES = td.days #number of data files to download
@@ -611,7 +635,7 @@ def check_ephin_data(startdate, enddate, experiment, flux_type):
 
         exists = os.path.isfile(datapath + '/EPHIN/' + fname)
         if not exists: #download file if not found on your computer
-            url = ('http://ulysses.physik.uni-kiel.de/costep/level3/l3i/30min/%s'
+            url = ('http://ulysses.physik.uni-kiel.de/costep/level3/l3i/10min/%s'
                     % (fname))
             print('Downloading EPHIN data: ' + url)
             try:
@@ -747,6 +771,16 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
                                         enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
 
+    #FILE FOR 2017-09 SEP events, but have to have this file.
+ #   if (experiment == "GOES-16" or experiment == "GOES-17") and flux_type == "differential"\
+ #       and enddate < datetime.datetime(2020,12,1):
+ #       filenames1 = ['GOES-R/' + \
+ #                   "se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc"]
+ #       filenames2 = []
+ #       filenames_orien =[]
+ #       return filenames1, filenames2, filenames_orien
+
+
     if (experiment == "GOES-16" or experiment == "GOES-17") and flux_type == "differential":
         filenames1, filenames2, filenames_orien = check_goesR_data(startdate, \
                                         enddate, experiment, flux_type)
@@ -756,6 +790,8 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
         filenames1, filenames2, filenames_orien = check_goesR_RTdata(startdate, \
                                         enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
+        
+        
 
 
     if experiment == "EPHIN":
@@ -1138,9 +1174,11 @@ def read_in_goesR(experiment, flux_type, filenames1):
         infile = os.path.expanduser(datapath + "/" + filenames1[i])
         data = netCDF4.Dataset(infile)
         
+        ntstep = len(data.variables["L2_SciData_TimeStamp"])
+        
         #13 differential channels, one integral channel
         #5 minute time steps
-        fluxes = np.zeros(shape=(14,288))
+        fluxes = np.zeros(shape=(14,ntstep))
         
         ntimes = len(data.variables["L2_SciData_TimeStamp"])
         for j in range(ntimes):
@@ -1162,13 +1200,21 @@ def read_in_goesR(experiment, flux_type, filenames1):
                 ###TEMP###
                 #kk = k + 8
                 #[288 time step, 2 +/-X, 13 energy chan]
-                flux = data.variables["AvgDiffProtonFluxObserved"][j][idx][k]
+                #Special file info FOR SEP Events during 2017-09
+                if filenames1[i] == "GOES-R/se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc":
+                    flux = data.variables["AvgDiffProtonFlux"][j][idx][k]
+                else:
+                    flux = data.variables["AvgDiffProtonFluxObserved"][j][idx][k]
                 if flux < 0:
                     flux = badval
                 fluxes[k][j] = flux*conversion
             
             #>500 MeV integral channel
-            flux = data.variables["AvgIntProtonFluxObserved"][j][idx]
+            #Special file info FOR SEP Events during 2017-09
+            if filenames1[i] == "GOES-R/se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc":
+                flux = data.variables["AvgIntProtonFlux"][j][idx]
+            else:
+                flux = data.variables["AvgIntProtonFluxObserved"][j][idx]
             if flux < 0:
                 flux = badval
             fluxes[-1][j] = flux

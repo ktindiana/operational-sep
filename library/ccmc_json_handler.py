@@ -8,7 +8,7 @@ from library import global_vars as vars
 from library import keys
 import os
 
-__version__ = "1.4"
+__version__ = "1.5"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -68,6 +68,9 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2021-09-20, changes in 1.4: Added threshold units to the all clear
 #   fields in fill_json (I had previously forgotten them and the
 #   fields were being left as empty strings).
+#2022-06-07, changed in 1.5: Don't try to guess Spase ID. If the
+#   user doesn't specify an ID and the field is empty, leave it as
+#   an empty string.
 
 version = vars.version
 
@@ -289,11 +292,11 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
         win_key = keys.model_win
         template[key]['model']['short_name'] = model_name
         template[key]['model']['flux_type'] = flux_type
-        if spase_id == "":
-            template[key]['model']['spase_id'] = 'spase://CCMC/SimulationModel/' \
-                                            + model_name + "/" + version
-        else:
-            template[key]['model']['spase_id'] = spase_id
+        #if spase_id == "":
+        #    template[key]['model']['spase_id'] = 'spase://CCMC/SimulationModel/' \
+        #                                    + model_name + "/" + version
+        #else:
+        template[key]['model']['spase_id'] = spase_id
                         
     else:
         key = keys.obs_main

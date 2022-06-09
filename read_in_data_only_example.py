@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import datetime
 import argparse
 import math
+import sys
 
 
 #From global_vars.py
@@ -178,10 +179,36 @@ def read_in_flux_files(experiment, flux_type, user_file, model_name, startdate,
     return dates, fluxes, energy_bins
       
 
+def make_diff_from_int(integral_fluxes, energy_bins):
+    """ Make differential fluxes from integral channels.
+        Subtract each integral flux channel from the consecutive
+        one to create differential bins.
+    """
+
+    new_bins = []
+    nchan = len(integral_fluxes)
+    nflx = len(integral_fluxes[0])
+    diff_fluxes = np.zeros((nchan-1,nflx))
+    diff_bins = np.zeros((nchan-1,2))
+    
+    for i in range(nchan-1):
+        diff_bins[i][0] = energy_bins[i][0]
+        diff_bins[i][1] = energy_bins[i+1][0]
+        bin_width = diff_bins[i][1] - diff_bins[i][0]
+        for j in range(nflx):
+            diff_fluxes[i][j] = \
+                (integral_fluxes[i][j] - integral_fluxes[i+1][j])/bin_width
+            
+    
+    print("make_diff_from_int converted to energy bins " + str(diff_bins))
+    
+    return diff_bins, diff_fluxes
+
+
 
 def run_all(str_startdate, str_enddate, experiment,
         flux_type, model_name, user_file, showplot, saveplot,
-        options, nointerp):
+        options, nointerp, int_to_diff):
         
     """ :str_startdate: (string) - user input start date "YYYY-MM-DD" or
             "YYYY-MM-DD HH:MM:SS"
@@ -200,6 +227,8 @@ def run_all(str_startdate, str_enddate, experiment,
             plots directory when run
         :nointerp: (boolean) - set to true to fill in negative fluxes with None
             value rather than filling in via linear interpolation in time
+        :int_to_diff: (boolean) - convert integral channels to differential
+            channels by subtracting the higher channels from the lower channels
     """
 
     #Check for empty dates
@@ -217,7 +246,33 @@ def run_all(str_startdate, str_enddate, experiment,
     dates, fluxes, energy_bins = read_in_flux_files(experiment,
         flux_type, user_file, model_name, startdate,
         enddate, options, nointerp)
+    
+    exposure_time = (dates[-1] - dates[0]).total_seconds()
+    
+    if int_to_diff:
+        energy_bins, fluxes = make_diff_from_int(fluxes, energy_bins)
+    
+    print("===Fluence values for time period===")
+    bin_centers = []
+    fluences = []
+    for ii in range(len(energy_bins)): #MeV
+        bin_center = math.sqrt(energy_bins[ii][0]*energy_bins[ii][1])
+        bin_centers.append(bin_center)
+        fluence = sum(fluxes[ii][:])*5.*60./(exposure_time)
+        fluences.append(fluence)
+        print(str(bin_center) + " MeV " + ", " + str(fluence) + " [MeV cm2 s sr]^-1")
         
+#        for ii in range(len(energy_bins)): #GeV
+#            bin_center = math.sqrt(energy_bins[ii][0]*energy_bins[ii][1])*1e-3
+#            bin_centers.append(bin_center)
+#            fluence = sum(fluxes[ii][:])*5.*60.*1e7/(exposure_time)
+#            fluences.append(fluence)
+#            print(str(bin_center) + " GeV " + ", " + str(fluence) + " [GeV m2 s sr]^-1")
+#
+#            flux_units_differential = "GeV^-1*m^-2*s^-1*sr^-1"
+#            fluence_units_differential = "GeV^-1*m^-2"
+#            energy_units = "GeV"
+                        
     nbins = len(energy_bins)
         
     #===============PLOTS==================
@@ -287,6 +342,58 @@ def run_all(str_startdate, str_enddate, experiment,
         if not showplot:
             plt.close(fig)
     
+        if int_to_diff:
+            #Event-integrated fluence for energy channels
+            print("Generating figure of event-integrated fluence spectrum.")
+            #Plot fluence spectrum summed between SEP start and end dates
+            figname = 'Fluence' \
+                    + '_' + experiment + '_' + flux_type + modifier \
+                    + '_'
+            if experiment == 'user' and model_name != '':
+                figname = 'Fluence' \
+                        + '_' + model_name + '_' + flux_type + modifier \
+                        + '_'
+            fig = plt.figure(figname,figsize=(6,5))
+            ax = plt.subplot(111)
+            markers = ['o','P','D','v','^','<','>','*','d','+','8','p','h','1','X','x']
+            #for j in range(1): #len(energy_thresholds)):
+               # legend_label = '>' + plt_energy[j] + ' ' + energy_units + ', '\
+               #             + plt_flux[j] + ' ' + flux_units_integral
+               # if plot_diff_thresh[j]: #tacked on to end
+               #     legend_label = (plt_energy[j] + ' ' + energy_units + ',\n'
+               #                 + plt_flux[j] + '\n' + flux_units_differential)
+            ax.plot(bin_centers,fluences,"o")
+            plt.grid(which="both", axis="both")
+            plt.title(experiment + ' ' + title_mod + '\n Event-Integrated Average Flux')
+            if experiment == 'user' and model_name != '':
+                plt.title(model_name + ' ' + title_mod + '\n Event-Integrated '
+                        'Average Flux')
+            plt.xlabel('Energy [' + energy_units +']')
+            #if flux_type == "integral":
+            #    plt.ylabel('Integral Fluxes [' + flux_units_integral + ']')
+            #if flux_type == "differential":
+            plt.ylabel('Flux [' + flux_units_differential + ']')
+            plt.xscale("log")
+            plt.yscale("log")
+            ax.legend(loc='upper right')
+            if saveplot:
+                fig.savefig(plotpath + '/' + figname + '.png')
+            if not showplot:
+                plt.close(fig)
+
+    
+    
+    
+    
+    
+    return dates,fluxes,energy_bins
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
@@ -342,6 +449,9 @@ if __name__ == "__main__":
             help=("Do not fill in negative or missing fluxes via "
                     "linear interpolation in time. Set as None values "
                     "instead."), action="store_true")
+    parser.add_argument("--IntToDiff",
+            help=("Convert integral channels to differential channels"
+                    "by subtracting."), action="store_true")
     parser.add_argument("--showplot",
             help="Flag to display plots", action="store_true")
     parser.add_argument("--saveplot",
@@ -360,11 +470,12 @@ if __name__ == "__main__":
     saveplot = args.saveplot
     options = args.options
     nointerp = args.NoInterp
+    int_to_diff = args.IntToDiff
 
 
 
-    run_all(str_startdate, str_enddate, experiment,
+    dates,fluxes,energy_bins = run_all(str_startdate, str_enddate, experiment,
         flux_type, model_name, user_file, showplot, saveplot,
-        options, nointerp)
+        options, nointerp, int_to_diff)
 
     if showplot: plt.show()

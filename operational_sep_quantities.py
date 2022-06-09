@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.5"
+__version__ = "3.6"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -238,6 +238,10 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   the integral fluxes will come from the primary instrument.
 #   It's not possible to select between the spacecraft with
 #   this particular product.
+#2022-03-22, 2022-05-24 changes in 3.6: Added more colors and markers
+#   in the plots in run_all. (in May 2022) Commented the ad hoc background
+#   subtraction added in v3.3 in "from_differential_to_integral" that I had
+#   applied to GOES corrected differential HEPAD channels. 
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -743,32 +747,37 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                 
                 #FOR GOES differential corrected fluxes, subtract a
                 #static value as background before estimating integral
+                #####Leaving this piece of code in as a comment because it
+                #points to the problem of high background levels in the
+                #corrected GOES differential fluxes. Added this piece of
+                #code when wanted to compare to another experiment or perhaps
+                #the integral 
                 #   330 - 420 MeV: 0.001804912
                 #   420 - 510 MeV: 0.001014797
                 #   510 - 700 MeV: 0.000431988
                 #   >700 MeV:      0.00013735
-                if 'GOES' in experiment and 'uncorrected' not in options\
-                    and not doBGSub:
-                    if energy_bins[i][0] == 330.0 and energy_bins[i][1] == 420.0:
-                        F1 = F1 - 0.001804912
-                        if F1 < 0: F1 = 0
-                    if energy_bins[i+1][0] == 330.0 and energy_bins[i+1][1] == 420.0:
-                        F2 = F2 - 0.001804912
-                        if F2 < 0: F2 = 0
-                        
-                    if energy_bins[i][0] == 420.0 and energy_bins[i][1] == 510.0:
-                        F1 = F1 - 0.001014797
-                        if F1 < 0: F1 = 0
-                    if energy_bins[i+1][0] == 420.0 and energy_bins[i+1][1] == 510.0:
-                        F2 = F2 - 0.001014797
-                        if F2 < 0: F2 = 0
-                        
-                    if energy_bins[i][0] == 510.0 and energy_bins[i][1] == 700.0:
-                        F1 = F1 - 0.000431988
-                        if F1 < 0: F1 = 0
-                    if energy_bins[i+1][0] == 510.0 and energy_bins[i+1][1] == 700.0:
-                        F2 = F2 - 0.000431988
-                        if F2 < 0: F2 = 0
+#                if 'GOES' in experiment and 'uncorrected' not in options\
+#                    and not doBGSub:
+#                    if energy_bins[i][0] == 330.0 and energy_bins[i][1] == 420.0:
+#                        F1 = F1 - 0.001804912
+#                        if F1 < 0: F1 = 0
+#                    if energy_bins[i+1][0] == 330.0 and energy_bins[i+1][1] == 420.0:
+#                        F2 = F2 - 0.001804912
+#                        if F2 < 0: F2 = 0
+#
+#                    if energy_bins[i][0] == 420.0 and energy_bins[i][1] == 510.0:
+#                        F1 = F1 - 0.001014797
+#                        if F1 < 0: F1 = 0
+#                    if energy_bins[i+1][0] == 420.0 and energy_bins[i+1][1] == 510.0:
+#                        F2 = F2 - 0.001014797
+#                        if F2 < 0: F2 = 0
+#
+#                    if energy_bins[i][0] == 510.0 and energy_bins[i][1] == 700.0:
+#                        F1 = F1 - 0.000431988
+#                        if F1 < 0: F1 = 0
+#                    if energy_bins[i+1][0] == 510.0 and energy_bins[i+1][1] == 700.0:
+#                        F2 = F2 - 0.000431988
+#                        if F2 < 0: F2 = 0
                  
                 if F1 == 0 or F2 == 0: #add 0 flux
                     ninc = ninc + 1
@@ -1193,8 +1202,8 @@ def calculate_fluence(dates, flux):
     ndates = len(dates)
     time_resolution = determine_time_resolution(dates)
     
-    #print("calculate_fluence: Identified a time resolution of "
-    #        + str(time_resolution.total_seconds()) + " seconds.")
+    print("calculate_fluence: Identified a time resolution of "
+            + str(time_resolution.total_seconds()) + " seconds.")
     
     fluence = 0
     for i in range(ndates):
@@ -3375,7 +3384,8 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 ax.plot_date(dates,fluxes[i],'-',label=legend_label)
 
         colors = ['black','red','blue','green','cyan','magenta','violet',\
-                'orange','brown']
+                'orange','brown','darkred','deepskyblue','mediumseagreen',
+                'lightseagreen','purple','sandybrown']
         for j in range(len(energy_thresholds)):
             if crossing_time[j] == 0:
                 continue
@@ -3426,7 +3436,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     + '_' + 'Fluence'
         fig = plt.figure(figname,figsize=(6,5))
         ax = plt.subplot(111)
-        markers = ['o','P','D','v','^','<','>','*','d','+']
+        markers = ['o','P','D','v','^','<','>','*','d','+','8','p','h','1','X','x']
         for j in range(len(energy_thresholds)):
             if crossing_time[j] == 0:
                 continue
@@ -3499,7 +3509,9 @@ if __name__ == "__main__":
             "or model predictions to generate a JSON file in the correct format. "
             "Choices are \"model\" or \"observations\" Default is model."))
     parser.add_argument("--spase_id", type=str, default='', help=("If your "
-            "model or data source has an associated Spase ID, specify here."))
+            "model or data source has an associated Spase ID, specify here. "
+            "Enter the full Spase ID for the CCMC system, including url, "
+            "including spase://CCMC/SimulationModel/."))
     parser.add_argument("--Threshold", type=str, default="",
             help=("Additional energy and flux threshold which will be used to "
                     "define the event. To define an integral flux threshold: "
