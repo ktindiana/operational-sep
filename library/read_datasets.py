@@ -16,7 +16,7 @@ import sys
 import math
 import netCDF4
 
-__version__ = "0.9"
+__version__ = "1.0"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -46,6 +46,8 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   of data with slightly different variable names.
 #2022-05-20. Changes in 0.9: Changed SOHO/EPHIN L3 data from 30 minute
 #   to 10 min data.
+#2022-06-16, changes in 1.0: Added Shaowen Hu's recalibrated GOES
+#   data set as a native data set in the code (SRAG1.2)
 
 
 
@@ -115,6 +117,10 @@ def check_paths():
     if not os.path.isdir(datapath + '/EPHIN'):
         print('check_paths: Directory containing fluxes, ' + datapath +
         '/EPHIN, does not exist. Creating.')
+        os.mkdir(datapath + '/EPHIN');
+    if not os.path.isdir(datapath + '/SRAG12'):
+        print('check_paths: Directory containing fluxes, ' + datapath +
+        '/SRAG12, does not exist. Creating.')
         os.mkdir(datapath + '/EPHIN');
     if not os.path.isdir(outpath):
         print('check_paths: Directory to store output information, ' + outpath
@@ -243,6 +249,53 @@ def check_sepem_data(startdate, enddate, experiment, flux_type):
                         'Producing yearly files.')
                 make_yearly_files(dir + '/' + basenm + '.txt')
                 year = styear
+
+    return filenames1
+    
+    
+def check_srag12_data(startdate, enddate, experiment, flux_type):
+    """Check if SRAG1.2 data is present on the computer. Break into yearly
+        files if needed. Return SRAG filenames for analysis.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the SEPEM
+            data that span the desired time range (yearly files)
+        
+    """
+    styear = startdate.year
+    stmonth = startdate.month
+    stday = startdate.day
+    endyear = enddate.year
+    endmonth = enddate.month
+    endday = enddate.day
+
+    filenames1 = []  #SEPEM, eps, or epead
+
+    year = styear
+
+    if experiment == 'SRAG12':
+        basenm = 'srag12'
+        dir = experiment
+
+
+    while (year <= endyear):
+        fname = basenm + '_' + str(year) + '.dat'
+        exists = os.path.isfile(datapath + '/' + dir + '/' + fname)
+        if exists:
+            filenames1.append(dir + '/' + fname)
+            year = year + 1
+        if not exists:
+            sys.exit('Please contact Shaowen Hu (shaowen.hu-1@nasa.gov) '
+                    'for his recalibrated data set. Unzip and put the .dat files '
+                    'in the data/SRAG12 folder.')
 
     return filenames1
 
@@ -765,6 +818,10 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
     if (experiment == "SEPEM" or experiment == "SEPEMv3"):
         filenames1 = check_sepem_data(startdate, enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
+        
+    if experiment == "SRAG12":
+        filenames1 = check_srag12_data(startdate, enddate, experiment, flux_type)
+        return filenames1, filenames2, filenames_orien
 
     if experiment[0:4] == "GOES" and experiment != "GOES-16" and experiment != "GOES-17":
         filenames1, filenames2, filenames_orien = check_goes_data(startdate, \
@@ -964,6 +1021,42 @@ def read_in_sepem(experiment, flux_type, filenames1):
             all_dates = all_dates + dates
 
     return all_dates, all_fluxes
+
+
+def read_in_srag12(experiment, filenames1):
+    """ Read in the data set created by Shaowen Hu (NASA JSC SRAG)
+        that generates a consistent and recalibrated GOES data set.
+    """
+    
+    fluxes = []
+    all_dates = []
+
+    for filenm in filenames1:
+        print("reading filename " + filenm)
+        with open(datapath + '/' + filenm) as file:
+            #Get number of columns in file
+            #Fill in first row so can have correct format array
+            firstline = file.readline().strip().split(",")
+            ncol = len(firstline) - 1
+            for i in range(ncol):
+                fluxes.append([float(firstline[i+1])])
+        
+            for line in file:
+                if line == "": continue
+                
+                row = line.strip().split(",")
+                if row[0] == "0": continue
+                for i in range(ncol):
+                    fluxes[i].append(float(row[i+1]))
+                
+                date = datetime.datetime.strptime(row[0][0:19],
+                                                "%Y-%m-%d %H:%M:%S")
+                all_dates.append(date)
+
+    all_fluxes = np.array(fluxes)
+    
+    return all_dates, all_fluxes
+
 
 
 def read_in_goes(experiment, flux_type, filenames1, filenames2,
@@ -1526,6 +1619,10 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
         all_dates, all_fluxes = read_in_sepem(experiment, flux_type, filenames1)
         return all_dates, all_fluxes, west_detector
 
+    if experiment == "SRAG12":
+        all_dates, all_fluxes = read_in_srag12(experiment, filenames1)
+        return all_dates, all_fluxes, west_detector
+
     #All GOES data
     if experiment[0:4] == "GOES" and experiment != "GOES-16" and experiment != "GOES-17":
         all_dates, all_fluxes, west_detector = read_in_goes(experiment, \
@@ -1949,6 +2046,11 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
                        [66.13,95.64],[95.64,138.3],[138.3,200.0],
                        [200.0,289.2],[289.2,418.3],[418.3,604.9],
                        [604.9,874.7]]
+
+    if experiment == "SRAG12":
+        energy_bins = [[10.0,10.0],[15.8,15.8],[25.1,25.1],[39.8,39.8],
+                        [65.1,65.1],[100.0,100.0],[158.5,158.5],[251.2,251.2],
+                        [398.1,398.1],[630.9,630.9],[1000.0,1000.0]]
 
     if experiment == "ERNEf10":
         #The top 3 channels tend to saturate and show incorrect values during

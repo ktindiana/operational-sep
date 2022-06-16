@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.6"
+__version__ = "3.7"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -241,7 +241,15 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2022-03-22, 2022-05-24 changes in 3.6: Added more colors and markers
 #   in the plots in run_all. (in May 2022) Commented the ad hoc background
 #   subtraction added in v3.3 in "from_differential_to_integral" that I had
-#   applied to GOES corrected differential HEPAD channels. 
+#   applied to GOES corrected differential HEPAD channels.
+#2022-06-16, changes in 3.7: Fixed how the peak fluxes are calculated if
+#   no threshold is crossed. Removed the subroutine to swap peak fluxes
+#   around and made sure they were calculated correctly in the subroutines
+#   where they are first calculated.
+#   Added caveat for code not to calculate onset peak if duration of
+#   data is less than required to get a derivative value.
+#   Added capability to read in Shaowen Hu's recalibrated GOES
+#   data set called SRAG1.2.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -1024,47 +1032,6 @@ def calculate_threshold_crossing(energy_threshold,flux_threshold,dates,fluxes):
     return crossing_time,peak_flux,peak_time,rise_time,event_end_time,duration
 
 
-def consistent_peak_fluxes(crossing_time, onset_peak, onset_date,
-        peak_flux, peak_time):
-    """ If a threshold is not crossed, then the max flux is saved
-        as zero and the onset peak is saved as the maximum value
-        in the time range considered. This is technically
-        not correct.
-        Swapping the two values to more correct.
-        
-        INPUTS (for n SEP events):
-        
-        :crossing_time: (datetime 1xn array) - value will be zero
-            if no threshold was crossed
-        :onset_peak: (float 1xn array) - value of onset peak for each
-            SEP event, max flux if no thresholds crossed
-        :onset_date: (datetime 1xn array) - time of onset peaks
-        :peak_flux: (float 1xn array) - values of maximum flux for
-            each SEP event, zero if no threshold crossed
-        :peak_time: (datetime 1xn array) - value of peak flux, zero if
-            threshold not crossed
-            
-        OUTPUTS (same as above, but values switched around):
-        
-        :onset_peak: value set to zero if no threshold crossed
-        :onset_date: value set to zero if no threshold crossed
-        :peak_flux: value of max flux during time period
-        :peak_time: time of max flux
-        
-    """
-    if len(crossing_time) != len(onset_peak):
-        sys.exit("consistent_peak_flux: Different lengths for "
-                "threshold crossings and onset peaks. Exiting.")
-
-    for i in range(len(crossing_time)):
-        if crossing_time[i] == 0:
-            peak_flux[i] = onset_peak[i]
-            peak_time[i] = onset_date[i]
-            onset_peak[i] = 0
-            onset_date[i] = 0
-    
-    return onset_peak, onset_date, peak_flux, peak_time
-
 
 def check_bin_exists(threshold, energy_bins):
     """ If a user specifies a threshold for a differential energy bin, check
@@ -1415,6 +1382,13 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
                             pt = pt2
                             rt = pt2 - ct
 
+        #If a threshold wasn't crossed, save the max flux as the max
+        #value in the total time period
+        if ct == 0:
+            pf = np.amax(integral_fluxes[i])
+            indx = np.where(integral_fluxes[i]==pf)
+            pt = dates[indx[0][0]]
+        
         crossing_time.append(ct)
         peak_flux.append(pf)
         peak_time.append(pt)
@@ -1427,8 +1401,8 @@ def calculate_event_info(energy_thresholds,flux_thresholds,dates,
             mod = ''
             units = flux_units_differential #'1/[MeV cm^2 s sr]'
         print(
-               'Flux      Threshold    Time Crossed         Peak Flux'
-                + '            Peak Time' + '            Rise Time'
+               'Flux      Threshold    Time Crossed         Max Flux'
+                + '            Max Flux Time' + '            Rise Time'
                 + '  End Time' + '            Duration'
              )
         print(
@@ -1489,12 +1463,28 @@ def calculate_onset_peak(experiment, energy_thresholds, dates, integral_fluxes,
         smooth_flux[i] = integral_fluxes[i]
 
 
+
     run_deriv = [[]]*nthresh
     run_deriv_norm = [[]]*nthresh
     nwin = 8 #Number of points away for calculating derivative, 5 min data
     time_resolution = determine_time_resolution(dates)
     if time_resolution > datetime.timedelta(minutes=5):
         nwin = 1
+    
+    ###########
+    #Check duration of time period. If less than the time step required to
+    #calculate the derivative used to find the onset peak, then return
+    #None, indicating no onset peak calculated
+    if dates[-1] - dates[0] <= nwin*time_resolution:
+        print("calculate_onset_peak: Time duration too short to calculate "
+            "onset peak. Setting onset peak and date to None.")
+        onset_date = [None]*nthresh
+        onset_peak = [None]*nthresh
+        return onset_date, onset_peak
+    ###########
+    
+    
+    #Check for zero values or no threshold crossings
     for i in range(nthresh):
         if crossing_time[i] == 0: #no event, no threshold crossed
             continue
@@ -3225,11 +3215,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 crossing_time, peak_flux, peak_time, rise_time, event_end_time,
                 duration, onset_date, onset_peak, integral_fluxes)
 
-    #If threshold isn't crossed, the maximum flux was stored in onset
-    #peak and peak_flux was saved as 0.
-    #Transfer onset_peak to peak_flux and set onset_peak to zero.
-    onset_peak, onset_date, peak_flux, peak_time = consistent_peak_fluxes(\
-                crossing_time, onset_peak, onset_date, peak_flux, peak_time)
+
     #####################################################################
     #Write information to csv and json files
     #Note that, at this point in the code, integral_fluxes contains
@@ -3491,7 +3477,7 @@ if __name__ == "__main__":
     parser.add_argument("--Experiment", type=str, choices=['GOES-08',
             'GOES-10', 'GOES-11', 'GOES-12', 'GOES-13', 'GOES-14', 'GOES-15',
             'GOES-16', 'GOES-17','SEPEM', 'SEPEMv3', 'EPHIN', 'EPHIN_REleASE',
-            'user'],
+            'SRAG12', 'user'],
             default='', help="Enter name of spacecraft or dataset")
     parser.add_argument("--FluxType", type=str, choices=['integral',
             'differential'], default='',
