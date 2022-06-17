@@ -121,7 +121,7 @@ def check_paths():
     if not os.path.isdir(datapath + '/SRAG12'):
         print('check_paths: Directory containing fluxes, ' + datapath +
         '/SRAG12, does not exist. Creating.')
-        os.mkdir(datapath + '/EPHIN');
+        os.mkdir(datapath + '/SRAG12');
     if not os.path.isdir(outpath):
         print('check_paths: Directory to store output information, ' + outpath
             + ', does not exist. Creating.')

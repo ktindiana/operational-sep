@@ -30,7 +30,7 @@ time_shift = 0. #float in hours !!!WILL SHIFT TIMES IN USER-INPUT FILES IF NON-Z
 
 #####(expect the first (0th) column contains date in YYYY-MM-DD HH:MM:SS format)
 #Identify columns containing fluxes you want to analyze
-user_col = arr.array('i',[6,7,8,9])
+user_col = arr.array('i',[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25])
 
 #   REleASE-30 [2,3,4,5]
 #   REleASE-60 [6,7,8,9]
@@ -44,13 +44,21 @@ user_col = arr.array('i',[6,7,8,9])
 #   iPATH differential [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
 
 #####DELIMETER between columns; for whitespace separating columns, use ""
-user_delim = ";"
+user_delim = ","
 
 #####DEFINE ENERGY BINS associated with user file and columns specified above as:
 #   [[Elow1,Ehigh1],[Elow2,Ehigh2],[Elow3,Ehigh3],etc]
 #Use -1 in the second edge of the bin to specify integral channel (infinity):
 #   [[Elow1,-1],[Elow2,-1],[Elow3,-1],etc]
-user_energy_bins = [[4,9],[9,15.8],[15.8,39.6],[28.2,50.1]]
+user_energy_bins = [[0.1,0.1],[0.14677993,0.14677993],[0.21544347,0.21544347],\
+                    [0.31622777,0.31622777],[0.46415888,0.46415888],\
+                    [0.68129207,0.68129207],[1,1],[1.4677993,1.4677993],\
+                    [2.1544347,2.1544347],[3.1622777,3.1622777],[4.6415888,4.6415888],\
+                    [6.8129207,6.8129207],[10,10],[14.677993,14.677993],\
+                    [21.544347,21.544347],[31.622777,31.622777],[46.415888,46.415888],\
+                    [68.129207,68.129207],[100,100],[146.77993,146.77993],\
+                    [215.44347,215.44347],[316.22777,316.22777],[464.15888,464.15888],\
+                    [681.29207,681.29207],[1000,1000]]
 
 #   SEPEM_H_GOES13 P3 - P7 [[4,9],[12,23],[26,38],[40,73],[100,142],[160,242]]
 #   EPREM [[10,-1],[30,-1],[40,-1],[50,-1],[100,-1]]
