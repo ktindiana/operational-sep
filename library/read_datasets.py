@@ -1834,9 +1834,15 @@ def extract_date_range(startdate,enddate,all_dates,all_fluxes):
             nst = i
         if all_dates[i] <= enddate:
             nend = i
-    if all_dates[nst] < startdate: nst = nst + 1 #move one step past the start time if no
-                                                #time point on exactly the start time
-    nend = min(nend+1, ndates)  #adjust to include nend in date range
+    if all_dates[nst] < startdate:
+        nst = nst + 1 #move one step past the start time if no
+                    #time point on exactly the start time
+    nst = min(nst,ndates) #make sure nst is not psat the length of the array
+    nend = min(nend+1, ndates)  #add 1 to include nend in date range
+    
+    if nst == nend and nend < ndates:
+        nend = nend + 1 #grab at least one data point at index nst
+    
     dates = all_dates[nst:nend]
     fluxes = all_fluxes[:,nst:nend]
 

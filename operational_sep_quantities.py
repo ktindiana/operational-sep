@@ -26,7 +26,7 @@ import scipy
 from scipy import signal
 from statistics import mode
 
-__version__ = "3.7"
+__version__ = "3.8"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -250,6 +250,14 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   data is less than required to get a derivative value.
 #   Added capability to read in Shaowen Hu's recalibrated GOES
 #   data set called SRAG1.2.
+#2022-08-04, changes in 3.8: Explicity added variables,
+#   doBGSub, model_name, showplot, saveplot, in call to
+#   append_differential_threshold subroutine. Worked on my mac
+#   without them but caused crashes on other Windows machines.
+#   Added check for determine_time_resolution() to exit gracefully
+#   if passed a date array of only 1 data point.
+#   library/read_datasets.py extract_date_range() was updated to
+#   ensure that starting point was after the specified start time.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -1128,6 +1136,10 @@ def determine_time_resolution(dates):
     """
     ndates = len(dates)
     time_diff = [a - b for a,b in zip(dates[1:ndates],dates[0:ndates-1])]
+    if not time_diff:
+        sys.exit("determine_time_resolution: Require more than 1 data point "
+                "to determine time resolution. Please extend your "
+                "requested time range and try again. Exiting.")
     time_resolution = mode(time_diff)
     return time_resolution
 
@@ -2691,7 +2703,8 @@ def append_differential_thresholds(energy_thresholds, flux_thresholds,
         umasep, umasep_times, umasep_fluxes,
         all_threshold_fluences, all_fluence, all_energies,
         crossing_time, peak_flux, peak_time, rise_time, event_end_time,
-        duration, onset_date, onset_peak, integral_fluxes):
+        duration, onset_date, onset_peak, integral_fluxes,
+        doBGSub, model_name, showplot, saveplot)::
     """ Add the threshold crossing information for differential channels
         as specified by the user.
         
@@ -3213,7 +3226,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                 umasep, umasep_times, umasep_fluxes,
                 all_threshold_fluences, all_fluence, all_energies,
                 crossing_time, peak_flux, peak_time, rise_time, event_end_time,
-                duration, onset_date, onset_peak, integral_fluxes)
+                duration, onset_date, onset_peak, integral_fluxes,
+                doBGSub, model_name, showplot, saveplot)
+
 
 
     #####################################################################
