@@ -16,7 +16,7 @@ import sys
 import math
 import netCDF4
 
-__version__ = "1.0"
+__version__ = "1.1"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -48,6 +48,10 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   to 10 min data.
 #2022-06-16, changes in 1.0: Added Shaowen Hu's recalibrated GOES
 #   data set as a native data set in the code (SRAG1.2)
+#2022-08-04, changes in 1.1: in extract_date_range, abjusted
+#   the trimming so that the selected time range starts either
+#   on or one point AFTER the specified start. Previously,
+#   the point right before the specified start was included.
 
 
 
@@ -1830,6 +1834,8 @@ def extract_date_range(startdate,enddate,all_dates,all_fluxes):
             nst = i
         if all_dates[i] <= enddate:
             nend = i
+    if all_dates[nst] < startdate: nst = nst + 1 #move one step past the start time if no
+                                                #time point on exactly the start time
     nend = min(nend+1, ndates)  #adjust to include nend in date range
     dates = all_dates[nst:nend]
     fluxes = all_fluxes[:,nst:nend]
