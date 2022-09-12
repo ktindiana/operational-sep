@@ -1,4 +1,0 @@
-#Experiment,SEP Date,Exception
-GOES-13,2011-10-05 00:00:00,"No thresholds were crossed during this time period. Max flux has been written to json file in onset peak in file output/GOES-13_integral.2011-10-05T000000Z.json. Exiting. "
-GOES-13,2011-10-20 00:00:00,"No thresholds were crossed during this time period. Max flux has been written to json file in onset peak in file output/GOES-13_integral.2011-10-20T000000Z.json. Exiting. "
-GOES-13,2011-10-23 00:00:00, Success
