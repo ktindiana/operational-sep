@@ -6,9 +6,9 @@
 Welcome to operational_sep_quantities's documentation
 =====================================================
 
-operational_sep_quantities CURRENT VERSION 3.1
+operational_sep_quantities CURRENT VERSION 3.10
 
-2021-08-13
+2022-09-09
 
 Purpose
 -------
@@ -20,7 +20,7 @@ Derived values are output to both csv files and the JSON format and accompanying
 Native Data Sets
 ----------------
 
-This code has a few "native" data sets, including GOES-08 to GOES-15, SOHO/EPHIN, SOHO/EPHIN data in the energy bins provided on the REleASE website, SEPEM RDSv2.0, and SEPEM RDSv3.0 (when it becomes publicly available). Users may input their own time profile data sets of model output.
+This code has a few "native" data sets, including GOES-08 to GOES-15, GOES-R (-16, -17, and real time integral fluxes), SOHO/EPHIN Level 3 data, SOHO/EPHIN data in the energy bins provided on the REleASE website, SEPEM RDSv2.0, and SEPEM RDSv3.0 (when it becomes publicly available). Users may input their own time profile data sets of model output.
 
 This code works with both integral and differential fluxes. Data gaps (time steps with negative with negative fluxes, e.g. -999) are replaced with estimated values via linear interpolation in time. 
 
@@ -39,6 +39,9 @@ use them.
 
 This project is under active development.
  
+Installation, Usage, and Modules
+--------------------------------
+
 .. toctree::
    
    :maxdepth: 2

@@ -95,6 +95,7 @@ def about_run_multi_sep():
             * If UMASEP, then the additional columns:
         
                 * Ts + 3hr, Ts + 4hr, Ts + 5hr, Ts + 6hr, Ts + 7hr
+                
     """
 
 def check_list_path():
@@ -163,8 +164,10 @@ def read_sep_dates(sep_filename):
         readCSV = csv.reader(csvfile, delimiter=',')
         #Define arrays that hold dates
         for row in readCSV:
+
             chk = row[0].lstrip()
-            if chk[0] == '#': continue #skip if header row
+            if '#' in row[0]: continue #skip if header row
+            
             if len(row[0]) > 10:
                 stdate = datetime.datetime.strptime(row[0][0:19],
                                             "%Y-%m-%d %H:%M:%S")
@@ -494,6 +497,7 @@ def run_all_events(sep_filename, outfname, threshold, umasep):
 
     #---RUN ALL SEP EVENTS---
     Nsep = len(start_dates)
+    combos = {}
     print('Read in ' + str(Nsep) + ' SEP events.')
     for i in range(Nsep):
         start_date = start_dates[i]
@@ -542,7 +546,7 @@ def run_all_events(sep_filename, outfname, threshold, umasep):
 
             #COMPILE QUANTITIES FROM ALL SEP EVENTS INTO A SINGLE LIST FOR
             #EACH THRESHOLD
-            if i==0:
+            if not combos:
                 combos = initialize_files(jsonfname)
             success=write_sep_lists(jsonfname,combos)
             if not success:
@@ -597,13 +601,15 @@ if __name__ == "__main__":
     threshold = args.Threshold
     umasep = args.UMASEP
     
+    #run_all_events(sep_filename, outfname, threshold, umasep)
+    
     """ Run all of the time periods and experiments in the list
         file. Extract the values of interest and compile them
         in event lists, one list per energy channel and threshold
         combination.
-        
+
         INPUTS:
-        
+
         :sep_filename: (string) file containing list of events
             and experiments to run
         :outfname: (string) name of a file that will report any
@@ -613,17 +619,17 @@ if __name__ == "__main__":
             in same way as called for by operational_sep_quantities.py
         :umasep: (boolean) set to true to calculate values related to
             the UMASEP model
-            
+
         OUTPUTS:
-        
+
         None except for:
-            
+
             * Output file listing each run and any errors encountered
             * Output files containing event lists for each unique energy
                 channel and threshold combination
-        
+
     """
-    
+
     check_list_path()
 
     #READ IN SEP DATES AND experiments
@@ -637,6 +643,7 @@ if __name__ == "__main__":
 
     #---RUN ALL SEP EVENTS---
     Nsep = len(start_dates)
+    combos = {}
     print('Read in ' + str(Nsep) + ' SEP events.')
     for i in range(Nsep):
         start_date = start_dates[i]
@@ -650,7 +657,7 @@ if __name__ == "__main__":
         option = options[i]
         bgstartdate = bgstart[i]
         bgenddate = bgend[i]
-        
+
         spase_id = ''
 
         flag = flag.split(';')
@@ -685,7 +692,7 @@ if __name__ == "__main__":
 
             #COMPILE QUANTITIES FROM ALL SEP EVENTS INTO A SINGLE LIST FOR
             #EACH THRESHOLD
-            if i==0:
+            if not combos:
                 combos = initialize_files(jsonfname)
             success=write_sep_lists(jsonfname,combos)
             if not success:

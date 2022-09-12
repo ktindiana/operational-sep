@@ -1,9 +1,9 @@
 Usage
 =====
 
-operational_sep_quantities.py VERSION 3.2
+operational_sep_quantities.py VERSION 3.10
 
-2021-09-16
+2022-09-09
 
 
 .. _installation:

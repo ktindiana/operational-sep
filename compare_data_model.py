@@ -40,10 +40,12 @@ def about_compare_data_model():
         
         Contact Katie Whitman at kathryn.whitman@nasa.gov for more
         information.
+        
     """
 
 def check_path():
     """Check that the paths that hold the data and output exist. If not, create.
+    
     """
     print('Checking that path exists: ' + plotpath)
     if not os.path.isdir(plotpath):
@@ -54,7 +56,9 @@ def check_path():
 
 
 def check_files(filename):
-    """Check if a file exists. Graceful exit if doesn't."""
+    """Check if a file exists. Graceful exit if doesn't.
+    
+    """
     exists = os.path.isfile(filename)
     if not exists:
         print("NOTE: File " + filename + " does not exist. Continuing.")
@@ -78,6 +82,7 @@ def calculate_time_difference(key1, dict1, key2, dict2):
        for key1 and key2.
 
        Time difference is given in hours and found by (time2-time1).
+       
     """
     time1 = dict1[key1]
     time2 = dict2[key2]
@@ -96,6 +101,7 @@ def read_proton_info(threshold, sep_date, expmt_keys, experiments, flux_types):
             SEP start time, peak time, rise time, end time, duration
             peak flux, >10 MeV fluence, >100 MeV fluence
        SEP filenames like sep_values_GOES-13_differential_2012_3_7.csv
+       
     """
     Nexp = len(expmt_keys)
     proton_dict = {}
@@ -184,6 +190,7 @@ def read_fluence_info(threshold, sep_date, expmt_keys, experiments, flux_types):
             SEP start time, peak time, rise time, end time, duration
             peak flux, >10 MeV fluence, >100 MeV fluence
        SEP filenames like sep_values_GOES-13_differential_2012_3_7.csv
+       
     """
     Nexp = len(expmt_keys)
     dict = {}
@@ -238,6 +245,7 @@ def read_time_profile(threshold, sep_date, experiment, flux_type):
        The files are named as integral_fluxes_GOES-13_startdate_to_enddate.csv.
        The columns are datetime, >10 fluxes, >100 fluxes, any additional
        channel in threshold specified by the user.
+       
     """
     year = sep_date.year
     month = sep_date.month
@@ -308,6 +316,7 @@ def reference_time_difference(keys,ref_key,select_key,dict):
        in, e.g. "proton_start_time"
        Returns time difference in hours. Times prior to reference are
        negative. Times later than reference are positive.
+       
     """
     N = len(keys)
     time_difference = []
@@ -336,6 +345,7 @@ def reference_ratio(keys,ref_key,select_key,dict):
        in, e.g. "proton_start_time"
        Returns ratio of values w.r.t. reference = val/ref.
        > 1 indicates higher than reference. < 1 indicates lower than reference.
+       
     """
     N = len(keys)
     ratios = []
@@ -355,6 +365,7 @@ def make_array_from_dict(keys, select_key, dict):
        Pull out the selected info, designated in select_key.
                 e.g. 'proton_peak_flux'
        Put that info into an array that can be plotted.
+       
     """
     N = len(keys)
     list = []
@@ -377,6 +388,7 @@ def setup(all_sep_dates, all_model_names, all_model_flux_types, str_threshold):
 
        This subroutine also reads in the proton information for each SEP event
        and each experiment into a dictionary.
+       
     """
     check_path()
 
@@ -436,6 +448,7 @@ def reference_comparison(experiments, flux_types, model_names, threshold,
        integral channel on x-axis and peak flux wrt GOES-13 integral channel on
        the y-axis. Decided not to use these plots and this subroutine is not
        called in run_all().
+       
     """
     Nsep = len(sep_keys)
     Nexp = len(experiments)
@@ -538,6 +551,7 @@ def fluence_comparison(experiments, flux_types, model_names, threshold,
        input into this code as 100,1 then these fluence values are
        defined by the start and stop times associated with the 100 MeV, 1 pfu
        threshold crossings.
+       
     """
     Nsep = len(sep_keys)
     Nexp = len(experiments)
@@ -702,6 +716,7 @@ def peak_flux_comparison(experiments, flux_types, model_names, threshold,
     """Makes bar charts of event peak flux. A second version of the bar chart
         is commented out below. It showed the data and model comparison in a
         different style.
+        
     """
     Nsep = len(sep_keys)
     Nexp = len(experiments)
@@ -787,7 +802,9 @@ def peak_flux_comparison(experiments, flux_types, model_names, threshold,
 
 def time_bar_charts(experiments, flux_types, model_names, threshold,
             sep_keys, expmt_keys, proton_dict, saveplot):
-    """Makes bar charts of event rise times and durations."""
+    """Makes bar charts of event rise times and durations.
+    
+    """
     Nsep = len(sep_keys)
     Nexp = len(experiments)
     thresh_label = threshold[0] + ' MeV, ' + threshold[1] + ' pfu'
@@ -866,6 +883,7 @@ def time_profile_comparison(experiments, flux_types, model_names,
             threshold, sep_keys, expmt_keys, saveplot):
     """Creates a plot of all of the measured and modeled time profiles for the
        integral flux specified by threshold. (>10 MeV, >100 MeV)
+       
     """
     points_only_models = ['AFRLPPS','SEPSTER','UMASEP'] #Plot only points
     all_dates = []
@@ -933,6 +951,7 @@ def run_all(all_sep_dates, all_model_names, all_model_flux_types, str_threshold,
         showplot, saveplot):
     """Runs all of the subroutines that make the desired plots. Basically,
        the "main".
+       
     """
 
     experiments, flux_types, threshold, sep_keys, expmt_keys, proton_keys, \

@@ -14,7 +14,7 @@ import datetime
 import argparse
 import math
 import sys
-
+from lmfit import minimize, Parameters
 
 #From global_vars.py
 datapath = vars.datapath
@@ -205,6 +205,215 @@ def make_diff_from_int(integral_fluxes, energy_bins):
     return diff_bins, diff_fluxes
 
 
+def modified_weibull(times, Ip, a, b):
+    """ Create a Weibull for times in seconds since first
+        date with params a and b.
+    """
+    
+    weibull = []
+    for t in times:
+        W = Ip*(-a/b)*(t/b)**(a-1)*math.exp(-(t/b)**a)
+        weibull.append(W)
+        
+    return weibull
+
+
+
+def residual(fit, data):
+    """ Calculate difference between fit and data."""
+    
+    resid = []
+    for i in range(len(fit)):
+        resid.append(data[i] - fit[i])
+    
+    return resid
+    
+
+
+def weibull_residual(params, *args):
+    """ Caluate the residual of the Weibull fit
+        compared to data.
+    """
+    
+    pars = params.valuesdict()
+    a = pars['alpha']
+    b = pars['beta']
+    Ip = pars['peak_intensity']
+    
+    #print('Generating Weibull Ip: ' + str(Ip) + ', a: ' + str(a) + ', b: ' + str(b))
+    
+    times = args[0]
+    data = args[1]
+    
+    fit = modified_weibull(times, Ip, a, b)
+    
+    resid = residual(fit, data)
+    #print(resid)
+    return resid
+    
+
+def find_max_curvature(x, y):
+    """ Calculate the curvature along a curve
+        and find the maximum curvature location.
+        
+        For any three points (a,b,c) the curvature is
+        2 * |(a-b) x (b-c)| / (|a-b| * |b-c| * |c-b|).
+        
+        https://stackoverflow.com/questions/59041924/how-can-i-go-about-finding-points-where-there-is-a-bend-cut-in-my-data
+        
+        INPUTS:
+        
+        :curve: (float 1xn array) weibull fit points
+    
+    """
+    xarr = np.array(x)
+    yarr = np.array(y)
+    yderiv = yarr[1:] - yarr[:-1]
+    yderiv2 = yderiv[1:] - yderiv[:-1]
+    
+    k_x = yderiv2/((1 + yderiv[1:]**2))**(3./2.)
+    
+    max_k_idx= np.argmin(k_x)
+    
+    #rescale the curvature to overplot
+    max_y = np.max(yarr)
+    max_y_idx = np.argmax(yarr)
+    k_x = (np.max(yarr)/np.max(k_x))*k_x
+    
+    plt.figure("Curvature",figsize=(9,5))
+    plt.plot(xarr,yarr,label="orig")
+    plt.plot(xarr[max_k_idx+2], yarr[max_k_idx+2],"o",label="max curvature on Weibull")
+    plt.plot(xarr[max_y_idx], yarr[max_y_idx],"o",label="max Weibull")
+    plt.plot(xarr[2:],k_x,label="curvature")
+    plt.plot(xarr[max_k_idx+2],k_x[max_k_idx],"o",label="max curvature")
+    plt.legend(loc='lower left')
+    plt.xlabel("Hours")
+    plt.ylabel("Y")
+    #plt.yscale("log")
+    #plt.ylim(1e-4,1e6)
+
+    plt.show()
+
+    return max_k_idx+2
+    
+
+
+def calculate_onset_peak_from_fit(experiment, energy_bins, dates, fluxes):
+    """ Calculate the peak associated with the initial SEP onset. This subroutine
+        searches for the rollover that typically occurs after the SEP onset.
+        The peak value will be specified as the flux value at the rollover
+        location.
+        If the event peak is larger than 500/energy channel (e.g. for >10
+        MeV, if peak is above 50 pfu), then the rollover will be found
+        starting from the threshold crossing time.
+        If the event is a "weaker" event with a maximum below the value above,
+        the rollover location will be identified starting from 12 hours (buffer)
+        prior to threshold crossing time. The onset peak time may be BEFORE
+        THE EVENT START TIME with this logic, but is more independent of the
+        level of the threshold and more linked to the behavior of the flux
+        time profile.
+        The onset peak may provide a more physically appropriate comparison
+        with models.
+        If code cannot identify onset peak, it will return a value of 0 on
+        the date None.
+        
+        The onset peak is found by fitting a Weibull function to the SEP
+        time profile. A peak time is estimated and an appropriate flux
+        value at or near that peak will be identified as the peak value.
+        
+        INPUTS:
+        
+        :experiment: (string) e.g. GOES-13
+        :energy_thresholds: (float 1xn array) - energy channels for which thresholds
+            are applied
+        :dates: (datetime 1xm array) - dates associated with flux time profile
+        :integral_fluxes: (float nxm array) - fluxes for each energy channel for
+            which a threshold is applied; each is the same length as dates
+        :crossing_time: (datetime 1xn array) - threshold crossing times for each energy
+            channel for which a threshold is applied
+        :event_end_time: (datetime 1xn array) - end times for each energy channel for which
+            a threshold is applied
+        :showplot: (bool)
+        
+        OUTPUTS:
+        
+        :onset_date: (datetime 1xn array) - time of onset peak
+        :onset_peak: (float 1xn array) - flux value of onset peak
+        
+    """
+    nbins = len(energy_bins)
+    
+    #Convert dates into a series of times for fitting
+    #Seconds since first date
+    times = [((t - dates[0]).total_seconds() + 60)/(60*60) for t in dates]
+    
+    #Do a fit of the Weibull function for each time profile
+    params_weib = Parameters()
+    params_weib.add('alpha', value = -3, min = -5, max = -0.1)
+    params_weib.add('beta', value = 10, min = 1, max =100)
+    params_weib.add('peak_intensity', value = 100, min = 1e-3, max =1e6)
+    
+    for i in range(nbins):
+        if energy_bins[i][0] < 10: continue
+        #log_fluxes = [math.log10(f) for f in fluxes[i]]
+        minimize_weib = minimize(weibull_residual, params_weib, args = [times, fluxes[i]], nan_policy= 'propagate', max_nfev=np.inf)
+        
+        best_pars = minimize_weib.params.valuesdict()
+        best_a = best_pars['alpha']
+        best_b = best_pars['beta']
+        best_Ip = best_pars['peak_intensity']
+        best_weibull = modified_weibull(times, best_Ip, best_a, best_b)
+        print("==== >" + str(energy_bins[i][0]) + " MeV =====")
+        print('Best Fit Weibull Ip: ' + str(best_Ip) + ', a: ' + str(best_a) + ', b: ' + str(best_b))
+        
+        max_curve_idx = find_max_curvature(times, best_weibull)
+        max_curve_time = times[max_curve_idx]
+        max_curve_val = best_weibull[max_curve_idx]
+        
+        
+        max_val = np.max(best_weibull)
+        max_idx = np.where(best_weibull == max_val)
+        max_time = times[max_idx[0][0]]
+        
+        #Pull out max measured value around this identified maximum in the fit
+        model_max_date = datetime.timedelta(seconds=(max_time*60*60 - 60)) + dates[0]
+        max_meas = 0
+        max_date = 0
+        dt = datetime.timedelta(hours=1)
+        for j in range(len(dates)):
+            if dates[j] >= model_max_date - dt and dates[j] <= model_max_date + dt:
+                if fluxes[i][j] > max_meas:
+                    max_meas = fluxes[i][j]
+                    max_date = times[j] #dates[j]
+        
+        
+        plt.figure("Onset Peak",figsize=(9,5))
+        label = ">" + str(energy_bins[i][0]) + " MeV"
+        plt.plot(times,fluxes[i],label=label)
+        label_weib = "Weibull "
+        plt.plot(times,best_weibull,label="Weibull")
+        #test
+        rise = []
+        exp_fall = []
+        test_weib = []
+        for t in times:
+            rise.append(best_Ip*(-best_a/best_b)*(t/best_b)**(best_a-1))
+            exp_fall.append(best_Ip*(-best_a/best_b)*math.exp(-(t/best_b)**best_a))
+            test_weib.append(best_Ip*(-best_a/best_b)*(t/best_b)**(best_a-1)*math.exp(-(t/best_b)**best_a))
+       # plt.plot(times,rise,label="rise (t/b)^(a-1)")
+       # plt.plot(times,exp_fall,label="exp fall e^(-(t/b)^a)")
+       # plt.plot(times,test_weib,":",label="test Weibull")
+        plt.plot(max_time, max_val,"o",label="max model")
+        plt.plot(max_date, max_meas,">",label="max measured")
+        plt.plot(max_curve_time, max_curve_val,"D",label="max curvature")
+        plt.legend(loc='lower left')
+        plt.xlabel("Hours")
+        plt.ylabel("Intensity")
+        plt.yscale("log")
+        plt.ylim(1e-4,1e6)
+
+
+
 
 def run_all(str_startdate, str_enddate, experiment,
         flux_type, model_name, user_file, showplot, saveplot,
@@ -252,16 +461,19 @@ def run_all(str_startdate, str_enddate, experiment,
     if int_to_diff:
         energy_bins, fluxes = make_diff_from_int(fluxes, energy_bins)
     
-    print("===Fluence values for time period===")
-    bin_centers = []
-    fluences = []
-    for ii in range(len(energy_bins)): #MeV
-        bin_center = math.sqrt(energy_bins[ii][0]*energy_bins[ii][1])
-        bin_centers.append(bin_center)
-        fluence = sum(fluxes[ii][:])*5.*60./(exposure_time)
-        fluences.append(fluence)
-        print(str(bin_center) + " MeV " + ", " + str(fluence) + " [MeV cm2 s sr]^-1")
-        
+    
+#    #Code for plotting fluence with various normalization factors
+#    #to try to match Kathryn Whitman's thesis
+#    print("===Fluence values for time period===")
+#    bin_centers = []
+#    fluences = []
+#    for ii in range(len(energy_bins)): #MeV
+#        bin_center = math.sqrt(energy_bins[ii][0]*energy_bins[ii][1])
+#        bin_centers.append(bin_center)
+#        fluence = sum(fluxes[ii][:])*5.*60./(exposure_time)
+#        fluences.append(fluence)
+#        print(str(bin_center) + " MeV " + ", " + str(fluence) + " [MeV cm2 s sr]^-1")
+#
 #        for ii in range(len(energy_bins)): #GeV
 #            bin_center = math.sqrt(energy_bins[ii][0]*energy_bins[ii][1])*1e-3
 #            bin_centers.append(bin_center)
@@ -274,6 +486,8 @@ def run_all(str_startdate, str_enddate, experiment,
 #            energy_units = "GeV"
                         
     nbins = len(energy_bins)
+    
+    calculate_onset_peak_from_fit(experiment, energy_bins, dates, fluxes)
         
     #===============PLOTS==================
     if saveplot or showplot:
@@ -382,16 +596,7 @@ def run_all(str_startdate, str_enddate, experiment,
                 plt.close(fig)
 
     
-    
-    
-    
-    
     return dates,fluxes,energy_bins
-
-
-
-
-
 
 
 

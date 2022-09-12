@@ -1,6 +1,6 @@
 # operational-sep
 
-**operational_sep_quantities.py CURRENT VERSION 3.6**
+**operational_sep_quantities.py CURRENT VERSION 3.10**
 
 Please see the extensive and nicely formatted web documentation at <a href="https://ktindiana.github.io/operational-sep/index.html" target="_blank">https://ktindiana.github.io/operational-sep/index.html</a>.
 
@@ -127,11 +127,11 @@ operational-sep/operational_sep_quantities.py
     __maintainer__ = 'Katie Whitman'
 
 ### VERSION
-V3.0
+V3.10
 
 ### FUNCTIONS
 #### all_program_info()
-    Program description for operational_sep_quantities.py v3.2.
+    Program description for operational_sep_quantities.py v3.10.
 
     Formatting for Sphinx web-based documentation, which can be viewed
     within the docs/index.html directory or online at:
@@ -139,7 +139,9 @@ V3.0
 
     This program will calculate various useful pieces of operational
     information about SEP events from GOES-08, -10, -11, -12, -13, -14, -15
-    data and the SEPEM (RSDv2 and RSDv3) dataset.
+    data, GOES-R (-16, -17, real time integral), SOHO/EPHIN Level 3, SOHO/EPHIN
+    real time data from the REleASE website, and the SEPEM (RSDv2 and RSDv3)
+    dataset.
 
     SEP event values are always calculated for threshold definitions:
         
@@ -258,23 +260,29 @@ V3.0
     may be changed in the future to update this to more NOAA SWPC-like logic
     to define the end of an SEP event.
 
-        Note about ONSET PEAK: In operational_sep_quantities.py version 3.0,
-    the onset peak may be found up to 12 hours prior to the threshold crossing
-    that determines the SEP event start time. In previous versions, the onset
-    peak could only be found at or after the threshold crossing time. For events
-    that crossed threshold by a small amount, this often meant that the
-    actual onset peak as identified by eye occurred prior to threshold crossing
-    at a lower flux value. In an effort to derive the onset peak from the shape
-    of the flux time profile independent of the applied threshold value, the code
-    will search for the onset peak 12 hours earlier for events with lower
-    flux levels. The documentation for
-    operational_sep_quantities.calculate_onset_peak() has further details.
+        Note about ONSET PEAK: The algorithm to estimate the location of the
+    onset peak was changed in v3.10. The previous algorithm is still in
+    the code, but the new one is implemented in the overall workflow.
+    The new algorithm, called calculate_onset_peak_from_fit(), was implemented
+    in an attempt to make the identification of the onset peak more robust.
+    Following the approach of Kahler and Ling (2017), a modified Weibull is
+    fit to the time profile between the time points 6 hours prior to a threshold
+    crossing out to 24 hours after the threshold crossing. The second derivative
+    is taken of the fitted Weibull to find the estimated onset location. The
+    final reported value is the measured maximum flux within 1 hour of the
+    estimated onset peak time derived from the Weibull fit.
 
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
+    
+    .. code-block::
+    
+        python3 operational_sep_quantities.py --StartDate 2012-05-17
+        --EndDate 2012-05-19 --Experiment GOES-13
+        --FluxType integral --showplot --saveplot
 
     .. code-block::
 
-        python3 operational_sep_quantities.py --StartDate 2012-05-17
+        python3 operational_sep_quantities.py --StartDate "2012-05-17 01:00:00"
         --EndDate "2012-05-19 12:00:00" --Experiment GOES-13
         --FluxType integral --showplot --saveplot
 
@@ -349,7 +357,7 @@ V3.0
     A file named as e.g. sep_values_GOES-13_differential_2012_3_7.csv contains
     start time, peak flux, etc, for each of the defined thresholds.
 
-    The program write to file the >10 MeV and >100 MeV time series for the
+    The program writes to file the >10 MeV and >100 MeV time series for the
     date range input by the user. If the original data were integral fluxes,
     then the output files simply contain the >10 and >100 MeV time series from
     the input files. If the original data were differential fluxes, then the
@@ -388,6 +396,13 @@ V3.0
     to read into the CCMC SEP Scoreboard or to pass to the SEP validation code
     being developed in conjunction with the SEP Scoreboard. The csv files are legacy
     files, but may also be easier for some users to read.
+
+    PLOTS: Prior to v3.10, plots were only generated if a threshold was crossed.
+    If only a subset of the specified thresholds were crossed, then only the cases
+    where a threshold was crossed would show up in the plots and the others would
+    be blank spaces.
+    Starting in v3.10, plots of the flux time series are ALWAYS created,
+    regardless of whether any thresholds are crossed.
 
 
     USER INPUT DATA SETS: Users may input their own data set. For example, if an
