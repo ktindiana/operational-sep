@@ -1385,6 +1385,7 @@ def read_in_goesR_RT(experiment, flux_type, filenames1):
         
             for row in infile:
                 if row[0] == "#": continue
+                if row[0] == ":": continue
                 if j == 288: continue
                 
                 row = row.split()
