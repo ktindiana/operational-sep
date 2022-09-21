@@ -16,7 +16,7 @@ import sys
 import math
 import netCDF4
 
-__version__ = "1.1"
+__version__ = "1.2"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -52,6 +52,9 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   the trimming so that the selected time range starts either
 #   on or one point AFTER the specified start. Previously,
 #   the point right before the specified start was included.
+#2022-09-19, changes in 1.2: GOES-14 and GOES-15 hepad files from
+#   2019-09-01 forward are missing a column. Added code to
+#   read_in_goes() to change the expected columns for later dates.
 
 
 
@@ -644,7 +647,7 @@ def check_goesR_RTdata(startdate, enddate, experiment, flux_type):
                 urllib.request.urlopen(url)
                 wget.download(url, datapath + '/GOES-R/' + fname1)
             except urllib.request.HTTPError:
-                sys.exit("Cannot access orientation file at " + url +
+                sys.exit("Cannot access GOES-R file at " + url +
                ". Please check that selected spacecraft covers date range.")
   
 
@@ -1130,6 +1133,7 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
             columnsB = [4,6,8,10,12,14] #epead, B detector
             hepad_columns = [18]
 
+
     ncol = len(columns)
     nhcol = len(hepad_columns)
     totcol = ncol + nhcol
@@ -1140,6 +1144,23 @@ def read_in_goes(experiment, flux_type, filenames1, filenames2,
         nhead, nrow = find_goes_data_dimensions(filenames1[i])
         dates = []
         fluxes = np.zeros(shape=(totcol,nrow))
+        
+        #GOES-14 and GOES-15 files between 2019-09-01 to 2020-03-07 have one
+        #column missing in the hepad file. Check the date in the filenames1
+        #and apply the correct hepad columns for those specific files.
+        #filename1 e.g. 15_epead_cpflux_5m_20200301_20200331.csv
+        if (experiment == "GOES-14" or experiment == "GOES-15"):
+            fsplit = filenames1[i].split("/") #break up path
+            fnm = fsplit[-1].split(".csv") #last entry is the filename
+            fnm = fnm[0].split("_")
+            dt = datetime.datetime.strptime(fnm[-2],"%Y%m%d")
+            if dt >= datetime.datetime(year=2019,month=9,day=1):
+                if flux_type == "differential":
+                    hepad_columns = [8,11,14,17]
+                if flux_type == "integral":
+                    hepad_columns = [17]
+            
+        
         print('Reading in file ' + datapath + '/' + filenames1[i])
         with open(datapath + '/' + filenames1[i]) as csvfile:
             #GOES data has very large headers; figure out where the data
@@ -1410,7 +1431,7 @@ def read_in_goesR_RT(experiment, flux_type, filenames1):
         if all_fluxes == []:
             all_fluxes = fluxes
         else:
-            all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
+            all_fluxes = np.concatenate((all_fluxes,fluxes[:,0:len(all_dates)]),axis=1)
 
     return all_dates, all_fluxes, west_detector
 

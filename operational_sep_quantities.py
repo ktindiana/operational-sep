@@ -27,7 +27,7 @@ from scipy import signal
 from statistics import mode
 from lmfit import minimize, Parameters
 
-__version__ = "3.10"
+__version__ = "3.11"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -270,6 +270,13 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   choice is the new one that fits a Weibull to the first hours of an
 #   SEP event and uses the second derivative of the Weibull to find
 #   the location of the onset peak.
+#2022-09-19, changes in v3.11: GOES-16 real time integral fluxes are
+#   only available starting on 2020-03-08. Added check to ensure that
+#   user won't pull archived real time fluxes from earlier spacecraft,
+#   which are also stored at CCMC in the same location with the same
+#   filenames. ONE EXCEPTION: The HEPAD files for GOES-14 and GOES-15
+#   are missing a column for the month of 2019-09, so specify GOES-16
+#   to pull the real time GOES fluxes from the CCMC archive instead.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -2652,6 +2659,13 @@ def error_check_inputs(startdate, enddate, experiment, flux_type, json_type,
                   + str(sepemv3_end_date) +
             '. Please change your requested dates. Exiting.')
 
+    
+    goes16_integral_stdate = datetime.datetime(year=2020,month=3,day=8)
+    if(experiment == "GOES-16" or experiment == "GOES-17") \
+        and startdate < goes16_integral_stdate:
+        sys.exit('The GOES-16 real time integral fluxes are only available '
+                + 'starting on '+ str(goes16_integral_stdate) +
+            '. Please change your requested dates. Exiting.')
 
 
 def sort_bin_order(all_fluxes, energy_bins):
