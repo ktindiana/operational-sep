@@ -277,6 +277,12 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   filenames. ONE EXCEPTION: The HEPAD files for GOES-14 and GOES-15
 #   are missing a column for the month of 2019-09, so specify GOES-16
 #   to pull the real time GOES fluxes from the CCMC archive instead.
+#2022-11-14: Updated all_program_info() to reflect new All Clear 
+#   logic that was coded into library/ccmc_json_handler.py > fill_json().
+#   This fixes a previous bug that incorrectly resulted in 
+#   all_clear_boolean = False if only a single point was above 
+#   threshold (for 5 min cadence GOES data, 3 consecutive points above
+#   threshold are required to define an SEP event).
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -452,6 +458,19 @@ def all_program_info(): #only for documentation purposes
     final reported value is the measured maximum flux within 1 hour of the
     estimated onset peak time derived from the Weibull fit.
     
+
+    ALL CLEAR        
+    library/ccmc_json_handler.py > fill_json() contains logic to determine the 
+    All Clear status (all_clear_boolean) for each energy block. For 
+    >10 MeV and >100 MeV, only specific thresholds are allowed to determine 
+    the All Clear status: >10 MeV, 10 pfu and >100 MeV, 1 pfu.
+
+    For all other energy channels, the All Clear status will be filled by the first
+    threshold encountered by the code. e.g. if the user runs the code for 
+    >30 MeV, 1 pfu and >30 MeV, 5 pfu (--Threshold "30,1;30,5"), the all_clear_boolean
+    will reflect the >30 MeV, 1 pfu status. If the user flips the call when running OpSEP 
+    (e.g. --Threshold "30,5;30,1"), then all_clear_boolean will reflect >30 MeV, 5 pfu.
+
     
     RUN CODE FROM COMMAND LINE (put on one line), e.g.:
     

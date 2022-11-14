@@ -8,7 +8,7 @@ from library import global_vars as vars
 from library import keys
 import os
 
-__version__ = "1.5"
+__version__ = "1.6"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -71,6 +71,13 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2022-06-07, changed in 1.5: Don't try to guess Spase ID. If the
 #   user doesn't specify an ID and the field is empty, leave it as
 #   an empty string.
+#2022-11-10, changes in 1.6: The all_clear logic was changed in fill_json.
+#   The code no longer checks the peak flux values to determine 
+#   all_clear if a threshold isn't crossed. Specific energy channel
+#   and threshold crossing combinations are now strictly enforced
+#   for all_clear statues (>10 MeV, 10 pfu; >100 MeV, 1 pfu)
+#   All other energy channels are allowed
+#   to use any threshold crossing to determine all_clear status.
 
 version = vars.version
 
@@ -126,7 +133,19 @@ def about_ccmc_json_handler():
             subdict1 = dict['sep_forecast_submission']['forecasts']['event_lengths']
             subdict2 = subdict1[1]
             desired_val = subdict2['start_time']
-            
+
+
+        ALL CLEAR        
+        fill_json contains logic to determine the All Clear status (all_clear_boolean)
+        for each energy block. For >10 MeV and >100 MeV, only specific thresholds are 
+        allowed to determine the All Clear status: >10 MeV, 10 pfu and >100 MeV, 1 pfu.
+
+        For all other energy channels, the All Clear status will be filled by the first
+        threshold encountered by the code. e.g. if the user runs the code for 
+        >30 MeV, 1 pfu and >30 MeV, 5 pfu (--Threshold "30,1;30,5"), the all_clear_boolean
+        will reflect the >30 MeV, 1 pfu status. If the user flips the call when running OpSEP 
+        (e.g. --Threshold "30,5;30,1"), then all_clear_boolean will reflect >30 MeV, 5 pfu.
+             
         
     """
 
@@ -371,14 +390,37 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
         template[key][type_key][tidx][win_key]['start_time'] = zst
         template[key][type_key][tidx][win_key]['end_time'] = zend
 
+        all_clear = "" #will be string unless specific conditions met
+
         #Threshold WAS crossed
         if crossing_time[i] != 0:
             zodate = make_ccmc_zulu_time(onset_date[i])
             zpdate = make_ccmc_zulu_time(peak_time[i])
             zct = make_ccmc_zulu_time(crossing_time[i])
             zeet = make_ccmc_zulu_time(event_end_time[i])
-            all_clear = False
             
+            #Only a specific set of energy channel and thresholds are considered
+            #for the All Clear field.
+            #>10 MeV, 10 pfu - NOAA SWPC and SRAG operations
+            #>100 MeV, 1 pfu - SRAG operations
+            #>30 MeV, 1 pfu - SRAG supplemental (disabled for now)
+            #>50 MeV, 1 pfu - SRAG supplemental (disabled for now)
+            if bin[0] == 10 and bin[1] == -1:
+                if flux_thresholds[i] == 10:     
+                    all_clear = False
+            elif bin[0] == 100 and bin[1] == -1:
+                if flux_thresholds[i] == 1:
+                    all_clear = False
+ #           elif bin[0] == 30 and bin[1] == -1:
+ #               if flux_thresholds[i] == 1:
+ #                   all_clear = False
+ #           elif bin[0] == 50 and bin[1] == -1:
+ #               if flux_thresholds[i] == 1:
+ #                   all_clear = False
+            else:
+                #Allow other flux & threshold combinations for other energy channels
+                all_clear = False            
+
             #Onset Peak Flux
             onset_dict = {"intensity":onset_peak[i],"time": zodate,
                             "units":flux_units}
@@ -448,8 +490,10 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
             #Fill in All Clear if not already filled in.
             #If there was already a forecast made for a different threshold,
             #will not replace it
+            #If there are multiple thresholds applied to a block, only the first
+            #one will determine the all_clear field.
             if template[key][type_key][tidx]['all_clear']['all_clear_boolean']\
-                == "":
+                == "" and all_clear != "":
                 template[key][type_key][tidx]['all_clear']['all_clear_boolean'] \
                                 = all_clear
                 template[key][type_key][tidx]['all_clear']['threshold'] \
@@ -467,29 +511,44 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
             zpdate = make_ccmc_zulu_time(peak_time[i])
             zct = ""
             zeet = ""
-            all_clear = True
             template[key][type_key][tidx]['sep_profile'] = profile_filenames[i]
             
-            #The >10 and >100 MeV channels are special in that they
-            #are used operationally. The All Clear is thus derived
-            #ONLY from the operational thresholds.
-            #>10 MeV, 10 pfu and >100 MeV, 1 pfu
-            #The All Clear for any other energy channel is defined
-            #by whether the user threshold was crossed or not
-            if energy_thresholds[i] == 10:
-                if peak_flux[i] >= 10: all_clear = False
-            if energy_thresholds[i] == 100:
-                if peak_flux[i] >= 1: all_clear = False
-                    
             max_dict = {"intensity":peak_flux[i],"time": zpdate,
                         "units":flux_units}
             template[key][type_key][tidx]['peak_intensity_max'].update(max_dict)
             
+            
+            #Only a specific set of energy channel and thresholds are considered
+            #for the All Clear field.
+            #>10 MeV, 10 pfu - NOAA SWPC and SRAG operations
+            #>100 MeV, 1 pfu - SRAG operations
+            #>30 MeV, 1 pfu - SRAG supplemental (disabled for now)
+            #>50 MeV, 1 pfu - SRAG supplemental (disabled for now)
+            if bin[0] == 10 and bin[1] == -1:
+                if flux_thresholds[i] == 10:     
+                    all_clear = True
+            elif bin[0] == 100 and bin[1] == -1:
+                if flux_thresholds[i] == 1:
+                    all_clear = True
+  #          elif bin[0] == 30 and bin[1] == -1:
+  #              if flux_thresholds[i] == 1:
+  #                  all_clear = True
+  #          elif bin[0] == 50 and bin[1] == -1:
+  #              if flux_thresholds[i] == 1:
+  #                  all_clear = True
+            else:
+                #Allow other flux & threshold combinations for other energy channels
+                all_clear = True            
+
+
+
             #Fill in All Clear if not already filled in.
             #If there was already a forecast made for a different threshold,
             #will not replace it
+            #If there are multiple thresholds applied to a block, only the first
+            #one will determine the all_clear field.
             if template[key][type_key][tidx]['all_clear']['all_clear_boolean']\
-                == "":
+                == "" and all_clear != "":
                 template[key][type_key][tidx]['all_clear']['all_clear_boolean'] \
                                 = all_clear
                 template[key][type_key][tidx]['all_clear']['threshold'] \
