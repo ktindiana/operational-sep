@@ -16,7 +16,7 @@ import sys
 import math
 import netCDF4
 
-__version__ = "1.2"
+__version__ = "1.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -55,7 +55,13 @@ __email__ = "kathryn.whitman@nasa.gov"
 #2022-09-19, changes in 1.2: GOES-14 and GOES-15 hepad files from
 #   2019-09-01 forward are missing a column. Added code to
 #   read_in_goes() to change the expected columns for later dates.
-
+#2022-11-20, changes in 1.3: Added STEREO-A and B to native data sets.
+#2023-02-09, changes in 1.4: NOAA SWPC moved the location of the historical
+#   GOES-15 and previous data. Updated the url in check_goes_data().
+#   Updated check_goesR_data() to account for two different version
+#   numbers possible in the differential files. Updated read_in_goesR()
+#   to account for the different keys used to extract the flux
+#   values in the different versions.
 
 
 datapath = gl.datapath
@@ -129,6 +135,18 @@ def check_paths():
         print('check_paths: Directory containing fluxes, ' + datapath +
         '/SRAG12, does not exist. Creating.')
         os.mkdir(datapath + '/SRAG12');
+    if not os.path.isdir(datapath + '/STEREO-A'):
+        print('check_paths: Directory containing fluxes, ' + datapath +
+        '/STEREO-A, does not exist. Creating.')
+        os.mkdir(datapath + '/STEREO-A');
+        os.mkdir(datapath + '/STEREO-A/LET');
+        os.mkdir(datapath + '/STEREO-A/HET');
+    if not os.path.isdir(datapath + '/STEREO-B'):
+        print('check_paths: Directory containing fluxes, ' + datapath +
+        '/STEREO-B, does not exist. Creating.')
+        os.mkdir(datapath + '/STEREO-B');
+        os.mkdir(datapath + '/STEREO-B/LET');
+        os.mkdir(datapath + '/STEREO-B/HET');
     if not os.path.isdir(outpath):
         print('check_paths: Directory to store output information, ' + outpath
             + ', does not exist. Creating.')
@@ -429,7 +447,7 @@ def check_goes_data(startdate, enddate, experiment, flux_type):
         filenames2.append('GOES/' + fname2)
 
         if not exists1: #download file if not found on your computer
-            url = ('https://satdat.ngdc.noaa.gov/sem/goes/data/avg/' +
+            url = ('https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/' +
                 '%i/%02i/%s/csv/%s' % (year,month,satellite,fname1))
             print('Downloading GOES data: ' + url)
             try:
@@ -441,7 +459,7 @@ def check_goes_data(startdate, enddate, experiment, flux_type):
 
 
         if not exists2: #download file if not found on your computer
-            url = ('https://satdat.ngdc.noaa.gov/sem/goes/data/avg/' +
+            url = ('https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/' +
                '%i/%02i/%s/csv/%s' % (year,month,satellite,fname2))
             print('Downloading GOES data: ' + url)
             try:
@@ -454,7 +472,7 @@ def check_goes_data(startdate, enddate, experiment, flux_type):
         if (experiment == "GOES-13" or experiment == "GOES-14"
             or experiment == "GOES-15"):
             if not exists_orien: #download file if not found on your computer
-                url = ('https://satdat.ngdc.noaa.gov/sem/goes/data/avg/' +
+                url = ('https://www.ncei.noaa.gov/data/goes-space-environment-monitor/access/avg/' +
                    '%i/%02i/%s/csv/%s' % (year,month,satellite,fname_orien))
                 print('Downloading GOES data: ' + url)
                 try:
@@ -552,20 +570,31 @@ def check_goesR_data(startdate, enddate, experiment, flux_type):
         day = date.day
         date_suffix = 'd%i%02i%02i' % (year,month,day)
  
+        #GOES-R differential data has two possible version numbers
         fname1 = prefix + date_suffix + '_v2-0-0.nc'
         exists1 = os.path.isfile(datapath + '/GOES-R/' + fname1)
-        filenames1.append('GOES-R/' + fname1)
+        if not exists1:
+            fname1 = prefix + date_suffix + '_v1-0-1.nc'
+            exists1 = os.path.isfile(datapath + '/GOES-R/' + fname1)
 
         if not exists1:
+            fname1 = prefix + date_suffix + '_v2-0-0.nc'
             url=('https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/%s/l2/data/sgps-l2-avg5m/%i/%02i/%s' % (satellite,year,month,fname1))
             try:
                 urllib.request.urlopen(url)
                 wget.download(url, datapath + '/GOES-R/' + fname1)
             except urllib.request.HTTPError:
-                sys.exit("Cannot access orientation file at " + url +
-               ". Please check that selected spacecraft covers date range.")
+                fname1 = prefix + date_suffix + '_v1-0-1.nc'
+                url=('https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/%s/l2/data/sgps-l2-avg5m/%i/%02i/%s' % (satellite,year,month,fname1))
+                try:
+                    urllib.request.urlopen(url)
+                    wget.download(url, datapath + '/GOES-R/' + fname1)
+                except urllib.request.HTTPError:
+                    sys.exit("Cannot access orientation file at " + url +
+                   ". Please check that selected spacecraft covers date range.")
   
-
+        filenames1.append('GOES-R/' + fname1)
+        
     return filenames1, filenames2, filenames_orien
 
 
@@ -761,6 +790,143 @@ def check_ephin_release_data(startdate, enddate, experiment, flux_type):
 
 
 
+def check_stereo_data(startdate, enddate, experiment, flux_type):
+    """ Check for 1 min STEREO data on your computer provided on:
+        https://izw1.caltech.edu/STEREO/Public/LET_public.html
+        https://izw1.caltech.edu/STEREO/Public/HET_public.html            
+        
+        
+        Intensities are in units of (cm^2 s sr mev/nuc)^-1
+        First available date is 2006 12 1.
+        The files are saved in daily files.
+        
+        INPUTS:
+        
+        :startdate: (datetime) start of time period specified by user
+        :enddate: (datetime) end of time period entered by user
+        :experiment: (string) name of native experiment or "user"
+        :flux_type: (string) "integral" or "differential"
+        
+        OUTPUTS:
+        
+        :filenames1: (string array) the files containing the data
+            that span the desired time range (yearly files)
+        
+    """
+    styear = startdate.year
+    stmonth = startdate.month
+    stday = startdate.day
+    endyear = enddate.year
+    endmonth = enddate.month
+    endday = enddate.day
+
+    #Array of filenames that contain the data requested by the User
+    filenames1 = [] #LET  
+    filenames2 = [] #HET
+
+    td = enddate - startdate
+    #LET STEREO data is stored in daily data files
+    NFILESd = td.days + 1
+    #HET STEREO data is stored in monthly data files
+    styear = startdate.year
+    stmonth = startdate.month
+    endyear = enddate.year
+    endmonth = enddate.month
+    numyr = endyear - styear
+    if numyr == 0:
+        NFILESm = endmonth - stmonth + 1
+    if numyr > 0:
+        NFILESm = (12 - stmonth) + endmonth + (numyr-1)*12 + 1
+
+
+    #pulls primary spacecraft fluxes
+    if experiment == 'STEREO-A':
+        let_url_prefix = 'https://izw1.caltech.edu/STEREO/DATA/Level1/Public/ahead/1Minute/'
+        let_prefix = 'H_summed_ahead_'
+        het_url_prefix = 'https://izw1.caltech.edu/STEREO/DATA/HET/Ahead/1minute/'
+        het_prefix = 'AeH'
+
+    if experiment == 'STEREO-B':
+        let_url_prefix = 'https://izw1.caltech.edu/STEREO/DATA/Level1/Public/behind/1Minute/'
+        let_prefix = 'H_summed_behind_'
+        het_url_prefix = 'https://izw1.caltech.edu/STEREO/DATA/HET/Behind/1minute/'
+        het_prefix = 'BeH'
+
+
+    #for every day that data is required, check if file is present or
+    #needs to be downloaded.
+    #LET
+    #https://izw1.caltech.edu/STEREO/DATA/Level1/Public/behind/1Minute/2006/Summed/H/H_summed_behind_2006_317_level1_11.txt
+    #HET
+    #https://izw1.caltech.edu/STEREO/DATA/HET/Behind/1minute/BeH06Dec.1m
+    #LET data
+    for i in range(NFILESd):
+        date = startdate + datetime.timedelta(days=i)
+        year = date.year
+        month = date.month
+        day = date.day
+        doy = date.timetuple().tm_yday
+        strmonth = date.strftime("%b")
+        stryr = str(year)
+
+        #LET
+        fname1 = '%s%i_%03i_level1_11.txt' % (let_prefix,year,doy) 
+        exists1 = os.path.isfile(datapath + '/' + experiment + '/LET/' + fname1)
+        filenames1.append(experiment + '/LET/' + fname1)
+
+        if not exists1:
+            url=(let_url_prefix + '%i/Summed/H/%s' % (year,fname1))
+            try:
+                urllib.request.urlopen(url)
+                wget.download(url, datapath + '/' + experiment + '/LET/' + fname1)
+                print("Downloaded file --> " + datapath + '/' + experiment + '/LET/' + fname1)
+            except urllib.request.HTTPError:
+                sys.exit("Cannot access " + experiment + " file at " + url +
+                ". Please check that selected spacecraft covers date range.")
+
+
+    #HET data - monthly
+    year = startdate.year
+    month = startdate.month
+    nyr = 0
+    for i in range(NFILESm):
+        month = month + i
+        if month == 13:
+            month = 1
+            nyr = nyr + 1
+            
+        year = styear + nyr
+        date = datetime.datetime(year=year,month=month,day=1)
+        strmonth = date.strftime("%b")
+        stryr = str(year)
+
+        #HET
+        fname2 = '%s%s%s.1m' % (het_prefix,stryr[2:4],strmonth)
+        exists2 = os.path.isfile(datapath + '/' + experiment + '/HET/' + fname2)
+        filenames2.append(experiment + '/HET/' + fname2)
+
+        #The monthly files continue to be updated as the month progresses.
+        #If already have the file on your computer for the current year and month,
+        #still want to update it because there may be new data since the
+        #last time it was downloaded.
+        time_now = datetime.datetime.now()
+        if time_now.year == year and time_now.month == month: exists2 = False
+
+        if not exists2:
+            url=het_url_prefix + fname2
+            try:
+                urllib.request.urlopen(url)
+                wget.download(url,datapath + '/' + experiment + '/HET/' + fname2)
+                print("Downloaded file --> " + datapath + '/' + experiment + '/HET/' + fname2)
+            except urllib.request.HTTPError:
+                sys.exit("Cannot access " + experiment + " file at " + url +
+                    ". Please check that selected spacecraft covers date range.")
+
+
+    return filenames1, filenames2
+
+
+
 def check_data(startdate, enddate, experiment, flux_type, user_file):
     """Check that the files containing the data are in the data directory. If
         the files for the requested dates aren't present, they will be
@@ -855,8 +1021,6 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
                                         enddate, experiment, flux_type)
         return filenames1, filenames2, filenames_orien
         
-        
-
 
     if experiment == "EPHIN":
         filenames1 = check_ephin_data(startdate, enddate, experiment, flux_type)
@@ -866,6 +1030,13 @@ def check_data(startdate, enddate, experiment, flux_type, user_file):
         filenames1 = check_ephin_release_data(startdate, enddate, experiment,
                                         flux_type)
         return filenames1, filenames2, filenames_orien
+
+
+    if 'STEREO' in experiment:
+        filenames1, filenames2 = check_stereo_data(startdate, enddate, experiment,
+                                        flux_type)
+        return filenames1, filenames2, filenames_orien
+
 
     return filenames1, filenames2, filenames_orien
 
@@ -1321,6 +1492,8 @@ def read_in_goesR(experiment, flux_type, filenames1):
                 #Special file info FOR SEP Events during 2017-09
                 if filenames1[i] == "GOES-R/se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc":
                     flux = data.variables["AvgDiffProtonFlux"][j][idx][k]
+                if 'v1-0-1' in filenames1[i]:
+                    flux = data.variables["AvgDiffProtonFlux"][j][idx][k]
                 else:
                     flux = data.variables["AvgDiffProtonFluxObserved"][j][idx][k]
                 if flux < 0:
@@ -1330,6 +1503,8 @@ def read_in_goesR(experiment, flux_type, filenames1):
             #>500 MeV integral channel
             #Special file info FOR SEP Events during 2017-09
             if filenames1[i] == "GOES-R/se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc":
+                flux = data.variables["AvgIntProtonFlux"][j][idx]
+            if 'v1-0-1' in filenames1[i]:
                 flux = data.variables["AvgIntProtonFlux"][j][idx]
             else:
                 flux = data.variables["AvgIntProtonFluxObserved"][j][idx]
@@ -1593,8 +1768,236 @@ def read_in_ephin_release(experiment, flux_type, filenames1):
             all_fluxes = np.concatenate((all_fluxes,fluxes),axis=1)
             all_dates = all_dates + dates
 
-    print(all_fluxes)
     return all_dates, all_fluxes
+
+
+
+def read_in_stereo(experiment, flux_type, filenames1, filenames2):
+    """ Read in STEREO-A or STEREO-B LET (summed) and HET files
+        and combine together to make a time profile across
+        the energy ranged covered by the STEREO spacecraft,
+        1 - 100 MeV.
+        
+        A complication of this paticular data set is that the lower
+        energy data are stored in daily files while the higher
+        energy data are stored in yearly files. Need to take care
+        to match up the data points in time.
+
+    """
+
+    NFILESL = len(filenames1) #LET, daily
+    NFILESH = len(filenames2) #HET, yearly
+
+    datecolsL = [0,1,2,3,4] #yr, doy (frac), hour, min, sec - not used
+    fluxcolsL = [7,8,9] #1.8-3.6, 4-6, 6-10, 10-15 <-- always empty
+    ncolL = len(fluxcolsL)
+
+    datecolsH = [1,2,3,4] #yr, doy, dy, hr, min - not used
+    fluxcolsH = [11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
+    ncolH = len(fluxcolsH)
+
+    
+    #READ IN LET
+    for i in range(NFILESL):
+        print('Reading in file ' + datapath + '/' + filenames1[i])
+        with open(datapath + '/' + filenames1[i]) as infile:
+            #Count header lines up until "BEGIN DATA"
+            #Count remaining lines of data
+            nhead = 0
+            nrowL = 0
+            is_header = True
+            for line in infile:
+                line = line.lstrip()
+                if is_header:
+                    nhead = nhead + 1
+                
+                if 'BEGIN DATA' in line:
+                    #nhead = nhead + 1
+                    is_header = False
+                
+                if not is_header and line != '': #empty line at end of file
+                    nrowL = nrowL + 1
+            
+            #print("LET data header rows: " + str(nhead) + ", data rows: " + str(nrowL))
+            #Define arrays that hold dates and fluxes
+            datesL = []
+            fluxesL = np.zeros(shape=(ncolL,nrowL))
+
+            infile.seek(0) #back to beginning of file
+            for k in range(nhead):
+                infile.readline()  # Skip header rows.
+
+            count = 0
+            for line in infile:
+                line = line.lstrip()
+                if line == '': continue
+                if line[0] == "#": continue
+
+                row = line.split()
+                year = int(row[0])
+                doy = math.floor(float(row[1]))
+                hour = int(row[2])
+                minute = int(row[3])
+                sec = int(row[4])
+                
+                str_date = str(year) + " " + str(doy) + " " + str(hour) + " " \
+                    + str(minute)
+                date = datetime.datetime.strptime(str_date,"%Y %j %H %M")
+                
+                #doy_date = datetime.datetime(year=year,month=1,day=1) + datetime.timedelta(days=doy-1)
+                #month = doy_date.month
+                #day = doy_date.day
+                
+                #date = datetime.datetime(year=year,month=month,day=day,
+                #        hour=hour,minute=minute,second=0)  #ignore seconds to match with HET
+                datesL.append(date)
+                
+                for j in range(ncolL):
+                    flux = float(row[fluxcolsL[j]])
+                    if flux < 0:
+                        flux = badval
+                    fluxesL[j][count] = flux
+                count = count + 1
+        
+        #If reading in multiple files, then combine all data into one array
+        if i==0:
+            all_fluxesL = fluxesL
+            all_datesL = datesL
+        else:
+            all_fluxesL = np.concatenate((all_fluxesL,fluxesL),axis=1)
+            all_datesL = all_datesL + datesL
+            
+            
+    #READ IN HET
+    for i in range(NFILESH):
+        print('Reading in file ' + datapath + '/' + filenames2[i])
+        with open(datapath + '/' + filenames2[i]) as infile:
+            #Count header lines up until "BEGIN DATA"
+            #Count remaining lines of data
+            nhead = 0
+            nrowH = 0
+            is_header = True
+            for line in infile:
+                line = line.lstrip()
+                if is_header:
+                    nhead = nhead + 1
+                
+                if '#End' in line:
+                   # nhead = nhead + 1
+                    is_header = False
+                
+                if not is_header and line != '': #empty line at end of file
+                    nrowH = nrowH + 1
+            
+            #print("HET data header rows: " + str(nhead) + ", data rows: " + str(nrowH))
+            #Define arrays that hold dates and fluxes
+            datesH = []
+            fluxesH = np.zeros(shape=(ncolH,nrowH))
+
+            infile.seek(0) #back to beginning of file
+            for k in range(nhead):
+                infile.readline()  # Skip header rows.
+
+            count = 0
+            for line in infile:
+                line = line.lstrip()
+                if line == '': continue
+                if line[0] == "#": continue
+
+                row = line.split()
+                
+                #Date 0 2021 Jan 1 0000
+                year = int(row[1])
+                str_month = row[2] #str
+                day = int(row[3])
+                str_hr_min = row[4]
+               # hr = int(str_hr_min[0:2])
+               # min = int(str_hr_min[2:4])
+                
+                str_date = str(year) + " " + str_month + " " + str(day) + " " + str_hr_min
+                date = datetime.datetime.strptime(str_date, '%Y %b %d %H%M') #2001 Jan 1 1545
+ 
+                datesH.append(date)
+                
+                for j in range(ncolH):
+                    flux = float(row[fluxcolsH[j]])
+                    if flux < 0:
+                        flux = badval
+                    fluxesH[j][count] = flux
+                count = count + 1
+        
+        #If reading in multiple files, then combine all data into one array
+        if i==0:
+            all_fluxesH = fluxesH
+            all_datesH = datesH
+        else:
+            all_fluxesH = np.concatenate((all_fluxesH,fluxesH),axis=1)
+            all_datesH = all_datesH + datesH
+
+    #Now we have the LET and HET data for every minute in different arrays.
+    #The HET rows must be appended at the end of the LET rows (to go up
+    #in energy bin)
+    #There is no guarantee that they are aligned in time.
+    #Need to find the appropriate alignment and fill any mismatched elements
+    #with None values
+    #Easiest approach is to trim both to the minimum overlapping date range
+    #and hopefully this will include the dates requested by the user.
+    #This approach may need updating.
+    first_date = max(all_datesL[0],all_datesH[0])
+    last_date = min(all_datesL[-1],all_datesH[-1])
+    datesL_trim, fluxesL_trim = extract_date_range(first_date, last_date,
+                                    all_datesL, all_fluxesL)
+    datesH_trim, fluxesH_trim = extract_date_range(first_date, last_date,
+                                    all_datesH, all_fluxesH)
+
+
+    print("There are " + str(len(datesL_trim)) + " LET time points and " + str(len(datesH_trim)) + " HET time points between " + str(first_date) + " and " + str(last_date))
+    
+ 
+#    all_dates = datesL_trim
+#    all_fluxes = np.concatenate((fluxesL_trim,fluxesH_trim), axis=0)
+ 
+    #There may be data gaps in the LET and HET data sets, so make a time point for
+    #every minute between the first_date and last_date, then fill in
+    #with the appropriate data.
+    nmins = math.ceil((last_date - first_date).total_seconds()/60.) + 1
+    dates_all_min = []
+    fluxes_all_min = np.zeros(shape=(ncolL+ncolH,nmins))
+    for ii in range(nmins):
+        time = first_date + datetime.timedelta(minutes = ii)
+        dates_all_min.append(time)
+
+        #CHECK FOR FLUX AT TIME IN LET
+        try:
+            idx_LET = datesL_trim.index(time)
+            for kk in range(ncolL):
+                fluxes_all_min[kk][ii] = fluxesL_trim[kk][idx_LET]
+        except:
+            for kk in range(ncolL):
+                fluxes_all_min[kk][ii] = badval
+
+        #CHECK FOR FLUX AT TIME IN HET
+        try:
+            idx_HET = datesH_trim.index(time)
+            for kk in range(ncolH):
+                fluxes_all_min[ncolL + kk][ii] = fluxesH_trim[kk][idx_HET]
+        except:
+            for kk in range(ncolH):
+                fluxes_all_min[ncolL + kk][ii] = badval
+
+    print("read_in_stereo: Filled in flux values for all minutes between:")
+    print(dates_all_min[0])
+    print(dates_all_min[-1])
+    print("Final flux array " + str(fluxes_all_min[:,0].size) + " " + str(fluxes_all_min[0,:].size) +
+    " dates size " + str(len(dates_all_min)))
+
+    all_dates = dates_all_min
+    all_fluxes = fluxes_all_min
+    
+    return all_dates, all_fluxes
+
+
+
 
 
 def read_in_files(experiment, flux_type, filenames1, filenames2,
@@ -1672,6 +2075,11 @@ def read_in_files(experiment, flux_type, filenames1, filenames2,
     if experiment == "EPHIN_REleASE":
         all_dates, all_fluxes = read_in_ephin_release(experiment, flux_type,
                     filenames1)
+        return all_dates, all_fluxes, west_detector
+        
+    if "STEREO" in experiment:
+        all_dates, all_fluxes = read_in_stereo(experiment, flux_type,
+                    filenames1, filenames2)
         return all_dates, all_fluxes, west_detector
 
     return all_dates, all_fluxes, west_detector
@@ -2000,7 +2408,6 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
             if fluxes[i,j] == None: #bad data
                 #estimate flux with interpolation in time
                 if dointerp:
-                    print()
                     print('There is a data gap for time ' + str(dates[j])
                             + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
                             + str(energy_bins[i][1]) + '.'
@@ -2009,7 +2416,6 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
                     interp_flux = do_interpolation(j,dates,fluxes[i,:])
                     fluxes[i,j] = interp_flux
                 else:
-                    print()
                     print('There is a data gap for time ' + str(dates[j])
                             + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
                             + str(energy_bins[i][1]) + '.'
@@ -2019,7 +2425,6 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
             elif fluxes[i,j] < 0:
                 #estimate flux with interpolation in time
                 if dointerp:
-                    print()
                     print('There is a data gap for time ' + str(dates[j])
                             + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
                             + str(energy_bins[i][1]) + '.'
@@ -2028,15 +2433,13 @@ def check_for_bad_data(dates,fluxes,energy_bins,dointerp=True):
                     interp_flux = do_interpolation(j,dates,fluxes[i,:])
                     fluxes[i,j] = interp_flux
                 else:
-                    print()
                     print('There is a data gap for time ' + str(dates[j])
                             + ' and energy bin ' + str(energy_bins[i][0]) + ' - '
                             + str(energy_bins[i][1]) + '.'
                             + ' Filling in missing value with None ')
-                    fluxes[i,j] = None
+                    fluxes[i,j] = None #results in NaN value in np array
 
-
-
+    
     print('Finished checking for bad data.')
     print()
     return fluxes
@@ -2085,7 +2488,7 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
         energy_bins = [[10.0,10.0],[15.8,15.8],[25.1,25.1],[39.8,39.8],
                         [65.1,65.1],[100.0,100.0],[158.5,158.5],[251.2,251.2],
                         [398.1,398.1],[630.9,630.9],[1000.0,1000.0]]
-
+   
     if experiment == "ERNEf10":
         #The top 3 channels tend to saturate and show incorrect values during
         #high intensity SEP events. For this reason, only the >10 MeV
@@ -2209,7 +2612,14 @@ def define_energy_bins(experiment,flux_type,west_detector,options):
                            [276.0,404.0],[500.0,-1]]
         if flux_type == "integral":
             energy_bins = [[1,-1],[5,-1],[10,-1],[30,-1],[50,-1],[100,-1]]
-
+    
+    
+    if experiment == "STEREO-A" or experiment == "STEREO-B":
+        #Uses the SUMMED LET bins with the HET bins
+        energy_bins = [[1.8,3.6],[4.0,6.0],[6.0,10.0],[13.6,15.1],
+                        [14.9,17.1],[17.0,19.3],[20.8,23.8],
+                        [23.8,26.4],[26.3,29.7],[29.5,33.4],[33.4,35.8],
+                        [35.5,40.5],[40.0,60.0],[60.0,100.0]]
 
     if experiment == "user":
         #modify to match your energy bins or integral channels

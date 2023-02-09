@@ -27,7 +27,7 @@ from scipy import signal
 from statistics import mode
 from lmfit import minimize, Parameters
 
-__version__ = "3.11"
+__version__ = "3.12"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -277,12 +277,18 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   filenames. ONE EXCEPTION: The HEPAD files for GOES-14 and GOES-15
 #   are missing a column for the month of 2019-09, so specify GOES-16
 #   to pull the real time GOES fluxes from the CCMC archive instead.
-#2022-11-14: Updated all_program_info() to reflect new All Clear 
+#2022-11-14, still v3.11: Updated all_program_info() to reflect new All Clear
 #   logic that was coded into library/ccmc_json_handler.py > fill_json().
 #   This fixes a previous bug that incorrectly resulted in 
 #   all_clear_boolean = False if only a single point was above 
 #   threshold (for 5 min cadence GOES data, 3 consecutive points above
 #   threshold are required to define an SEP event).
+#2022-12-06, changes in v3.12: Fixed some error checking in calculate_fluence
+#   and from_differential_to_integral flux to account for the
+#   possibility of NaN values in the flux arrays when interpolation
+#   is not used. These changes were needed when testing out the
+#   additional of STEREO-A and -B data as native data sets in
+#   read_datasets.py v1.3. Added STEREO-A and -B to list of allowed instruments.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -711,6 +717,10 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
         The intent is to calculate >10 MeV and >100 MeV fluxes, but leaving
         flexibility for user to define the minimum energy for the integral flux.
         An integral flux will be provided for each timestamp (e.g. every 5 mins).
+        
+        Note that if bad values were not interpolated in previous steps,
+        they will have been set to None in check_for_bad_data, which translated
+        to NaN in numpy arrays.
        
         INPUTS:
         
@@ -734,7 +744,8 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
     if min_energy < energy_bins[0][0] or min_energy >= energy_bins[nbins-1][0]:
         print('The selected minimum energy ' + str(min_energy) + ' to create'
                 ' integral fluxes is outside of the range of the data: '
-                + str(energy_bins[0][0]) + ' - ' + str(energy_bins[nbins-1][0]))
+                + str(energy_bins[0][0]) + ' - '
+                + str(max(energy_bins[nbins-1][0],energy_bins[nbins-1][1])))
         print('Setting all >'+ str(min_energy) + ' fluxes to zero.')
         integral_fluxes = [0]*nflux
         return integral_fluxes
@@ -788,34 +799,36 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
                 if energy_bins[i][1] == -1 or energy_bins[i+1][1] == -1:
                     #bin is already an integral flux, e.g. last HEPAD bin
                     continue
+                if math.isnan(fluxes[i,j]) or math.isnan(fluxes[i+1,j]): #data gap
+                    continue
+                
                 if fluxes[i,j] < 0 or fluxes[i+1,j] < 0: #bad data
-                    sys.exit('Bad flux data value of ' + str(fluxes[i,j])
+                    sys.exit('from_differential_to_integral_flux: '
+                            + 'Bad flux data value of ' + str(fluxes[i,j])
                             + ' and ' + str(fluxes[i+1,j]) +
                             ' found for bin ' + str(i) + ','
                             + str(j) + '. This should not happen. '
                             + 'Did you call check_for_bad_data() first?')
 
-                #if fluxes[i,j] == 0 and fluxes[i+1,j] == 0: #add 0 flux
-                #    ninc = ninc + 1
-                #    continue
 
                 if fluxes[i,j] == 0 or fluxes[i+1,j] == 0: #add 0 flux
                     ninc = ninc + 1
                     continue
 
-
                 F1 = fluxes[i,j]
                 F2 = fluxes[i+1,j]
-                if fluxes[i,j] == 0 or fluxes[i,j] == None: #sub very small value for interpolation
+                if F1 == 0 or F1 == None or math.isnan(F1):
                     sys.exit('from_differential_to_integral_flux: found bin '
-                            'flux of zero. Should not happen here, bin [i,j] ['
+                            'flux of ' + str(fluxes[i,j])
+                            + '. Should not happen here, bin [i,j] ['
                             + str(i) + ',' + str(j) + '].' )
-                    #F1 = 1e-15
-                if fluxes[i+1,j] == 0 or fluxes[i+1,j] == None:
+
+                if F2 == 0 or F2 == None or math.isnan(F2):
                     sys.exit('from_differential_to_integral_flux: found bin '
-                            'flux of zero. Should not happen here, bin [i+1,j] '
+                            'flux of '  + str(fluxes[i+1,j])
+                            + '. Should not happen here, bin [i+1,j] '
                             '['+ str(i+1) + ',' + str(j) + '].' )
-                    #F2 = 1e-15 #Set to very small number for interpolation
+
                 
                 #FOR GOES differential corrected fluxes, subtract a
                 #static value as background before estimating integral
@@ -850,10 +863,10 @@ def from_differential_to_integral_flux(experiment, min_energy, energy_bins,
 #                    if energy_bins[i+1][0] == 510.0 and energy_bins[i+1][1] == 700.0:
 #                        F2 = F2 - 0.000431988
 #                        if F2 < 0: F2 = 0
-                 
-                if F1 == 0 or F2 == 0: #add 0 flux
-                    ninc = ninc + 1
-                    continue
+#
+#                if F1 == 0 or F2 == 0: #add 0 flux
+#                    ninc = ninc + 1
+#                    continue
                  
                 logF1 = np.log(F1)
                 logF2 = np.log(F2)
@@ -1237,16 +1250,18 @@ def calculate_fluence(dates, flux):
     ndates = len(dates)
     time_resolution = determine_time_resolution(dates)
     
-    print("calculate_fluence: Identified a time resolution of "
-            + str(time_resolution.total_seconds()) + " seconds.")
+#    print("calculate_fluence: Identified a time resolution of "
+#            + str(time_resolution.total_seconds()) + " seconds.")
     
     fluence = 0
     for i in range(ndates):
-        if flux[i] == None: continue
+        if flux[i] == None or flux[i] == badval or math.isnan(flux[i]):
+            continue
+
         if flux[i] >= 0:  #0 flux ok for models
                 fluence = fluence + flux[i]*time_resolution.total_seconds()
         else:
-            sys.exit('Bad flux data value of ' + str(flux[i]) +
+            sys.exit('calculate_fluence: Bad flux data value of ' + str(flux[i]) +
                     ' found for bin ' + str(i) + ', '
                     + str(dates[i]) + '. This should not happen. '
                     + 'Did you call check_for_bad_data() first?')
@@ -2666,24 +2681,31 @@ def error_check_inputs(startdate, enddate, experiment, flux_type, json_type,
 
     sepem_end_date = datetime.datetime(2015,12,31,23,55,00)
     if(experiment == "SEPEM" and (startdate > sepem_end_date or
-                   enddate > sepem_end_date)):
+                   enddate > sepem_end_date + datetime.timedelta(days=1))):
         sys.exit('The SEPEM (RSDv2) data set only extends to '
                   + str(sepem_end_date) +
             '. Please change your requested dates. Exiting.')
 
     sepemv3_end_date = datetime.datetime(2017,12,31,23,55,00)
     if(experiment == "SEPEMv3" and (startdate > sepemv3_end_date or
-                   enddate > sepemv3_end_date)):
+                   enddate > sepemv3_end_date + datetime.timedelta(days=1))):
         sys.exit('The SEPEM (RSDv3) data set only extends to '
                   + str(sepemv3_end_date) +
             '. Please change your requested dates. Exiting.')
 
     
-    goes16_integral_stdate = datetime.datetime(year=2020,month=3,day=8)
+    goes16_integral_stdate = datetime.datetime(2020,3,8)
     if(experiment == "GOES-16" or experiment == "GOES-17") \
         and startdate < goes16_integral_stdate:
         sys.exit('The GOES-16 real time integral fluxes are only available '
                 + 'starting on '+ str(goes16_integral_stdate) +
+            '. Please change your requested dates. Exiting.')
+            
+    stereoB_end_date = datetime.datetime(2014,9,27,16,26,00)
+    if(experiment == "STEREO-B" and (startdate > stereoB_end_date or
+                   enddate > stereoB_end_date + datetime.timedelta(days=1))):
+        sys.exit('The STEREO-B data set only extends to '
+                  + str(stereoB_end_date) +
             '. Please change your requested dates. Exiting.')
 
 
@@ -2850,6 +2872,7 @@ def read_in_flux_files(experiment, flux_type, user_file, model_name, startdate,
     
     all_fluxes, energy_bins = sort_bin_order(all_fluxes, energy_bins)
     
+    
     #IF REQUESTED BACKGROUND SUBTRACTION
     if doBGSub:
         #sepfluxes are background subtracted fluxes
@@ -2866,13 +2889,13 @@ def read_in_flux_files(experiment, flux_type, user_file, model_name, startdate,
         dates, fluxes = datasets.extract_date_range(startdate, enddate,
                                 all_dates, all_fluxes)
     
-    if nointerp:
-        #Set bad data points (negative flux or None) to None
-        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins,nointerp)
-    else:
-        #Remove bad data points (negative flux or None) w/ linear interp in time
-        fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins)
-        
+    
+    #nointerp = True, Set bad data points (negative flux or None) to None (NaN in np)
+    #nointerp = False, Remove bad data points (negative flux or None) w/ linear interp in time
+    dointerp = not nointerp
+    fluxes = datasets.check_for_bad_data(dates,fluxes,energy_bins,dointerp)
+
+     
     if len(dates) <= 1:
         sys.exit("The specified start and end dates were not present in the "
                 "specified input file. Exiting.")
@@ -3228,8 +3251,8 @@ def append_differential_thresholds(energy_thresholds, flux_thresholds,
                     umasep_t, umasep_f = calculate_umasep_info(\
                                 [input_threshold[i][0]],[input_threshold[i][1]],
                                 dates, [fluxes[svbin]], ct)
-                    umasep_times.append(umasep_t[0])
-                    umasep_fluxes.append(umasep_f[0])
+                    umasep_times.append(umasep_t[0]) #One channel at a time
+                    umasep_fluxes.append(umasep_f[0]) #so only one element in array
 
             #user-specified differential thresholds will be tacked onto the end
             all_fluence = np.append(all_fluence, [fl], axis=0) #in native units of experiment
@@ -3516,7 +3539,7 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
         flux_type, user_file, model_name, startdate,
         enddate, str_startdate, str_enddate, str_bgstartdate,
         str_bgenddate, options, doBGSub, nointerp, showplot, saveplot)
-   
+    
     #Define ONLY INTEGRAL thresholds to use for start and end of event
     #Will tack on differential thresholds later on
     #At this point, energy_thresholds and flux_thresholds correspond
@@ -3869,7 +3892,7 @@ if __name__ == "__main__":
     parser.add_argument("--Experiment", type=str, choices=['GOES-08',
             'GOES-10', 'GOES-11', 'GOES-12', 'GOES-13', 'GOES-14', 'GOES-15',
             'GOES-16', 'GOES-17','SEPEM', 'SEPEMv3', 'EPHIN', 'EPHIN_REleASE',
-            'SRAG12', 'user'],
+            'SRAG12', 'STEREO-A', 'STEREO-B', 'user'],
             default='', help="Enter name of spacecraft or dataset")
     parser.add_argument("--FluxType", type=str, choices=['integral',
             'differential'], default='',

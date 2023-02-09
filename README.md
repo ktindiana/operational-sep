@@ -1,6 +1,8 @@
 # operational-sep
 
-**operational_sep_quantities.py CURRENT VERSION 3.10**
+**operational_sep_quantities.py CURRENT VERSION 3.12**
+
+**Updated on 2023-02-09 to account for NOAA SWPC moving archived GOES-15 and previous data to a different url. Added support to read structure of GOES-R files according to version number.**
 
 Please see the extensive and nicely formatted web documentation at <a href="https://ktindiana.github.io/operational-sep/index.html" target="_blank">https://ktindiana.github.io/operational-sep/index.html</a>.
 
