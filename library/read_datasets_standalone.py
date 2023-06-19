@@ -1,22 +1,18 @@
-from library import global_vars as gl
 import re
 import calendar
 import datetime
-import argparse
 from datetime import timedelta
 import os
 import wget
 from calendar import monthrange
 import urllib.request
 import csv
-from dateutil.parser import parse
 import numpy as np
-import matplotlib.pyplot as plt
 import sys
 import math
 import netCDF4
 
-__version__ = "1.5"
+__version__ = "1.4"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -62,22 +58,25 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   numbers possible in the differential files. Updated read_in_goesR()
 #   to account for the different keys used to extract the flux
 #   values in the different versions.
-#2023-06-19, changes in 1.5: NOAA changed the GOES-R data to version 3
-#   in May of 2022. Added ability to grab v3 data in check_goesR.
-#   Fixed bug that grabbed temperature uncorrected proton fluxes in
-#   read_in_goesR() and added v3 file formatting.
-#   NOAA added a v3-0-1 format for files
-#   starting in April 2023. Rewrote check_goesR to be more versatile.
-#   Added checking that include v3-0-1 in read_in_goesR.
 
 
-datapath = gl.datapath
-outpath = gl.outpath
-plotpath = gl.plotpath
-badval = gl.badval #bad data points will be set to this value; must be negative
-user_col = gl.user_col
-user_delim = gl.user_delim
-user_energy_bins = gl.user_energy_bins
+datapath = "../../data"
+badval = -1 #bad data points will be set to this value; must be negative
+time_shift = 0 #can shift times in file by fractional hour; keep at 0
+
+
+########## READ IN OWN FILE ######
+#IF READING IN YOUR OWN FILE. SPECIFY COLUMNS CONTAINING FLUX,
+#DELIMITER SEPARATING COLUMNS, AND ENERGY BINS ASSOCIATED WITH FLUX
+#COLUMNS. FIRST COLUMN IN THE FILE MUST CONTAIN DATE IN FORMAT:
+#YYYY-MM-DD HH:MM:SS
+#Flux columns must start at column 1 or more.
+#Even if the delimeter is white space, the code will treat the
+#ISO date as the 0th column.
+#user_col = arr.array('i',[1,2,3,4,5,6,7,8])
+#user_delim = ""
+#user_energy_bins = [[750,-1],[500,-1],[300,-1],[100,-1],\
+#                    [60,-1],[50,-1],[30,-1],[10,-1]]
 
 def about_read_datasets():
     """ About read_datasets.py
@@ -113,7 +112,7 @@ def about_read_datasets():
 def check_paths():
     """Check that the paths that hold the data and output exist. If not, create.
     """
-    print('Checking that paths exist: ' + datapath + ' and ' + outpath)
+    print('Checking that paths exist: ' + datapath)
     if not os.path.isdir(datapath):
         print('check_paths: Directory containing fluxes, ' + datapath +
         ', does not exist. Creating.')
@@ -154,13 +153,7 @@ def check_paths():
         os.mkdir(datapath + '/STEREO-B');
         os.mkdir(datapath + '/STEREO-B/LET');
         os.mkdir(datapath + '/STEREO-B/HET');
-    if not os.path.isdir(outpath):
-        print('check_paths: Directory to store output information, ' + outpath
-            + ', does not exist. Creating.')
-        os.mkdir(outpath);
-    if not os.path.isdir(plotpath):
-        print('check_paths: Directory to store plots does not exist. Creating.')
-        os.mkdir(plotpath);
+
 
 
 def make_yearly_files(filename):
@@ -577,34 +570,30 @@ def check_goesR_data(startdate, enddate, experiment, flux_type):
         day = date.day
         date_suffix = 'd%i%02i%02i' % (year,month,day)
  
-        #GOES-R differential data has three possible version numbers
-        file_ext = ['_v1-0-1.nc', '_v2-0-0.nc', '_v3-0-0.nc', '_v3-0-1.nc']
-        
-        foundfile = None
-        for ext in file_ext:
-            fname_data = prefix + date_suffix + ext
-            exists = os.path.isfile(datapath + '/GOES-R/' + fname_data)
-            if exists:
-                foundfile = fname_data
-            
-        #Try versions
-        if foundfile == None:
-            for ext in file_ext:
-                fname_data = prefix + date_suffix + ext
-                url=('https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/%s/l2/data/sgps-l2-avg5m/%i/%02i/%s' % (satellite,year,month,fname_data))
+        #GOES-R differential data has two possible version numbers
+        fname1 = prefix + date_suffix + '_v2-0-0.nc'
+        exists1 = os.path.isfile(datapath + '/GOES-R/' + fname1)
+        if not exists1:
+            fname1 = prefix + date_suffix + '_v1-0-1.nc'
+            exists1 = os.path.isfile(datapath + '/GOES-R/' + fname1)
+
+        if not exists1:
+            fname1 = prefix + date_suffix + '_v2-0-0.nc'
+            url=('https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/%s/l2/data/sgps-l2-avg5m/%i/%02i/%s' % (satellite,year,month,fname1))
+            try:
+                urllib.request.urlopen(url)
+                wget.download(url, datapath + '/GOES-R/' + fname1)
+            except urllib.request.HTTPError:
+                fname1 = prefix + date_suffix + '_v1-0-1.nc'
+                url=('https://data.ngdc.noaa.gov/platforms/solar-space-observing-satellites/goes/%s/l2/data/sgps-l2-avg5m/%i/%02i/%s' % (satellite,year,month,fname1))
                 try:
                     urllib.request.urlopen(url)
-                    wget.download(url, datapath + '/GOES-R/' + fname_data)
-                    foundfile = fname_data
-                    break
+                    wget.download(url, datapath + '/GOES-R/' + fname1)
                 except urllib.request.HTTPError:
-                    foundfile = None
-
-        if foundfile == None:
-            sys.exit("Cannot access GOES-R file at " + url +
-               ". Tried file versions " + str(file_ext) + ". Please check that selected spacecraft covers date range.")
+                    sys.exit("Cannot access orientation file at " + url +
+                   ". Please check that selected spacecraft covers date range.")
   
-        filenames1.append('GOES-R/' + foundfile)
+        filenames1.append('GOES-R/' + fname1)
         
     return filenames1, filenames2, filenames_orien
 
@@ -1474,29 +1463,21 @@ def read_in_goesR(experiment, flux_type, filenames1):
         infile = os.path.expanduser(datapath + "/" + filenames1[i])
         data = netCDF4.Dataset(infile)
         
-        if "v3-0" in filenames1[i]:
-            ntstep = len(data.variables["time"])
-        else:
-            ntstep = len(data.variables["L2_SciData_TimeStamp"])
+        ntstep = len(data.variables["L2_SciData_TimeStamp"])
         
         #13 differential channels, one integral channel
         #5 minute time steps
-        fluxes = np.zeros(shape=(ndiff_chan+1,ntstep))
+        fluxes = np.zeros(shape=(14,ntstep))
         
-        for j in range(ntstep):
-            if "v3-0" in filenames1[i]:
-                time_sec = float(data.variables["time"][j].data)
-            else:
-                time_sec = float(data.variables["L2_SciData_TimeStamp"][j].data)
+        ntimes = len(data.variables["L2_SciData_TimeStamp"])
+        for j in range(ntimes):
+            time_sec = float(data.variables["L2_SciData_TimeStamp"][j].data)
             td = datetime.timedelta(seconds=time_sec)
             date = ref_date + td
             all_dates.append(date)
             
             #Orientation flag
-            if "v3-0" in filenames1[i]:
-                flip_flag = data.variables["yaw_flip_flag"][j]
-            else:
-                flip_flag = data.variables["YawFlipFlag"][j]
+            flip_flag = data.variables["YawFlipFlag"][j]
             idx = 0
             if flip_flag == 1:
                 idx = 1
@@ -1508,14 +1489,25 @@ def read_in_goesR(experiment, flux_type, filenames1):
                 ###TEMP###
                 #kk = k + 8
                 #[288 time step, 2 +/-X, 13 energy chan]
-                
-                flux = data.variables["AvgDiffProtonFlux"][j][idx][k]
+                #Special file info FOR SEP Events during 2017-09
+                if filenames1[i] == "GOES-R/se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc":
+                    flux = data.variables["AvgDiffProtonFlux"][j][idx][k]
+                if 'v1-0-1' in filenames1[i]:
+                    flux = data.variables["AvgDiffProtonFlux"][j][idx][k]
+                else:
+                    flux = data.variables["AvgDiffProtonFluxObserved"][j][idx][k]
                 if flux < 0:
                     flux = badval
                 fluxes[k][j] = flux*conversion
             
-
-            flux = data.variables["AvgIntProtonFlux"][j][idx]
+            #>500 MeV integral channel
+            #Special file info FOR SEP Events during 2017-09
+            if filenames1[i] == "GOES-R/se_sgps-l2-avg5m_g16_s20172440000000_e20172732355000_v2_0_0.nc":
+                flux = data.variables["AvgIntProtonFlux"][j][idx]
+            if 'v1-0-1' in filenames1[i]:
+                flux = data.variables["AvgIntProtonFlux"][j][idx]
+            else:
+                flux = data.variables["AvgIntProtonFluxObserved"][j][idx]
             if flux < 0:
                 flux = badval
             fluxes[-1][j] = flux
@@ -2143,9 +2135,9 @@ def read_in_user_files(filenames1):
        
     """
     print('Reading in user-specified files.')
-    if gl.time_shift != 0:
+    if time_shift != 0:
         print("!!!!!!!Shifting times by time_shift in global_vars.py: " \
-            + str(gl.time_shift) + " hours. Set to zero if do not want to shift.")
+            + str(time_shift) + " hours. Set to zero if do not want to shift.")
     NFILES = len(filenames1)
     ncol = len(user_col) #include column for date
     for i in range(NFILES):
@@ -2196,8 +2188,8 @@ def read_in_user_files(filenames1):
                                                 "%Y-%m-%d %H:%M:%S")
                 #apply a time shift to user data with the variable set in
                 #global_vars
-                if gl.time_shift != 0:
-                    hours, minutes, seconds = convert_decimal_hour(gl.time_shift)
+                if time_shift != 0:
+                    hours, minutes, seconds = convert_decimal_hour(time_shift)
                     date = date + datetime.timedelta(hours=hours, minutes=minutes,\
                                                         seconds=seconds)
                     

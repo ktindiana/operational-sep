@@ -27,7 +27,7 @@ from scipy import signal
 from statistics import mode
 from lmfit import minimize, Parameters
 
-__version__ = "3.12"
+__version__ = "3.13"
 __author__ = "Katie Whitman"
 __maintainer__ = "Katie Whitman"
 __email__ = "kathryn.whitman@nasa.gov"
@@ -289,6 +289,8 @@ __email__ = "kathryn.whitman@nasa.gov"
 #   is not used. These changes were needed when testing out the
 #   additional of STEREO-A and -B data as native data sets in
 #   read_datasets.py v1.3. Added STEREO-A and -B to list of allowed instruments.
+#2023-06-19, changes in v3.13: Updated fluence plot in run_all to have the
+#   correct units.
 ########################################################################
 
 #See full program description in all_program_info() below
@@ -3853,9 +3855,9 @@ def run_all(str_startdate, str_enddate, experiment, flux_type, model_name,
                     'Fluences for All Event Definitions')
         plt.xlabel('Energy [' + energy_units +']')
         if flux_type == "integral":
-            plt.ylabel('Integral Fluxes [' + flux_units_integral + ']')
+            plt.ylabel('Integral Fluxes [' + fluence_units_integral + ']')
         if flux_type == "differential":
-            plt.ylabel('Flux [' + flux_units_differential + ']')
+            plt.ylabel('Flux [' + fluence_units_differential + ']')
         plt.xscale("log")
         plt.yscale("log")
         ax.legend(loc='upper right')
