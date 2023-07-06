@@ -427,7 +427,7 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
             template[key][type_key][tidx]['peak_intensity'].update(onset_dict)
             
             #Maximum Flux
-            max_dict = {"intensity":peak_flux[i],"time": zpdate,
+            max_dict = {"intensity":float(peak_flux[i]),"time": zpdate,
                             "units":flux_units}
             template[key][type_key][tidx]['peak_intensity_max'].update(max_dict)
             
@@ -513,7 +513,7 @@ def fill_json(template, issue_time, experiment, flux_type, json_type,
             zeet = ""
             template[key][type_key][tidx]['sep_profile'] = profile_filenames[i]
             
-            max_dict = {"intensity":peak_flux[i],"time": zpdate,
+            max_dict = {"intensity":float(peak_flux[i]),"time": zpdate,
                         "units":flux_units}
             template[key][type_key][tidx]['peak_intensity_max'].update(max_dict)
             
